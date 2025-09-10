@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock } from 'lucide-react';
 
+const ResponsiveContainerFixed = ResponsiveContainer as any;
+
 export default function DashboardPage() {
   // Mock data for charts
   const performanceData = [
@@ -168,7 +170,7 @@ export default function DashboardPage() {
               <CardDescription>Task completion trends over the past 6 months</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainerFixed width="100%" height={300}>
                 <BarChart data={performanceData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -177,7 +179,7 @@ export default function DashboardPage() {
                   <Bar dataKey="completed" fill="#3B82F6" name="Completed" />
                   <Bar dataKey="pending" fill="#F59E0B" name="Pending" />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainerFixed>
             </CardContent>
           </Card>
 
@@ -188,7 +190,7 @@ export default function DashboardPage() {
               <CardDescription>Team member distribution across departments</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainerFixed width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={departmentData}
@@ -204,7 +206,7 @@ export default function DashboardPage() {
                   </Pie>
                   <Tooltip />
                 </PieChart>
-              </ResponsiveContainer>
+              </ResponsiveContainerFixed>
             </CardContent>
           </Card>
         </div>
@@ -216,7 +218,7 @@ export default function DashboardPage() {
             <CardDescription>Task and meeting activity for this week</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainerFixed width="100%" height={300}>
               <LineChart data={activityData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
@@ -237,7 +239,7 @@ export default function DashboardPage() {
                   name="Meetings"
                 />
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainerFixed>
           </CardContent>
         </Card>
 

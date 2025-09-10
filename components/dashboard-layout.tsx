@@ -15,7 +15,7 @@ import {
   Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarInitials } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
