@@ -71,7 +71,7 @@ export default function AboutPage() {
               </p>
               <p className="text-lg text-gray-600 mb-6">
                 Our platform combines powerful analytics, seamless communication tools, and compliance 
-                management features into a unified system that scales with your organization&apos;s needs.
+                management features into a unified system that scales with your organization's needs.
               </p>
               <div className="flex items-center space-x-2">
                 <Globe className="h-5 w-5 text-blue-600" />
@@ -143,7 +143,7 @@ export default function AboutPage() {
                   <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Scalable Architecture</h4>
-                    <p className="text-gray-600 text-sm">Grows with your organization&apos;s needs</p>
+                    <p className="text-gray-600 text-sm">Grows with your organization's needs</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">

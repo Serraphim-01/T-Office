@@ -3,7 +3,6 @@
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -74,7 +73,7 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
-          <p className="text-gray-600">Here&apos;s what&apos;s happening in your office today.</p>
+          <p className="text-gray-600">Here's what's happening in your office today.</p>
         </div>
 
         {/* Key Metrics Cards */}
@@ -147,7 +146,6 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium">{item.title}</span>
                     {getStatusBadge(item.status)}
                   </div>
-                  <Progress value={item.progress} className="h-2" />
                   <p className="text-xs text-gray-500">{item.progress}% complete</p>
                 </div>
               ))}

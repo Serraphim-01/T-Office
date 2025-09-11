@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WifiOff, RefreshCw } from 'lucide-react';
@@ -14,9 +16,9 @@ export default function OfflinePage() {
           <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <WifiOff className="h-8 w-8 text-gray-400" />
           </div>
-          <CardTitle>You&apos;re Offline</CardTitle>
+          <CardTitle>You're Offline</CardTitle>
           <CardDescription>
-            It looks like you&apos;ve lost your internet connection. Don&apos;t worry, you can still access some features of Task Office.
+            It looks like you've lost your internet connection. Don't worry, you can still access some features of Task Office.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

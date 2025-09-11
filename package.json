@@ -25,7 +25,6 @@
     "@radix-ui/react-menubar": "^1.1.1",
     "@radix-ui/react-navigation-menu": "^1.2.0",
     "@radix-ui/react-popover": "^1.1.1",
-    "@radix-ui/react-progress": "^1.1.0",
     "@radix-ui/react-radio-group": "^1.2.0",
     "@radix-ui/react-scroll-area": "^1.1.0",
     "@radix-ui/react-select": "^2.1.1",
@@ -66,8 +65,5 @@
     "typescript": "5.2.2",
     "vaul": "^0.9.9",
     "zod": "^4.1.5"
-  },
-  "devDependencies": {
-    "string-replace-loader": "^3.2.0"
   }
 }
