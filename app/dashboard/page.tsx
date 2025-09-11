@@ -4,38 +4,9 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock } from 'lucide-react';
 
-const ResponsiveContainerFixed = ResponsiveContainer as any;
-
 export default function DashboardPage() {
-  // Mock data for charts
-  const performanceData = [
-    { month: 'Jan', completed: 65, pending: 35 },
-    { month: 'Feb', completed: 75, pending: 25 },
-    { month: 'Mar', completed: 85, pending: 40 },
-    { month: 'Apr', completed: 90, pending: 30 },
-    { month: 'May', completed: 95, pending: 20 },
-    { month: 'Jun', completed: 88, pending: 25 },
-  ];
-
-  const departmentData = [
-    { name: 'Engineering', value: 35, color: '#3B82F6' },
-    { name: 'Marketing', value: 25, color: '#10B981' },
-    { name: 'Sales', value: 20, color: '#F59E0B' },
-    { name: 'HR', value: 12, color: '#EF4444' },
-    { name: 'Operations', value: 8, color: '#8B5CF6' },
-  ];
-
-  const activityData = [
-    { day: 'Mon', tasks: 24, meetings: 8 },
-    { day: 'Tue', tasks: 18, meetings: 12 },
-    { day: 'Wed', tasks: 32, meetings: 6 },
-    { day: 'Thu', tasks: 28, meetings: 10 },
-    { day: 'Fri', tasks: 22, meetings: 14 },
-  ];
-
   const complianceItems = [
     { title: 'Security Training', status: 'completed', progress: 100 },
     { title: 'Data Privacy Course', status: 'pending', progress: 75 },
@@ -103,7 +74,7 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
-          <p className="text-gray-600">Here's what's happening in your office today.</p>
+          <p className="text-gray-600">Here&apos;s what&apos;s happening in your office today.</p>
         </div>
 
         {/* Key Metrics Cards */}
@@ -160,88 +131,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Performance Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Performance</CardTitle>
-              <CardDescription>Task completion trends over the past 6 months</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainerFixed width="100%" height={300}>
-                <BarChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="completed" fill="#3B82F6" name="Completed" />
-                  <Bar dataKey="pending" fill="#F59E0B" name="Pending" />
-                </BarChart>
-              </ResponsiveContainerFixed>
-            </CardContent>
-          </Card>
-
-          {/* Department Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Department Distribution</CardTitle>
-              <CardDescription>Team member distribution across departments</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainerFixed width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={departmentData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {departmentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainerFixed>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Activity Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Activity</CardTitle>
-            <CardDescription>Task and meeting activity for this week</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainerFixed width="100%" height={300}>
-              <LineChart data={activityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="tasks" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2}
-                  name="Tasks"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="meetings" 
-                  stroke="#10B981" 
-                  strokeWidth={2}
-                  name="Meetings"
-                />
-              </LineChart>
-            </ResponsiveContainerFixed>
-          </CardContent>
-        </Card>
 
         {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

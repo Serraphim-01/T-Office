@@ -139,7 +139,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
-            Don't have an account? Contact your administrator
+            Don&apos;t have an account? Contact your administrator
           </p>
           <div className="mt-4 flex justify-center space-x-4">
             <Link href="/about" className="text-sm text-blue-600 hover:text-blue-500">
