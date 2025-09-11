@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  User, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  User,
+  LogOut,
   Menu,
   X,
   Building2
@@ -27,11 +27,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [backendMessage, setBackendMessage] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
     }
+
+    fetch("http://localhost:4000/api/hello")
+      .then((res) => res.json())
+      .then((data) => setBackendMessage(data.message))
+      .catch((err) => console.error(err));
   }, [isAuthenticated, router]);
 
   if (!isAuthenticated) {
@@ -128,7 +134,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />

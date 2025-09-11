@@ -11,3 +11,38 @@ services:
     environment:
       - NODE_ENV=development
     command: npm run dev
+    env_file:
+      - ./frontend/.env.local
+
+  backend:
+    build: ./backend
+    container_name: office-backend
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:password@db:5432/office
+    command: npm run dev
+    depends_on:
+      - db
+    env_file:
+      - ./backend/.env
+
+  db:
+    image: postgres:15
+    container_name: office-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: office
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
