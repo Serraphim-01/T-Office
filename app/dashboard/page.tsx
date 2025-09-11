@@ -6,67 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock } from 'lucide-react';
 
 export default function DashboardPage() {
-  const complianceItems = [
-    { title: 'Security Training', status: 'completed', progress: 100 },
-    { title: 'Data Privacy Course', status: 'pending', progress: 75 },
-    { title: 'Safety Protocols', status: 'completed', progress: 100 },
-    { title: 'Code of Conduct', status: 'in-progress', progress: 60 },
-    { title: 'Emergency Procedures', status: 'pending', progress: 30 },
-  ];
-
-  const departmentUpdates = [
-    {
-      department: 'Engineering',
-      title: 'Q2 Sprint Planning Complete',
-      time: '2 hours ago',
-      type: 'announcement'
-    },
-    {
-      department: 'Marketing',
-      title: 'New Brand Guidelines Released',
-      time: '4 hours ago',
-      type: 'update'
-    },
-    {
-      department: 'HR',
-      title: 'Benefits Enrollment Deadline',
-      time: '1 day ago',
-      type: 'deadline'
-    },
-    {
-      department: 'Operations',
-      title: 'Office Maintenance Scheduled',
-      time: '2 days ago',
-      type: 'notice'
-    },
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge variant="default" className="bg-green-500 text-white">Completed</Badge>;
-      case 'in-progress':
-        return <Badge variant="default" className="bg-primary text-primary-foreground">In Progress</Badge>;
-      case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
-      default:
-        return <Badge variant="outline">Unknown</Badge>;
-    }
-  };
-
-  const getUpdateIcon = (type: string) => {
-    switch (type) {
-      case 'announcement':
-        return <MessageSquare className="h-4 w-4 text-primary" />;
-      case 'deadline':
-        return <Clock className="h-4 w-4 text-destructive" />;
-      case 'update':
-        return <FileText className="h-4 w-4 text-green-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -127,52 +66,6 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">
                 Next 7 days
               </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Compliance Checklist */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Compliance Checklist</CardTitle>
-              <CardDescription>Your current compliance status and requirements</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {complianceItems.map((item, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{item.title}</span>
-                    {getStatusBadge(item.status)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">{item.progress}% complete</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Department Updates */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Department Updates</CardTitle>
-              <CardDescription>Latest announcements and updates from your departments</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {departmentUpdates.map((update, index) => (
-                <div key={index} className="flex items-start space-x-3 p-3 bg-secondary/50 rounded-lg">
-                  {getUpdateIcon(update.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{update.title}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Badge variant="outline" className="text-xs">
-                        {update.department}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{update.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </div>

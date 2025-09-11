@@ -12,11 +12,15 @@ import {
   LogOut,
   Menu,
   X,
-  Building2
+  Building2,
+  Shield,
+  Briefcase,
+  Users2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -100,6 +104,42 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               );
             })}
+            <Collapsible>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Shield className="mr-3 h-5 w-5" />
+                  Admin
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/admin/roles"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/admin/roles"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Users2 className="mr-3 h-5 w-5" />
+                  Roles
+                </Link>
+                <Link
+                  href="/admin/departments"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/admin/departments"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Briefcase className="mr-3 h-5 w-5" />
+                  Departments
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
           </nav>
 
           {/* User info and logout */}
