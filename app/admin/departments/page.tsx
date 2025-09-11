@@ -48,7 +48,7 @@ export default function DepartmentsPage() {
       functions: selectedFunctions,
     };
 
-    setDepartments([...departments, newDepartment]);
+    setDepartments(prevDepartments => [...prevDepartments, newDepartment]);
     setIsModalOpen(false);
     setNewDepartmentName('');
     setSelectedItems([]);
