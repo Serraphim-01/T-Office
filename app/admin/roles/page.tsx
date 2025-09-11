@@ -15,12 +15,42 @@ interface Role {
   permissions: string[];
 }
 
-const availablePermissions = [
-  { id: 'view_all_users_inclusive', label: 'View all users, admins inclusive' },
-  { id: 'view_all_users_exclusive', label: 'View all users, admins exclusive' },
-  { id: 'view_users_in_group', label: 'View all users under a group' },
-  { id: 'interact_with_all_users', label: 'Interact with all users' },
+const permissionCategories = [
+  {
+    title: 'User View',
+    permissions: [
+      { id: 'view_all_users_inclusive', label: 'View all users, admins inclusive' },
+      { id: 'view_all_users_exclusive', label: 'View all users, admins exclusive' },
+      { id: 'view_users_in_group', label: 'View all users under a group' },
+      { id: 'interact_with_all_users', label: 'Interact with all users' },
+    ],
+  },
+  {
+    title: 'Task Management',
+    permissions: [
+      { id: 'create_tasks', label: 'Create tasks' },
+      { id: 'assign_tasks', label: 'Assign tasks' },
+      { id: 'view_all_tasks', label: 'View all tasks' },
+      { id: 'edit_tasks', label: 'Edit tasks' },
+    ],
+  },
+  {
+    title: 'Department Item Access',
+    permissions: [
+      { id: 'view_special_items', label: 'View special items in a department' },
+      { id: 'view_normal_items', label: 'View normal items in a department' },
+    ],
+  },
+  {
+    title: 'Department Function Access',
+    permissions: [
+      { id: 'use_special_functions', label: 'Use special functions in a department' },
+      { id: 'use_normal_functions', label: 'Use normal functions in a department' },
+    ],
+  },
 ];
+
+const allPermissions = permissionCategories.flatMap(category => category.permissions);
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -55,7 +85,7 @@ export default function RolesPage() {
             <DialogTrigger asChild>
               <Button>Create Role</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create a New Role</DialogTitle>
                 <DialogDescription>
@@ -67,27 +97,29 @@ export default function RolesPage() {
                   <Label htmlFor="role-name">Role Name</Label>
                   <Input id="role-name" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Permissions</Label>
-                  <div className="space-y-2">
-                    {availablePermissions.map((permission) => (
-                      <div key={permission.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={permission.id}
-                          checked={newRolePermissions.includes(permission.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setNewRolePermissions([...newRolePermissions, permission.id]);
-                            } else {
-                              setNewRolePermissions(newRolePermissions.filter((p) => p !== permission.id));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={permission.id}>{permission.label}</Label>
-                      </div>
-                    ))}
+                {permissionCategories.map((category) => (
+                  <div key={category.title} className="space-y-2">
+                    <Label className="font-semibold">{category.title}</Label>
+                    <div className="space-y-2 pl-2">
+                      {category.permissions.map((permission) => (
+                        <div key={permission.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={permission.id}
+                            checked={newRolePermissions.includes(permission.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setNewRolePermissions([...newRolePermissions, permission.id]);
+                              } else {
+                                setNewRolePermissions(newRolePermissions.filter((p) => p !== permission.id));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={permission.id} className="font-normal">{permission.label}</Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
               <Button onClick={handleCreateRole}>Create Role</Button>
             </DialogContent>
@@ -107,7 +139,7 @@ export default function RolesPage() {
                     <ul className="list-disc list-inside text-sm text-muted-foreground mt-2">
                       {role.permissions.map((permissionId) => (
                         <li key={permissionId}>
-                          {availablePermissions.find((p) => p.id === permissionId)?.label}
+                          {allPermissions.find((p) => p.id === permissionId)?.label}
                         </li>
                       ))}
                     </ul>
