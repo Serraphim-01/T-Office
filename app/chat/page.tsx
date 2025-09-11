@@ -170,7 +170,7 @@ export default function ChatPage() {
                       key={message.id}
                       className={cn(
                         "flex",
-                        message.userId === currentUserId ? "justify-end" : "justify-start"
+                        "justify-start"
                       )}
                     >
                       <div
@@ -183,26 +183,6 @@ export default function ChatPage() {
                             : "bg-white border border-gray-200 text-gray-900"
                         )}
                       >
-                        {message.userId !== 'system' && (
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={cn(
-                              "text-xs font-medium",
-                              message.userId === currentUserId 
-                                ? "text-blue-100" 
-                                : "text-gray-500"
-                            )}>
-                              {message.userId === currentUserId ? 'You' : message.userName}
-                            </span>
-                            <span className={cn(
-                              "text-xs ml-2",
-                              message.userId === currentUserId 
-                                ? "text-blue-100" 
-                                : "text-gray-400"
-                            )}>
-                              {formatTime(message.timestamp)}
-                            </span>
-                          </div>
-                        )}
                         <p className="text-sm">{message.text}</p>
                         {message.userId === 'system' && (
                           <div className="flex items-center justify-center mt-2">

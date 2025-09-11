@@ -45,30 +45,30 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
+    --background: 0 0% 0%; /* Black */
+    --foreground: 48 100% 50%; /* Yellow */
+    --card: 0 0% 10%; /* Dark Gray */
+    --card-foreground: 48 100% 50%; /* Yellow */
+    --popover: 0 0% 0%; /* Black */
+    --popover-foreground: 48 100% 50%; /* Yellow */
+    --primary: 48 100% 50%; /* Yellow */
+    --primary-foreground: 0 0% 0%; /* Black */
+    --secondary: 0 0% 10%; /* Dark Gray */
+    --secondary-foreground: 48 100% 50%; /* Yellow */
+    --muted: 0 0% 10%; /* Dark Gray */
     --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 0% 10%; /* Dark Gray */
+    --accent-foreground: 48 100% 50%; /* Yellow */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 0 0% 20%; /* Darker Gray */
+    --input: 0 0% 20%; /* Darker Gray */
+    --ring: 48 100% 50%; /* Yellow */
+    --chart-1: 48 100% 50%;
+    --chart-2: 48 100% 60%;
+    --chart-3: 48 100% 70%;
+    --chart-4: 48 100% 80%;
+    --chart-5: 48 100% 90%;
   }
 }
 
