@@ -40,18 +40,18 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Navbar />
       
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="relative bg-gradient-to-r from-primary to-yellow-600 text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Streamline Your
-              <span className="block text-blue-200">Office Operations</span>
+              <span className="block text-yellow-200">Office Operations</span>
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+            <p className="text-xl md:text-2xl mb-8 text-yellow-100 max-w-3xl mx-auto">
               Modern internal office management system designed for enhanced productivity, seamless collaboration, and efficient workflow management.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -61,7 +61,7 @@ export default function Home() {
                 </Button>
               </Link>
               <Link href="/about">
-                <Button size="lg" variant="outline" className="min-w-[150px] border-white text-white hover:bg-white hover:text-blue-600">
+                <Button size="lg" variant="outline" className="min-w-[150px] border-white text-white hover:bg-white hover:text-primary">
                   Learn More
                 </Button>
               </Link>
@@ -71,13 +71,13 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-secondary/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Powerful Features for Modern Offices
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Everything you need to manage your office operations effectively, from team collaboration to compliance tracking.
             </p>
           </div>
@@ -86,15 +86,15 @@ export default function Home() {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <Card key={index} className="border-border shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card">
                   <CardHeader>
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                      <Icon className="h-6 w-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                      <Icon className="h-6 w-6 text-primary" />
                     </div>
-                    <CardTitle className="text-xl">{feature.title}</CardTitle>
+                    <CardTitle className="text-xl text-card-foreground">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <CardDescription className="text-gray-600">
+                    <CardDescription className="text-muted-foreground">
                       {feature.description}
                     </CardDescription>
                   </CardContent>
@@ -106,12 +106,12 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             Ready to Transform Your Office?
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join thousands of organizations already using Task Office to streamline their operations and boost productivity.
           </p>
           <Link href="/login">
