@@ -84,16 +84,16 @@ export default function HelpPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Navbar />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+      <section className="bg-gradient-to-r from-primary to-yellow-600 text-primary-foreground py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <Search className="h-16 w-16 text-blue-200 mx-auto mb-6" />
+            <Search className="h-16 w-16 text-yellow-200 mx-auto mb-6" />
             <h1 className="text-4xl md:text-5xl font-bold mb-6">Help & Support</h1>
-            <p className="text-xl md:text-2xl text-blue-100 max-w-4xl mx-auto">
+            <p className="text-xl md:text-2xl text-yellow-100 max-w-4xl mx-auto">
               Find answers to common questions and get the support you need to make the most of Task Office.
             </p>
           </div>
@@ -101,17 +101,17 @@ export default function HelpPage() {
       </section>
 
       {/* Quick Tips Section */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-secondary/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Tips</h2>
-            <p className="text-gray-600">Essential tips to enhance your Task Office experience</p>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Quick Tips</h2>
+            <p className="text-muted-foreground">Essential tips to enhance your Task Office experience</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {quickTips.map((tip, index) => (
-              <Card key={index} className="border-l-4 border-l-blue-500">
+              <Card key={index} className="border-l-4 border-l-primary bg-card">
                 <CardContent className="p-4">
-                  <p className="text-sm text-gray-700">{tip}</p>
+                  <p className="text-sm text-card-foreground">{tip}</p>
                 </CardContent>
               </Card>
             ))}
@@ -123,10 +123,10 @@ export default function HelpPage() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-muted-foreground">
               Find answers to the most common questions about Task Office
             </p>
           </div>
@@ -136,12 +136,12 @@ export default function HelpPage() {
               <AccordionItem 
                 key={index} 
                 value={`item-${index}`}
-                className="border border-gray-200 rounded-lg px-6"
+                className="border border-border rounded-lg px-6 bg-card"
               >
                 <AccordionTrigger className="text-left hover:no-underline">
-                  <span className="font-semibold text-gray-900">{faq.question}</span>
+                  <span className="font-semibold text-card-foreground">{faq.question}</span>
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600 pb-6">
+                <AccordionContent className="text-muted-foreground pb-6">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
@@ -151,13 +151,13 @@ export default function HelpPage() {
       </section>
 
       {/* Support Channels Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-secondary/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Still Need Help?
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-muted-foreground">
               Our support team is here to assist you through multiple channels
             </p>
           </div>
@@ -166,16 +166,16 @@ export default function HelpPage() {
             {supportChannels.map((channel, index) => {
               const Icon = channel.icon;
               return (
-                <Card key={index} className="text-center shadow-lg hover:shadow-xl transition-shadow">
+                <Card key={index} className="text-center shadow-lg hover:shadow-xl transition-shadow bg-card">
                   <CardHeader>
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Icon className="h-8 w-8 text-blue-600" />
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Icon className="h-8 w-8 text-primary" />
                     </div>
-                    <CardTitle className="text-xl">{channel.title}</CardTitle>
+                    <CardTitle className="text-xl text-card-foreground">{channel.title}</CardTitle>
                     <CardDescription>{channel.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p className="font-semibold text-gray-900">{channel.contact}</p>
+                    <p className="font-semibold text-card-foreground">{channel.contact}</p>
                     <Badge variant="secondary">{channel.badge}</Badge>
                   </CardContent>
                 </Card>
@@ -189,10 +189,10 @@ export default function HelpPage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl font-bold text-foreground mb-6">
               Additional Resources
             </h2>
-            <p className="text-lg text-gray-600 mb-8 max-w-3xl mx-auto">
+            <p className="text-lg text-muted-foreground mb-8 max-w-3xl mx-auto">
               Explore more resources to help you get the most out of Task Office
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

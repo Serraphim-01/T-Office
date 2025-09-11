@@ -44,9 +44,9 @@ export default function DashboardPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default" className="bg-green-500">Completed</Badge>;
+        return <Badge variant="default" className="bg-green-500 text-white">Completed</Badge>;
       case 'in-progress':
-        return <Badge variant="default" className="bg-blue-500">In Progress</Badge>;
+        return <Badge variant="default" className="bg-primary text-primary-foreground">In Progress</Badge>;
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>;
       default:
@@ -57,13 +57,13 @@ export default function DashboardPage() {
   const getUpdateIcon = (type: string) => {
     switch (type) {
       case 'announcement':
-        return <MessageSquare className="h-4 w-4 text-blue-500" />;
+        return <MessageSquare className="h-4 w-4 text-primary" />;
       case 'deadline':
-        return <Clock className="h-4 w-4 text-red-500" />;
+        return <Clock className="h-4 w-4 text-destructive" />;
       case 'update':
         return <FileText className="h-4 w-4 text-green-500" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -72,8 +72,8 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
-          <p className="text-gray-600">Here's what's happening in your office today.</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back!</h1>
+          <p className="text-muted-foreground">Here's what's happening in your office today.</p>
         </div>
 
         {/* Key Metrics Cards */}
@@ -86,7 +86,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">124</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+12%</span> from last month
+                <span className="text-green-500">+12%</span> from last month
               </p>
             </CardContent>
           </Card>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">48</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-blue-600">+3</span> new this month
+                <span className="text-primary">+3</span> new this month
               </p>
             </CardContent>
           </Card>
@@ -112,7 +112,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">88%</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+5%</span> improvement
+                <span className="text-green-500">+5%</span> improvement
               </p>
             </CardContent>
           </Card>
@@ -146,7 +146,7 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium">{item.title}</span>
                     {getStatusBadge(item.status)}
                   </div>
-                  <p className="text-xs text-gray-500">{item.progress}% complete</p>
+                  <p className="text-xs text-muted-foreground">{item.progress}% complete</p>
                 </div>
               ))}
             </CardContent>
@@ -160,15 +160,15 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {departmentUpdates.map((update, index) => (
-                <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-start space-x-3 p-3 bg-secondary/50 rounded-lg">
                   {getUpdateIcon(update.type)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{update.title}</p>
+                    <p className="text-sm font-medium text-foreground">{update.title}</p>
                     <div className="flex items-center space-x-2 mt-1">
                       <Badge variant="outline" className="text-xs">
                         {update.department}
                       </Badge>
-                      <span className="text-xs text-gray-500">{update.time}</span>
+                      <span className="text-xs text-muted-foreground">{update.time}</span>
                     </div>
                   </div>
                 </div>

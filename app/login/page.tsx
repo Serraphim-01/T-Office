@@ -61,20 +61,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
-            <Building2 className="h-12 w-12 text-blue-600" />
-            <span className="text-3xl font-bold text-gray-900">Task Office</span>
+            <Building2 className="h-12 w-12 text-primary" />
+            <span className="text-3xl font-bold text-foreground">Task Office</span>
           </Link>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+          <p className="mt-2 text-muted-foreground">Sign in to your account</p>
         </div>
 
-        <Card className="shadow-2xl border-0">
+        <Card className="shadow-2xl border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-center text-card-foreground">Welcome Back</CardTitle>
             <CardDescription className="text-center">
               Enter your credentials to access your dashboard
             </CardDescription>
@@ -130,7 +130,7 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 For demo purposes, use any email and password (6+ characters)
               </p>
             </div>
@@ -138,15 +138,15 @@ export default function LoginPage() {
         </Card>
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Don't have an account? Contact your administrator
           </p>
           <div className="mt-4 flex justify-center space-x-4">
-            <Link href="/about" className="text-sm text-blue-600 hover:text-blue-500">
+            <Link href="/about" className="text-sm text-primary hover:text-primary/80">
               About Task Office
             </Link>
-            <span className="text-gray-300">|</span>
-            <Link href="/help" className="text-sm text-blue-600 hover:text-blue-500">
+            <span className="text-muted-foreground">|</span>
+            <Link href="/help" className="text-sm text-primary hover:text-primary/80">
               Need Help?
             </Link>
           </div>
