@@ -11,11 +11,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [department, setDepartment] = useState('');
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
@@ -31,12 +34,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     
-    if (!email || !password) {
+    const identifier = isAdminLogin ? name : email;
+    if (!identifier || !password) {
       setError('Please fill in all fields');
       return;
     }
 
-    if (!email.includes('@')) {
+    if (!isAdminLogin && !email.includes('@')) {
       setError('Please enter a valid email address');
       return;
     }
@@ -49,11 +53,11 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      const success = await login(identifier, password);
       if (success) {
         router.push('/dashboard');
       } else {
-        setError('Invalid email or password');
+        setError('Invalid credentials');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -83,18 +87,33 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11"
-                  disabled={isLoading}
-                />
-              </div>
+              {isAdminLogin ? (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-11"
+                    disabled={isLoading}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11"
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -109,6 +128,21 @@ export default function LoginPage() {
                 />
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="admin-login"
+                  checked={isAdminLogin}
+                  onCheckedChange={(checked) => {
+                    const isAdmin = !!checked;
+                    setIsAdminLogin(isAdmin);
+                    if (!isAdmin && department === 'admin') {
+                      setDepartment('');
+                    }
+                  }}
+                />
+                <Label htmlFor="admin-login">Sign in as an admin</Label>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <Select onValueChange={setDepartment} value={department} disabled={isLoading}>
@@ -116,7 +150,10 @@ export default function LoginPage() {
                     <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="admin" disabled={!isAdminLogin}>Admin</SelectItem>
+                    {/* In a real app, you would map over a list of other departments here */}
+                    <SelectItem value="hr">Human Resources</SelectItem>
+                    <SelectItem value="engineering">Engineering</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
