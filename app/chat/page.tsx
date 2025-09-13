@@ -21,7 +21,12 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [currentUserId] = useState(() => Math.random().toString(36).substr(2, 9));
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Generate user ID on the client side to avoid hydration mismatch
+    setCurrentUserId(Math.random().toString(36).substr(2, 9));
+  }, []);
 
   // Mock names for anonymous users
   const anonymousNames = [
