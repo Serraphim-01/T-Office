@@ -15,7 +15,10 @@ import {
   Building2,
   Shield,
   Briefcase,
-  Users2
+  Users2,
+  Database,
+  Clock,
+  AreaChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -137,6 +140,55 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <Briefcase className="mr-3 h-5 w-5" />
                   Departments
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Users2 className="mr-3 h-5 w-5" />
+                  HR
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/hr/employees"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/employees"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Database className="mr-3 h-5 w-5" />
+                  Employee Database
+                </Link>
+                <Link
+                  href="/hr/attendance"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/attendance"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Clock className="mr-3 h-5 w-5" />
+                  Time and Attendance
+                </Link>
+                <Link
+                  href="/hr/reports"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/reports"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <AreaChart className="mr-3 h-5 w-5" />
+                  Reporting and Analytics
                 </Link>
               </CollapsibleContent>
             </Collapsible>
