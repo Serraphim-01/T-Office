@@ -34,6 +34,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isHrMenuOpen, setIsHrMenuOpen] = useState(pathname.startsWith('/hr'));
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [backendMessage, setBackendMessage] = useState("");
 
   useEffect(() => {
@@ -107,7 +109,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               );
             })}
-            <Collapsible>
+            <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
               <CollapsibleTrigger className="w-full">
                 <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                   <Shield className="mr-3 h-5 w-5" />
@@ -143,7 +145,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               </CollapsibleContent>
             </Collapsible>
-            <Collapsible>
+            <Collapsible open={isHrMenuOpen} onOpenChange={setIsHrMenuOpen}>
               <CollapsibleTrigger className="w-full">
                 <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                   <Users2 className="mr-3 h-5 w-5" />
