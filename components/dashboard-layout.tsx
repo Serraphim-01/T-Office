@@ -16,6 +16,17 @@ import {
   Shield,
   Briefcase,
   Users2,
+  Database,
+  Clock,
+  AreaChart,
+  Contact,
+  KanbanSquare,
+  Bot,
+  Folder,
+  Target,
+  TrendingUp,
+  ClipboardList,
+  ShieldAlert,
   GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +43,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isHrMenuOpen, setIsHrMenuOpen] = useState(pathname.startsWith('/hr'));
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
+  const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
+  const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
   const [backendMessage, setBackendMessage] = useState("");
 
   useEffect(() => {
@@ -106,7 +121,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               );
             })}
-            <Collapsible>
+            <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
               <CollapsibleTrigger className="w-full">
                 <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                   <Shield className="mr-3 h-5 w-5" />
@@ -122,7 +137,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Users2 className="mr-3 h-5 w-5" />
                   Roles
@@ -135,10 +149,159 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Briefcase className="mr-3 h-5 w-5" />
                   Departments
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible open={isHrMenuOpen} onOpenChange={setIsHrMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Users2 className="mr-3 h-5 w-5" />
+                  HR
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/hr/employees"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/employees"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Database className="mr-3 h-5 w-5" />
+                  Employee Database
+                </Link>
+                <Link
+                  href="/hr/attendance"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/attendance"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Clock className="mr-3 h-5 w-5" />
+                  Time and Attendance
+                </Link>
+                <Link
+                  href="/hr/reports"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/hr/reports"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <AreaChart className="mr-3 h-5 w-5" />
+                  Reporting and Analytics
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible open={isSalesMenuOpen} onOpenChange={setIsSalesMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <TrendingUp className="mr-3 h-5 w-5" />
+                  Sales
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/sales/contacts"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/contacts"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Contact className="mr-3 h-5 w-5" />
+                  Contact Management
+                </Link>
+                <Link
+                  href="/sales/pipeline"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/pipeline"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <KanbanSquare className="mr-3 h-5 w-5" />
+                  Pipeline Management
+                </Link>
+                <Link
+                  href="/sales/automation"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/automation"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Bot className="mr-3 h-5 w-5" />
+                  Task Automation
+                </Link>
+                <Link
+                  href="/sales/documents"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/documents"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Folder className="mr-3 h-5 w-5" />
+                  Document Management
+                </Link>
+                <Link
+                  href="/sales/goals"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/goals"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Target className="mr-3 h-5 w-5" />
+                  Goal Setting & Tracking
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible open={isAuditMenuOpen} onOpenChange={setIsAuditMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <ShieldAlert className="mr-3 h-5 w-5" />
+                  Audit
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/audit/planning"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/audit/planning"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <ClipboardList className="mr-3 h-5 w-5" />
+                  Audit Planning
+                </Link>
+                <Link
+                  href="/audit/risk-assessment"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/audit/risk-assessment"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <ShieldAlert className="mr-3 h-5 w-5" />
+                  Risk Assessment
                 </Link>
               </CollapsibleContent>
             </Collapsible>
