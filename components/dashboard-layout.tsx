@@ -18,7 +18,13 @@ import {
   Users2,
   Database,
   Clock,
-  AreaChart
+  AreaChart,
+  Contact,
+  KanbanSquare,
+  Bot,
+  Folder,
+  Target,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -36,6 +42,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(pathname.startsWith('/hr'));
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
+  const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
   const [backendMessage, setBackendMessage] = useState("");
 
   useEffect(() => {
@@ -191,6 +198,81 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <AreaChart className="mr-3 h-5 w-5" />
                   Reporting and Analytics
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible open={isSalesMenuOpen} onOpenChange={setIsSalesMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <TrendingUp className="mr-3 h-5 w-5" />
+                  Sales
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/sales/contacts"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/contacts"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Contact className="mr-3 h-5 w-5" />
+                  Contact Management
+                </Link>
+                <Link
+                  href="/sales/pipeline"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/pipeline"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <KanbanSquare className="mr-3 h-5 w-5" />
+                  Pipeline Management
+                </Link>
+                <Link
+                  href="/sales/automation"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/automation"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Bot className="mr-3 h-5 w-5" />
+                  Task Automation
+                </Link>
+                <Link
+                  href="/sales/documents"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/documents"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Folder className="mr-3 h-5 w-5" />
+                  Document Management
+                </Link>
+                <Link
+                  href="/sales/goals"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/sales/goals"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Target className="mr-3 h-5 w-5" />
+                  Goal Setting & Tracking
                 </Link>
               </CollapsibleContent>
             </Collapsible>
