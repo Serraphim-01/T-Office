@@ -132,7 +132,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Users2 className="mr-3 h-5 w-5" />
                   Roles
@@ -145,7 +144,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Briefcase className="mr-3 h-5 w-5" />
                   Departments
@@ -168,7 +166,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Database className="mr-3 h-5 w-5" />
                   Employee Database
@@ -181,7 +178,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Clock className="mr-3 h-5 w-5" />
                   Time and Attendance
@@ -194,7 +190,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <AreaChart className="mr-3 h-5 w-5" />
                   Reporting and Analytics
@@ -217,7 +212,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Contact className="mr-3 h-5 w-5" />
                   Contact Management
@@ -230,7 +224,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <KanbanSquare className="mr-3 h-5 w-5" />
                   Pipeline Management
@@ -243,7 +236,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Bot className="mr-3 h-5 w-5" />
                   Task Automation
@@ -256,7 +248,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Folder className="mr-3 h-5 w-5" />
                   Document Management
@@ -269,7 +260,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
                 >
                   <Target className="mr-3 h-5 w-5" />
                   Goal Setting & Tracking
