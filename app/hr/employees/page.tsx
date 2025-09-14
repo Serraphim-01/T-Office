@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,10 @@ export default function EmployeeDatabasePage() {
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Employee Database</h1>
           <p className="text-muted-foreground">Manage all employee information in one place.</p>
         </div>
@@ -106,5 +108,6 @@ export default function EmployeeDatabasePage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,9 +33,10 @@ const pipelineStages = ['New Lead', 'Contacted', 'Proposal', 'Negotiation', 'Clo
 
 export default function PipelineManagementPage() {
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Sales Pipeline</h1>
           <p className="text-muted-foreground">Track leads and opportunities at each stage of the sales process.</p>
         </div>
@@ -71,5 +73,6 @@ export default function PipelineManagementPage() {
         ))}
       </div>
     </div>
+    </DashboardLayout>
   );
 }

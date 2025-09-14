@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { CheckCircle, XCircle, Clock, Calendar as CalendarIcon } from "lucide-react";
@@ -15,9 +16,10 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Time and Attendance</h1>
           <p className="text-muted-foreground">Track employee hours and manage absences.</p>
         </div>
@@ -111,5 +113,6 @@ export default function AttendancePage() {
         </Card>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

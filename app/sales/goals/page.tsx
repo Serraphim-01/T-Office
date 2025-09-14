@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Target, TrendingUp, CheckCircle } from "lucide-react";
@@ -30,9 +31,10 @@ const salesGoals = [
 
 export default function GoalSettingPage() {
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Goal Setting & Tracking</h1>
           <p className="text-muted-foreground">Set sales goals and monitor progress toward achieving them.</p>
         </div>
@@ -86,5 +88,6 @@ export default function GoalSettingPage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

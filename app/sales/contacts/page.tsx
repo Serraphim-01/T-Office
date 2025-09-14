@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,9 +29,10 @@ export default function ContactManagementPage() {
   );
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Contact Management</h1>
           <p className="text-muted-foreground">Organize and manage customer and prospect information.</p>
         </div>
@@ -106,5 +108,6 @@ export default function ContactManagementPage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

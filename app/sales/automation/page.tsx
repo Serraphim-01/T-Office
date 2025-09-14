@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -28,9 +29,10 @@ const automationRules = [
 
 export default function TaskAutomationPage() {
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Task Automation</h1>
           <p className="text-muted-foreground">Automate repetitive tasks to improve efficiency.</p>
         </div>
@@ -62,5 +64,6 @@ export default function TaskAutomationPage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

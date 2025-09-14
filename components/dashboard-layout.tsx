@@ -24,7 +24,9 @@ import {
   Bot,
   Folder,
   Target,
-  TrendingUp
+  TrendingUp,
+  ClipboardList,
+  ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -43,6 +45,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isHrMenuOpen, setIsHrMenuOpen] = useState(pathname.startsWith('/hr'));
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
+  const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
   const [backendMessage, setBackendMessage] = useState("");
 
   useEffect(() => {
@@ -263,6 +266,40 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <Target className="mr-3 h-5 w-5" />
                   Goal Setting & Tracking
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
+            <Collapsible open={isAuditMenuOpen} onOpenChange={setIsAuditMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <ShieldAlert className="mr-3 h-5 w-5" />
+                  Audit
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/audit/planning"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/audit/planning"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <ClipboardList className="mr-3 h-5 w-5" />
+                  Audit Planning
+                </Link>
+                <Link
+                  href="/audit/risk-assessment"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/audit/risk-assessment"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <ShieldAlert className="mr-3 h-5 w-5" />
+                  Risk Assessment
                 </Link>
               </CollapsibleContent>
             </Collapsible>

@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,9 +32,10 @@ const getFileIcon = (type: string) => {
 
 export default function DocumentManagementPage() {
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <DashboardLayout>
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Document Management</h1>
           <p className="text-muted-foreground">Store and manage sales-related documents and presentations.</p>
         </div>
@@ -99,5 +101,6 @@ export default function DocumentManagementPage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }
