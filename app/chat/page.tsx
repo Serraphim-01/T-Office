@@ -85,7 +85,7 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !currentUserId) return;
 
     const message: Message = {
       id: Date.now().toString(),
