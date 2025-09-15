@@ -27,7 +27,11 @@ import {
   TrendingUp,
   ClipboardList,
   ShieldAlert,
-  GraduationCap
+  GraduationCap,
+  CalendarCheck,
+  Activity,
+  KeyRound,
+  Handshake
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -47,7 +51,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
   const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
+  const [isTechTeamMenuOpen, setIsTechTeamMenuOpen] = useState(pathname.startsWith('/tech'));
+  const [signInStatus, setSignInStatus] = useState<'signed-in' | 'signed-out' | 'disabled'>('disabled');
+  const [activities, setActivities] = useState<{ text: string, timestamp: string }[]>([]);
   const [backendMessage, setBackendMessage] = useState("");
+
+  const logActivity = (text: string) => {
+    const newActivity = { text, timestamp: new Date().toISOString() };
+    setActivities(prev => [newActivity, ...prev]);
+    localStorage.setItem('activities', JSON.stringify([newActivity, ...activities]));
+  };
+
+  useEffect(() => {
+    const savedActivities = JSON.parse(localStorage.getItem('activities') || '[]');
+    setActivities(savedActivities);
+    const checkTime = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      const currentTime = hour + minute / 60;
+
+      const canSignIn = (currentTime >= 7 && currentTime <= 8.5);
+      const canSignOut = (currentTime >= 15.5 && currentTime <= 17);
+
+      const today = now.toISOString().split('T')[0];
+      const attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
+
+      if (attendance[today]?.signOut) {
+        setSignInStatus('disabled');
+      } else if (attendance[today]?.signIn) {
+        setSignInStatus(canSignOut ? 'signed-in' : 'disabled');
+      } else {
+        setSignInStatus(canSignIn ? 'signed-out' : 'disabled');
+      }
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -69,11 +111,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/onboarding', label: 'Onboarding', icon: GraduationCap },
+    { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
+    { href: '/report', label: 'Report', icon: AreaChart },
   ];
 
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  const handleSignInOut = () => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
+    const action = signInStatus === 'signed-out' ? 'Signed In' : 'Signed Out';
+
+    if (signInStatus === 'signed-out') {
+      if (!attendance[today]) attendance[today] = {};
+      attendance[today].signIn = now.toISOString();
+      setSignInStatus('signed-in');
+    } else if (signInStatus === 'signed-in') {
+      attendance[today].signOut = now.toISOString();
+      setSignInStatus('disabled');
+    }
+
+    localStorage.setItem('attendance', JSON.stringify(attendance));
+    logActivity(action);
   };
 
   return (
@@ -114,7 +177,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    logActivity(`Viewed ${item.label}`);
+                  }}
                 >
                   <Icon className="mr-3 h-5 w-5" />
                   {item.label}
@@ -305,6 +371,64 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               </CollapsibleContent>
             </Collapsible>
+            <Collapsible open={isTechTeamMenuOpen} onOpenChange={setIsTechTeamMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Users2 className="mr-3 h-5 w-5" />
+                  Tech Team
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Link
+                  href="/tech/licensing"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/tech/licensing"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <KeyRound className="mr-3 h-5 w-5" />
+                  Licensing
+                </Link>
+                <Link
+                  href="/tech/accounts"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/tech/accounts"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Users2 className="mr-3 h-5 w-5" />
+                  Accounts
+                </Link>
+                <Link
+                  href="/tech/oem-partners"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/tech/oem-partners"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Handshake className="mr-3 h-5 w-5" />
+                  OEM Partners
+                </Link>
+                <Link
+                  href="/tech/deals"
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    pathname === "/tech/deals"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <Briefcase className="mr-3 h-5 w-5" />
+                  Deals
+                </Link>
+              </CollapsibleContent>
+            </Collapsible>
           </nav>
 
           {/* User info and logout */}
@@ -325,6 +449,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
             <Button
+              size="sm"
+              onClick={handleSignInOut}
+              className="w-full mb-2"
+              disabled={signInStatus === 'disabled'}
+            >
+              {signInStatus === 'signed-in' ? 'Sign Out' : 'Sign In'}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={handleLogout}
@@ -336,14 +468,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
       </div>
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -369,6 +493,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>
+      </div>
+
+      {/* Activity Bar */}
+      <div className="w-80 border-l border-border bg-card p-4 hidden lg:block">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
+        <div className="space-y-4">
+          {activities.map((activity, index) => (
+            <div key={index} className="flex items-start">
+              <Activity className="h-4 w-4 mt-1 mr-3 text-primary" />
+              <div>
+                <p className="text-sm">{activity.text}</p>
+                <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleTimeString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
