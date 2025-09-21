@@ -14,19 +14,19 @@ interface Message {
   id: number;
   text: string;
   created_at: Date;
-  user_id: string;
   user_name: string;
+  client_id: string;
 }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentClientId, setCurrentClientId] = useState<string | null>(null);
 
   useEffect(() => {
     // Generate user ID on the client side to avoid hydration mismatch
-    setCurrentUserId(Math.random().toString(36).substr(2, 9));
+    setCurrentClientId(Math.random().toString(36).substr(2, 9));
   }, []);
 
   // Mock names for anonymous users
@@ -74,12 +74,12 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !currentUserId) return;
+    if (!newMessage.trim() || !currentClientId) return;
 
     const { error } = await supabase.from('messages').insert([
       {
         text: newMessage.trim(),
-        user_id: currentUserId,
+        client_id: currentClientId,
         user_name: anonymousNames[Math.floor(Math.random() * anonymousNames.length)],
       },
     ]);
@@ -136,7 +136,7 @@ export default function ChatPage() {
               <div className="text-right">
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Users className="mr-1 h-4 w-4" />
-                  {new Set(messages.filter(m => m.user_id !== 'system').map(m => m.user_id)).size} participants
+                  {new Set(messages.filter(m => m.client_id !== 'system').map(m => m.client_id)).size} participants
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground mt-1">
                   <Shield className="mr-1 h-4 w-4" />
@@ -174,16 +174,16 @@ export default function ChatPage() {
                       <div
                         className={cn(
                           "max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm",
-                          message.user_id === 'system'
+                          message.client_id === 'system'
                             ? "bg-secondary text-secondary-foreground"
-                            : message.user_id === currentUserId
+                            : message.client_id === currentClientId
                             ? "bg-primary text-primary-foreground"
                             : "bg-card border border-border text-card-foreground"
                         )}
                       >
                         {/* <p className="text-xs font-semibold pb-1">{message.user_name}</p> */}
                         <p className="text-sm">{message.text}</p>
-                        {message.user_id !== 'system' && (
+                        {message.client_id !== 'system' && (
                           <div className="flex items-center justify-end mt-2">
                             <Badge variant="secondary" className="text-xs">
                               <Clock className="mr-1 h-3 w-3" />

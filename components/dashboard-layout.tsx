@@ -31,19 +31,22 @@ import {
   CalendarCheck,
   Activity,
   KeyRound,
-  Handshake
+  Handshake,
+  PanelRightClose,
+  PanelRightOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { OnboardingModal } from './onboarding-modal';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { session, profile, loading, logout } = useAuth();
+  const { session, profile, loading, logout, refreshProfile } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,12 +55,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
   const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
   const [isTechTeamMenuOpen, setIsTechTeamMenuOpen] = useState(pathname.startsWith('/tech'));
+  const [isActivityBarOpen, setIsActivityBarOpen] = useState(true);
+  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
+  const [activities, setActivities] = useState<{ text: string, timestamp: string }[]>([]);
 
   useEffect(() => {
     if (!loading && !session) {
       router.push('/login');
     }
-  }, [loading, session, router]);
+    if (!loading && profile && (!profile.full_name || !profile.department)) {
+      setIsOnboardingModalOpen(true);
+    }
+  }, [loading, session, profile, router]);
 
   if (loading || !session) {
     return (
@@ -85,6 +94,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="h-screen flex bg-background">
+      <OnboardingModal
+        open={isOnboardingModalOpen}
+        onOpenChange={setIsOnboardingModalOpen}
+        onProfileUpdate={refreshProfile}
+      />
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
@@ -420,6 +434,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-lg font-semibold text-foreground">
               {sidebarItems.find(item => item.href === pathname)?.label || 'Task Office'}
             </h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden lg:inline-flex"
+              onClick={() => setIsActivityBarOpen(!isActivityBarOpen)}
+            >
+              {isActivityBarOpen ? <PanelRightClose /> : <PanelRightOpen />}
+            </Button>
             <div className="w-10 lg:hidden"></div>
           </div>
         </header>
@@ -431,10 +453,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Activity Bar */}
-      <div className="w-80 border-l border-border bg-card p-4 hidden lg:block">
+      <div className={cn(
+        "border-l border-border bg-card p-4 hidden lg:block transition-all duration-300 ease-in-out",
+        isActivityBarOpen ? "w-80" : "w-0 p-0"
+      )}>
         <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
         <div className="space-y-4">
-          {/* Removing activities for now */}
+          {activities.map((activity, index) => (
+            <div key={index} className="flex items-start">
+              <Activity className="h-4 w-4 mt-1 mr-3 text-primary" />
+              <div>
+                <p className="text-sm">{activity.text}</p>
+                <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleTimeString()}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

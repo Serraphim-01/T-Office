@@ -19,6 +19,8 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   logout: () => Promise<void>;
+  login: (email, password) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,9 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single();
           setProfile(profileData);
-          if (!profileData?.department) {
-            router.push('/onboarding/department');
-          }
         } else {
           setProfile(null);
         }
@@ -78,12 +77,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      setProfile(profileData);
+    }
+  };
+
+  const login = async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+
+    if (error) {
+        if (error.message === 'Invalid login credentials') {
+            const { error: signUpError } = await supabase.auth.signUp({
+                email,
+                password,
+            });
+            if (signUpError) {
+                throw signUpError;
+            }
+        } else {
+            throw error;
+        }
+    }
+  };
+
   const value = {
     session,
     user,
     profile,
     loading,
     logout,
+    refreshProfile,
+    login,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
