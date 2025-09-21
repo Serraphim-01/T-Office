@@ -20,29 +20,32 @@ const departments = [
   'Compliance',
 ];
 
-const features = [
-  'Attendance',
-  'AttendanceDetails',
-  'HR',
-  'HREmployees',
-  'HRAttendance',
-  'HRReports',
-  'Audit',
-  'AuditPlanning',
-  'AuditRiskAssessment',
-  'Sales',
-  'SalesContacts',
-  'SalesPipeline',
-  'SalesAutomation',
-  'SalesDocuments',
-  'SalesGoals',
-  'Tech',
-  'TechLicensing',
-  'TechAccounts',
-  'TechOemPartners',
-  'TechDeals',
-  'Report',
-  'Onboarding',
+const featuresHierarchy = [
+  { name: 'Onboarding' },
+  { name: 'Attendance', subFeatures: ['AttendanceDetails'] },
+  { name: 'Report' },
+  {
+    name: 'HR',
+    subFeatures: ['HREmployees', 'HRAttendance', 'HRReports'],
+  },
+  {
+    name: 'Audit',
+    subFeatures: ['AuditPlanning', 'AuditRiskAssessment'],
+  },
+  {
+    name: 'Sales',
+    subFeatures: [
+      'SalesContacts',
+      'SalesPipeline',
+      'SalesAutomation',
+      'SalesDocuments',
+      'SalesGoals',
+    ],
+  },
+  {
+    name: 'Tech',
+    subFeatures: ['TechLicensing', 'TechAccounts', 'TechOemPartners', 'TechDeals'],
+  },
 ];
 
 export default function FeaturesPage() {
@@ -81,17 +84,33 @@ export default function FeaturesPage() {
     }
   }, [selectedDepartment]);
 
-  const handleToggle = async (feature: string, is_enabled: boolean) => {
-    setFeatureFlags({ ...featureFlags, [feature]: is_enabled });
+  const handleToggle = async (featureName: string, is_enabled: boolean) => {
+    const updatedFlags = { ...featureFlags, [featureName]: is_enabled };
+    const feature = featuresHierarchy.find(f => f.name === featureName);
+
+    if (!is_enabled && feature?.subFeatures) {
+      for (const subFeature of feature.subFeatures) {
+        updatedFlags[subFeature] = false;
+      }
+    }
+
+    setFeatureFlags(updatedFlags);
+
+    const updates = [{ department: selectedDepartment, feature: featureName, is_enabled }];
+    if (!is_enabled && feature?.subFeatures) {
+      for (const subFeature of feature.subFeatures) {
+        updates.push({ department: selectedDepartment, feature: subFeature, is_enabled: false });
+      }
+    }
 
     const { error } = await supabase
       .from('department_features')
-      .upsert({ department: selectedDepartment, feature, is_enabled }, { onConflict: 'department, feature' });
+      .upsert(updates, { onConflict: 'department, feature' });
 
     if (error) {
       console.error('Error updating feature flag:', error);
       // Revert UI change on error
-      setFeatureFlags({ ...featureFlags, [feature]: !is_enabled });
+      setFeatureFlags({ ...featureFlags });
     }
   };
 
@@ -120,20 +139,34 @@ export default function FeaturesPage() {
               </Select>
             </div>
             {selectedDepartment && !loading && (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <h3 className="text-lg font-medium">Features for {selectedDepartment}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {features.map((feature) => (
-                    <div key={feature} className="flex items-center space-x-2">
+                {featuresHierarchy.map((feature) => (
+                  <div key={feature.name} className="space-y-2 rounded-md border p-4">
+                    <div className="flex items-center space-x-2">
                       <Switch
-                        id={`${feature}-switch`}
-                        checked={featureFlags[feature] || false}
-                        onCheckedChange={(checked) => handleToggle(feature, checked)}
+                        id={`${feature.name}-switch`}
+                        checked={featureFlags[feature.name] || false}
+                        onCheckedChange={(checked) => handleToggle(feature.name, checked)}
                       />
-                      <Label htmlFor={`${feature}-switch`}>{feature}</Label>
+                      <Label htmlFor={`${feature.name}-switch`} className="font-semibold">{feature.name}</Label>
                     </div>
-                  ))}
-                </div>
+                    {feature.subFeatures && featureFlags[feature.name] && (
+                      <div className="ml-6 space-y-2">
+                        {feature.subFeatures.map((subFeature) => (
+                          <div key={subFeature} className="flex items-center space-x-2">
+                            <Switch
+                              id={`${subFeature}-switch`}
+                              checked={featureFlags[subFeature] || false}
+                              onCheckedChange={(checked) => handleToggle(subFeature, checked)}
+                            />
+                            <Label htmlFor={`${subFeature}-switch`}>{subFeature}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
             {loading && <p>Loading features...</p>}

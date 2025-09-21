@@ -81,9 +81,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const sidebarItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, feature: 'Dashboard' },
-    { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare, feature: 'Chat' },
-    { href: '/profile', label: 'Profile', icon: User, feature: 'Profile' },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
+    { href: '/profile', label: 'Profile', icon: User },
     { href: '/onboarding', label: 'Onboarding', icon: GraduationCap, feature: 'Onboarding' },
     { href: '/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'Attendance' },
     { href: '/report', label: 'Report', icon: AreaChart, feature: 'Report' },
@@ -126,7 +126,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-2">
             {sidebarItems.map((item) =>
-              featureFlags[item.feature] && (
+              (!item.feature || featureFlags[item.feature]) && (
                 <Link
                   key={item.href}
                   href={item.href}
