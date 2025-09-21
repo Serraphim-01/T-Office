@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { AttendanceDetails } from '@/components/attendance-details';
 
 export default function AttendancePage() {
-  const { user } = useAuth();
+  const { user, featureFlags } = useAuth();
   const [attendanceRecord, setAttendanceRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -121,9 +121,11 @@ export default function AttendancePage() {
             <h1 className="text-2xl font-bold">Attendance</h1>
             <p className="text-muted-foreground">View your attendance record and sign in/out.</p>
           </div>
-          <Button variant="outline" onClick={() => setShowDetails(!showDetails)}>
-            {showDetails ? 'Hide Details' : 'Show Details'}
-          </Button>
+          {featureFlags['AttendanceDetails'] && (
+            <Button variant="outline" onClick={() => setShowDetails(!showDetails)}>
+              {showDetails ? 'Hide Details' : 'Show Details'}
+            </Button>
+          )}
         </div>
 
         <Card>

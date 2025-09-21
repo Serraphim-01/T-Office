@@ -17,6 +17,7 @@ interface AuthContextType {
   session: Session | null;
   user: SupabaseUser | null;
   profile: Profile | null;
+  featureFlags: Record<string, boolean>;
   loading: boolean;
   logout: () => Promise<void>;
   login: (email, password) => Promise<void>;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -44,6 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('id', session.user.id)
           .single();
         setProfile(profileData);
+
+        if (profileData?.department) {
+          const { data: flagsData } = await supabase
+            .from('department_features')
+            .select('feature, is_enabled')
+            .eq('department', profileData.department);
+
+          const flags = flagsData.reduce((acc, { feature, is_enabled }) => {
+            acc[feature] = is_enabled;
+            return acc;
+          }, {});
+          setFeatureFlags(flags);
+        }
       }
       setLoading(false);
     };
@@ -61,8 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .eq('id', session.user.id)
             .single();
           setProfile(profileData);
+
+          if (profileData?.department) {
+            const { data: flagsData } = await supabase
+              .from('department_features')
+              .select('feature, is_enabled')
+              .eq('department', profileData.department);
+
+            const flags = flagsData.reduce((acc, { feature, is_enabled }) => {
+              acc[feature] = is_enabled;
+              return acc;
+            }, {});
+            setFeatureFlags(flags);
+          }
         } else {
           setProfile(null);
+          setFeatureFlags({});
         }
       }
     );
@@ -113,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     user,
     profile,
+    featureFlags,
     loading,
     logout,
     refreshProfile,
