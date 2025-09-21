@@ -59,6 +59,25 @@ export default function AttendancePage() {
 
   const handleSignIn = async () => {
     if (!user) return;
+
+    // Check if a record for today already exists
+    const { data: existingRecord, error: fetchError } = await supabase
+      .from('attendance')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116: "exact one row expected, but found no rows" which is fine here
+      setError(fetchError.message);
+      return;
+    }
+
+    if (existingRecord) {
+      setError("You have already signed in today.");
+      return;
+    }
+
     setLoading(true);
     const { data, error } = await supabase
       .from('attendance')

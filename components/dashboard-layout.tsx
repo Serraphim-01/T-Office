@@ -58,15 +58,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isActivityBarOpen, setIsActivityBarOpen] = useState(true);
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
   const [activities, setActivities] = useState<{ text: string, timestamp: string }[]>([]);
+  const [onboardingModalShown, setOnboardingModalShown] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) {
       router.push('/login');
     }
-    if (!loading && profile && (!profile.full_name || !profile.department)) {
+    if (!loading && profile && (!profile.full_name || !profile.department) && !onboardingModalShown) {
       setIsOnboardingModalOpen(true);
+      setOnboardingModalShown(true);
     }
-  }, [loading, session, profile, router]);
+  }, [loading, session, profile, router, onboardingModalShown]);
 
   if (loading || !session) {
     return (

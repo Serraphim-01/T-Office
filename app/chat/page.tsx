@@ -32,19 +32,34 @@ export default function ChatPage() {
       if (error) {
         console.error('Error fetching messages:', error);
       } else {
-        setMessages(data.map((msg: any) => ({ ...msg, created_at: new Date(msg.created_at) })));
+        setMessages(data.map((msg: any) => ({
+          ...msg,
+          created_at: new Date(msg.created_at)
+        })));
       }
     };
 
     fetchMessages();
 
+    // Set up real-time subscription
     const channel = supabase
       .channel('realtime-messages')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages'
+        },
         (payload) => {
-          setMessages((prevMessages) => [...prevMessages, { ...payload.new, created_at: new Date(payload.new.created_at) } as Message]);
+          // Properly handle the new message data
+          const newMsg = {
+            id: payload.new.id,
+            text: payload.new.text,
+            created_at: new Date(payload.new.created_at)
+          };
+
+          setMessages((prevMessages) => [...prevMessages, newMsg]);
         }
       )
       .subscribe();
@@ -62,18 +77,38 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    const { error } = await supabase.from('messages').insert([
-      {
-        text: newMessage.trim(),
-      },
-    ]);
+    const text = newMessage.trim();
+
+    // Optimistically add to state
+    const tempMsg: Message = {
+      id: Date.now(), // temporary ID until DB returns
+      text,
+      created_at: new Date(),
+    };
+    setMessages((prev) => [...prev, tempMsg]);
+    setNewMessage('');
+
+    // Insert into Supabase
+    const { data, error } = await supabase.from('messages').insert([{ text }]).select();
 
     if (error) {
       console.error('Error sending message:', error);
-    } else {
-      setNewMessage('');
+      // Rollback optimistic update if needed
+      setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+    } else if (data && data.length > 0) {
+      // Replace temp message with actual message from DB
+      const savedMsg: Message = {
+        id: data[0].id,
+        text: data[0].text,
+        created_at: new Date(data[0].created_at),
+      };
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempMsg.id ? savedMsg : m))
+      );
     }
   };
+
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -91,9 +126,7 @@ export default function ChatPage() {
   };
 
   const clearChat = async () => {
-    // This would typically be an admin-only feature.
-    // For this example, we'll allow anyone to clear the chat.
-    const { error } = await supabase.from('messages').delete().neq('id', -1); // Deletes all rows
+    const { error } = await supabase.from('messages').delete().neq('id', -1);
     if (error) {
       console.error('Error clearing chat:', error);
     } else {
