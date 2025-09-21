@@ -1,83 +1,92 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from './supabase';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
-interface User {
-  name: string;
-  email: string;
-  phone: string;
-  department: string;
+export interface Profile {
+  id: string;
+  updated_at: string;
+  full_name: string;
+  avatar_url: string;
+  department: string | null;
 }
 
 interface AuthContextType {
-  isAuthenticated: boolean;
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  updateUser: (userData: User) => void;
+  session: Session | null;
+  user: SupabaseUser | null;
+  profile: Profile | null;
+  loading: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const authStatus = localStorage.getItem('task-office-auth');
-    const userData = localStorage.getItem('task-office-user');
-    
-    if (authStatus === 'true' && userData) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
-    }
-  }, []);
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setProfile(profileData);
+      }
+      setLoading(false);
+    };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock authentication - accept any email/password for demo
-    if (email && password) {
-      const mockUser: User = {
-        name: 'John Doe',
-        email: email,
-        phone: '+1 (555) 123-4567',
-        department: 'Engineering'
-      };
-      
-      setIsAuthenticated(true);
-      setUser(mockUser);
-      localStorage.setItem('task-office-auth', 'true');
-      localStorage.setItem('task-office-user', JSON.stringify(mockUser));
-      return true;
-    }
-    return false;
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          setProfile(profileData);
+          if (!profileData?.department) {
+            router.push('/onboarding/department');
+          }
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [router]);
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('task-office-auth');
-    localStorage.removeItem('task-office-user');
+  const value = {
+    session,
+    user,
+    profile,
+    loading,
+    logout,
   };
 
-  const updateUser = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('task-office-user', JSON.stringify(userData));
-  };
-
-  return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      user,
-      login,
-      logout,
-      updateUser
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

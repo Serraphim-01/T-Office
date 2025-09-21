@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,110 +10,85 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [department, setDepartment] = useState('');
-  const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    router.push('/dashboard');
-    return null;
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const identifier = isAdminLogin ? name : email;
-    if (!identifier || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (!isAdminLogin && !email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
+    setMessage('');
     setIsLoading(true);
 
-    try {
-      const success = await login(identifier, password);
-      if (success) {
-        router.push('/dashboard');
+    if (isSignUp) {
+      // Handle Sign Up
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (error) {
+        setError(error.message);
       } else {
-        setError('Invalid credentials');
+        setMessage('Check your email for a confirmation link to complete your registration.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    } else {
+      // Handle Sign In
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push('/dashboard');
+      }
     }
+
+    setIsLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
             <Building2 className="h-12 w-12 text-primary" />
             <span className="text-3xl font-bold text-foreground">Task Office</span>
           </Link>
-          <p className="mt-2 text-muted-foreground">Sign in to your account</p>
+          <p className="mt-2 text-muted-foreground">
+            {isSignUp ? 'Create a new account' : 'Sign in to your account'}
+          </p>
         </div>
 
         <Card className="shadow-2xl border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-2xl text-center text-card-foreground">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-center text-card-foreground">
+              {isSignUp ? 'Register' : 'Welcome Back'}
+            </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your dashboard
+              {isSignUp ? 'Enter your details to create an account' : 'Enter your credentials to access your dashboard'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {isAdminLogin ? (
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-11"
-                    disabled={isLoading}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-11"
-                    disabled={isLoading}
-                  />
-                </div>
-              )}
+            <form onSubmit={handleAuthAction} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11"
+                  disabled={isLoading}
+                />
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -128,70 +103,40 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="admin-login"
-                  checked={isAdminLogin}
-                  onCheckedChange={(checked) => {
-                    const isAdmin = !!checked;
-                    setIsAdminLogin(isAdmin);
-                    if (!isAdmin && department === 'admin') {
-                      setDepartment('');
-                    }
-                  }}
-                />
-                <Label htmlFor="admin-login">Sign in as an admin</Label>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select onValueChange={setDepartment} value={department} disabled={isLoading}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select a department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin" disabled={!isAdminLogin}>Admin</SelectItem>
-                    {/* In a real app, you would map over a list of other departments here */}
-                    <SelectItem value="hr">Human Resources</SelectItem>
-                    <SelectItem value="engineering">Engineering</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+              {message && (
+                <Alert>
+                  <AlertDescription>{message}</AlertDescription>
+                </Alert>
+              )}
 
-              <Button
-                type="submit"
-                className="w-full h-11 text-base"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    {isSignUp ? 'Registering...' : 'Signing in...'}
                   </>
                 ) : (
-                  'Sign In'
+                  isSignUp ? 'Sign Up' : 'Sign In'
                 )}
               </Button>
             </form>
-
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
-                For demo purposes, use any email and password (6+ characters)
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary hover:underline">
+                  {isSignUp ? 'Sign In' : 'Sign Up'}
+                </button>
               </p>
             </div>
           </CardContent>
         </Card>
 
         <div className="mt-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account? Contact your administrator
-          </p>
           <div className="mt-4 flex justify-center space-x-4">
             <Link href="/about" className="text-sm text-primary hover:text-primary/80">
               About Task Office

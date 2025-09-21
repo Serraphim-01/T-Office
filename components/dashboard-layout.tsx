@@ -43,7 +43,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { session, profile, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,58 +52,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
   const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
   const [isTechTeamMenuOpen, setIsTechTeamMenuOpen] = useState(pathname.startsWith('/tech'));
-  const [signInStatus, setSignInStatus] = useState<'signed-in' | 'signed-out' | 'disabled'>('disabled');
-  const [activities, setActivities] = useState<{ text: string, timestamp: string }[]>([]);
-  const [backendMessage, setBackendMessage] = useState("");
-
-  const logActivity = (text: string) => {
-    const newActivity = { text, timestamp: new Date().toISOString() };
-    setActivities(prev => [newActivity, ...prev]);
-    localStorage.setItem('activities', JSON.stringify([newActivity, ...activities]));
-  };
 
   useEffect(() => {
-    const savedActivities = JSON.parse(localStorage.getItem('activities') || '[]');
-    setActivities(savedActivities);
-    const checkTime = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      const minute = now.getMinutes();
-      const currentTime = hour + minute / 60;
-
-      const canSignIn = (currentTime >= 7 && currentTime <= 8.5);
-      const canSignOut = (currentTime >= 15.5 && currentTime <= 17);
-
-      const today = now.toISOString().split('T')[0];
-      const attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
-
-      if (attendance[today]?.signOut) {
-        setSignInStatus('disabled');
-      } else if (attendance[today]?.signIn) {
-        setSignInStatus(canSignOut ? 'signed-in' : 'disabled');
-      } else {
-        setSignInStatus(canSignIn ? 'signed-out' : 'disabled');
-      }
-    };
-
-    checkTime();
-    const interval = setInterval(checkTime, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !session) {
       router.push('/login');
     }
+  }, [loading, session, router]);
 
-    fetch("http://localhost:4000/api/hello")
-      .then((res) => res.json())
-      .then((data) => setBackendMessage(data.message))
-      .catch((err) => console.error(err));
-  }, [isAuthenticated, router]);
-
-  if (!isAuthenticated) {
-    return null;
+  if (loading || !session) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+                <p className="text-lg">Loading...</p>
+            </div>
+        </div>
+    );
   }
 
   const sidebarItems = [
@@ -115,28 +78,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/report', label: 'Report', icon: AreaChart },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
-  };
-
-  const handleSignInOut = () => {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
-    const action = signInStatus === 'signed-out' ? 'Signed In' : 'Signed Out';
-
-    if (signInStatus === 'signed-out') {
-      if (!attendance[today]) attendance[today] = {};
-      attendance[today].signIn = now.toISOString();
-      setSignInStatus('signed-in');
-    } else if (signInStatus === 'signed-in') {
-      attendance[today].signOut = now.toISOString();
-      setSignInStatus('disabled');
-    }
-
-    localStorage.setItem('attendance', JSON.stringify(attendance));
-    logActivity(action);
   };
 
   return (
@@ -179,7 +123,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   )}
                   onClick={() => {
                     setSidebarOpen(false);
-                    logActivity(`Viewed ${item.label}`);
                   }}
                 >
                   <Icon className="mr-3 h-5 w-5" />
@@ -436,26 +379,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center space-x-3 mb-3">
               <Avatar>
                 <AvatarFallback>
-                  {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                  {profile?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {user?.name || 'User'}
+                  {profile?.full_name || 'User'}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {user?.department || 'Department'}
+                  {profile?.department || 'Department'}
                 </p>
               </div>
             </div>
-            <Button
-              size="sm"
-              onClick={handleSignInOut}
-              className="w-full mb-2"
-              disabled={signInStatus === 'disabled'}
-            >
-              {signInStatus === 'signed-in' ? 'Sign Out' : 'Sign In'}
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -499,15 +434,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="w-80 border-l border-border bg-card p-4 hidden lg:block">
         <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
         <div className="space-y-4">
-          {activities.map((activity, index) => (
-            <div key={index} className="flex items-start">
-              <Activity className="h-4 w-4 mt-1 mr-3 text-primary" />
-              <div>
-                <p className="text-sm">{activity.text}</p>
-                <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleTimeString()}</p>
-              </div>
-            </div>
-          ))}
+          {/* Removing activities for now */}
         </div>
       </div>
     </div>

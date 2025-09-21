@@ -21,7 +21,7 @@ interface Certification {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isAddCertModalOpen, setIsAddCertModalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
@@ -66,7 +66,7 @@ export default function ProfilePage() {
                 <div className="flex items-center space-x-3">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Full Name</span>
-                  <span className="text-sm font-medium text-foreground">{user?.name || 'User Name'}</span>
+                  <span className="text-sm font-medium text-foreground">{profile?.full_name || 'User Name'}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Mail className="h-4 w-4 text-muted-foreground" />
@@ -74,14 +74,9 @@ export default function ProfilePage() {
                   <span className="text-sm font-medium text-foreground break-all">{user?.email || 'No Email'}</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Phone</span>
-                  <span className="text-sm font-medium text-foreground">{user?.phone || 'No Phone'}</span>
-                </div>
-                <div className="flex items-center space-x-3">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Department</span>
-                  <span className="text-sm font-medium text-foreground">{user?.department || 'No Department'}</span>
+                  <span className="text-sm font-medium text-foreground">{profile?.department || 'No Department'}</span>
                 </div>
               </div>
             </CardContent>
