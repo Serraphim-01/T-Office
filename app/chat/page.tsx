@@ -4,17 +4,18 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Send, Users, MessageCircle, Shield, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface Message {
-  id: string;
+  id: number;
   text: string;
-  timestamp: Date;
-  userId: string;
-  userName: string;
+  created_at: Date;
+  user_id: string;
+  user_name: string;
 }
 
 export default function ChatPage() {
@@ -34,69 +35,60 @@ export default function ChatPage() {
     'Mystery Dog', 'Invisible Hawk', 'Phantom Lion', 'Shadow Deer', 'Stealth Tiger'
   ];
 
-  // Load messages from localStorage on component mount
+  // Load messages from Supabase on component mount
   useEffect(() => {
-    const savedMessages = localStorage.getItem('task-office-chat-messages');
-    if (savedMessages) {
-      const parsed = JSON.parse(savedMessages);
-      setMessages(parsed.map((msg: any) => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp)
-      })));
-    } else {
-      // Add some initial demo messages
-      const initialMessages: Message[] = [
-        {
-          id: '1',
-          text: 'Welcome to the anonymous chat! Feel free to share your thoughts openly.',
-          timestamp: new Date(Date.now() - 3600000),
-          userId: 'system',
-          userName: 'System'
-        },
-        {
-          id: '2',
-          text: 'Has anyone tried the new project management tool? Would love to hear thoughts!',
-          timestamp: new Date(Date.now() - 1800000),
-          userId: 'user1',
-          userName: 'Anonymous Owl'
-        },
-        {
-          id: '3',
-          text: 'The interface is really intuitive! Much better than our previous solution.',
-          timestamp: new Date(Date.now() - 900000),
-          userId: 'user2',
-          userName: 'Silent Fox'
-        }
-      ];
-      setMessages(initialMessages);
-    }
-  }, []);
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-  // Save messages to localStorage whenever messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('task-office-chat-messages', JSON.stringify(messages));
-    }
-  }, [messages]);
+      if (error) {
+        console.error('Error fetching messages:', error);
+      } else {
+        setMessages(data.map((msg: any) => ({ ...msg, created_at: new Date(msg.created_at) })));
+      }
+    };
+
+    fetchMessages();
+
+    const channel = supabase
+      .channel('realtime-messages')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          setMessages((prevMessages) => [...prevMessages, { ...payload.new, created_at: new Date(payload.new.created_at) } as Message]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentUserId) return;
 
-    const message: Message = {
-      id: Date.now().toString(),
-      text: newMessage.trim(),
-      timestamp: new Date(),
-      userId: currentUserId,
-      userName: anonymousNames[Math.floor(Math.random() * anonymousNames.length)]
-    };
+    const { error } = await supabase.from('messages').insert([
+      {
+        text: newMessage.trim(),
+        user_id: currentUserId,
+        user_name: anonymousNames[Math.floor(Math.random() * anonymousNames.length)],
+      },
+    ]);
 
-    setMessages(prev => [...prev, message]);
-    setNewMessage('');
+    if (error) {
+      console.error('Error sending message:', error);
+    } else {
+      setNewMessage('');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -107,16 +99,22 @@ export default function ChatPage() {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true,
     });
   };
 
-  const clearChat = () => {
-    setMessages([]);
-    localStorage.removeItem('task-office-chat-messages');
+  const clearChat = async () => {
+    // This would typically be an admin-only feature.
+    // For this example, we'll allow anyone to clear the chat.
+    const { error } = await supabase.from('messages').delete().neq('id', -1); // Deletes all rows
+    if (error) {
+      console.error('Error clearing chat:', error);
+    } else {
+      setMessages([]);
+    }
   };
 
   return (
@@ -138,7 +136,7 @@ export default function ChatPage() {
               <div className="text-right">
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Users className="mr-1 h-4 w-4" />
-                  {new Set(messages.filter(m => m.userId !== 'system').map(m => m.userId)).size} participants
+                  {new Set(messages.filter(m => m.user_id !== 'system').map(m => m.user_id)).size} participants
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground mt-1">
                   <Shield className="mr-1 h-4 w-4" />
@@ -176,19 +174,20 @@ export default function ChatPage() {
                       <div
                         className={cn(
                           "max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm",
-                          message.userId === 'system'
+                          message.user_id === 'system'
                             ? "bg-secondary text-secondary-foreground"
-                            : message.userId === currentUserId
+                            : message.user_id === currentUserId
                             ? "bg-primary text-primary-foreground"
                             : "bg-card border border-border text-card-foreground"
                         )}
                       >
+                        {/* <p className="text-xs font-semibold pb-1">{message.user_name}</p> */}
                         <p className="text-sm">{message.text}</p>
-                        {message.userId === 'system' && (
-                          <div className="flex items-center justify-center mt-2">
+                        {message.user_id !== 'system' && (
+                          <div className="flex items-center justify-end mt-2">
                             <Badge variant="secondary" className="text-xs">
                               <Clock className="mr-1 h-3 w-3" />
-                              {formatTime(message.timestamp)}
+                              {formatTime(new Date(message.created_at))}
                             </Badge>
                           </div>
                         )}
