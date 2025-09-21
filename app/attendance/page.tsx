@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
+import { AttendanceDetails } from '@/components/attendance-details';
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -13,6 +14,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showDetails, setShowDetails] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -119,6 +121,9 @@ export default function AttendancePage() {
             <h1 className="text-2xl font-bold">Attendance</h1>
             <p className="text-muted-foreground">View your attendance record and sign in/out.</p>
           </div>
+          <Button variant="outline" onClick={() => setShowDetails(!showDetails)}>
+            {showDetails ? 'Hide Details' : 'Show Details'}
+          </Button>
         </div>
 
         <Card>
@@ -153,6 +158,8 @@ export default function AttendancePage() {
             )}
           </CardContent>
         </Card>
+
+        {showDetails && <AttendanceDetails />}
       </div>
     </DashboardLayout>
   );
