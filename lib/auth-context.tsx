@@ -20,7 +20,7 @@ interface AuthContextType {
   featureFlags: Record<string, boolean>;
   loading: boolean;
   logout: () => Promise<void>;
-  login: (email, password) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -53,11 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .select('feature, is_enabled')
             .eq('department', profileData.department);
 
-          const flags = flagsData.reduce((acc, { feature, is_enabled }) => {
-            acc[feature] = is_enabled;
-            return acc;
-          }, {});
-          setFeatureFlags(flags);
+          if (flagsData) {
+            const flags = flagsData.reduce((acc: Record<string, boolean>, { feature, is_enabled }) => {
+              acc[feature] = is_enabled;
+              return acc;
+            }, {});
+            setFeatureFlags(flags);
+          }
         }
       }
       setLoading(false);
@@ -83,11 +85,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .select('feature, is_enabled')
               .eq('department', profileData.department);
 
-            const flags = flagsData.reduce((acc, { feature, is_enabled }) => {
-              acc[feature] = is_enabled;
-              return acc;
-            }, {});
-            setFeatureFlags(flags);
+            if (flagsData) {
+              const flags = flagsData.reduce((acc: Record<string, boolean>, { feature, is_enabled }) => {
+                acc[feature] = is_enabled;
+                return acc;
+              }, {});
+              setFeatureFlags(flags);
+            }
           }
         } else {
           setProfile(null);
@@ -117,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

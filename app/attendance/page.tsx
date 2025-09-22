@@ -8,9 +8,15 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { AttendanceDetails } from '@/components/attendance-details';
 
+interface AttendanceRecord {
+  id: number;
+  sign_in_time: string;
+  sign_out_time: string;
+}
+
 export default function AttendancePage() {
   const { user, featureFlags } = useAuth();
-  const [attendanceRecord, setAttendanceRecord] = useState(null);
+  const [attendanceRecord, setAttendanceRecord] = useState<AttendanceRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());

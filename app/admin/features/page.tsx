@@ -21,6 +21,7 @@ const departments = [
 ];
 
 const featuresHierarchy = [
+  { name: 'Admin' },
   { name: 'Onboarding' },
   { name: 'Attendance', subFeatures: ['AttendanceDetails'] },
   { name: 'Report' },
@@ -46,6 +47,7 @@ const featuresHierarchy = [
     name: 'Tech',
     subFeatures: ['TechLicensing', 'TechAccounts', 'TechOemPartners', 'TechDeals'],
   },
+  { name: 'Compliance' },
 ];
 
 export default function FeaturesPage() {
@@ -62,29 +64,42 @@ export default function FeaturesPage() {
 
   useEffect(() => {
     if (selectedDepartment) {
-      setLoading(true);
-      const fetchFeatureFlags = async () => {
-        const { data, error } = await supabase
-          .from('department_features')
-          .select('feature, is_enabled')
-          .eq('department', selectedDepartment);
+      if (selectedDepartment === 'Admin') {
+        const allFeatures = featuresHierarchy.reduce((acc: Record<string, boolean>, feature) => {
+          acc[feature.name] = true;
+          if (feature.subFeatures) {
+            for (const subFeature of feature.subFeatures) {
+              acc[subFeature] = true;
+            }
+          }
+          return acc;
+        }, {});
+        setFeatureFlags(allFeatures);
+      } else {
+        setLoading(true);
+        const fetchFeatureFlags = async () => {
+          const { data, error } = await supabase
+            .from('department_features')
+            .select('feature, is_enabled')
+            .eq('department', selectedDepartment);
 
-        if (error) {
-          console.error('Error fetching feature flags:', error);
-        } else {
-          const flags = data.reduce((acc, { feature, is_enabled }) => {
-            acc[feature] = is_enabled;
-            return acc;
-          }, {});
-          setFeatureFlags(flags);
-        }
-        setLoading(false);
-      };
-      fetchFeatureFlags();
+          if (error) {
+            console.error('Error fetching feature flags:', error);
+          } else {
+            const flags = data.reduce((acc: Record<string, boolean>, { feature, is_enabled }) => {
+              acc[feature] = is_enabled;
+              return acc;
+            }, {});
+            setFeatureFlags(flags);
+          }
+          setLoading(false);
+        };
+        fetchFeatureFlags();
+      }
     }
   }, [selectedDepartment]);
 
-  const handleToggle = async (featureName: string, is_enabled: boolean) => {
+  const handleToggle = (featureName: string, is_enabled: boolean) => {
     const updatedFlags = { ...featureFlags, [featureName]: is_enabled };
     const feature = featuresHierarchy.find(f => f.name === featureName);
 
@@ -95,23 +110,26 @@ export default function FeaturesPage() {
     }
 
     setFeatureFlags(updatedFlags);
+  };
 
-    const updates = [{ department: selectedDepartment, feature: featureName, is_enabled }];
-    if (!is_enabled && feature?.subFeatures) {
-      for (const subFeature of feature.subFeatures) {
-        updates.push({ department: selectedDepartment, feature: subFeature, is_enabled: false });
-      }
-    }
+  const handleSave = async () => {
+    setLoading(true);
+    const updates = Object.entries(featureFlags).map(([feature, is_enabled]) => ({
+      department: selectedDepartment,
+      feature,
+      is_enabled,
+    }));
 
     const { error } = await supabase
       .from('department_features')
       .upsert(updates, { onConflict: 'department, feature' });
 
     if (error) {
-      console.error('Error updating feature flag:', error);
-      // Revert UI change on error
-      setFeatureFlags({ ...featureFlags });
+      console.error('Error saving feature flags:', error);
+    } else {
+      window.location.reload();
     }
+    setLoading(false);
   };
 
   return (
@@ -170,6 +188,11 @@ export default function FeaturesPage() {
               </div>
             )}
             {loading && <p>Loading features...</p>}
+            {selectedDepartment && (
+              <Button onClick={handleSave} disabled={loading} className="mt-4">
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

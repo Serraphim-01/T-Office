@@ -33,7 +33,8 @@ import {
   KeyRound,
   Handshake,
   PanelRightClose,
-  PanelRightOpen
+  PanelRightOpen,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -87,6 +88,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/onboarding', label: 'Onboarding', icon: GraduationCap, feature: 'Onboarding' },
     { href: '/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'Attendance' },
     { href: '/report', label: 'Report', icon: AreaChart, feature: 'Report' },
+    { href: '/compliance', label: 'Compliance', icon: ShieldCheck, feature: 'Compliance' },
   ];
 
   const handleLogout = async () => {
