@@ -25,9 +25,6 @@ JWT_SECRET="your-super-secret-jwt-key"
 # The port for the backend server.
 PORT=4000
 
-# The password for the preset admin user (admin@tasksystems.com)
-PRESET_ADMIN_PASSWORD="your-secure-admin-password"
-
 # The number of salt rounds for bcrypt hashing.
 BCRYPT_SALT_ROUNDS=10
 ```
@@ -36,36 +33,37 @@ BCRYPT_SALT_ROUNDS=10
 
 ## 3. Database Migration
 
-The new tables for the compliance agent must be added to your Supabase database.
+The new tables for the compliance agent must be added to your Supabase database. The SQL code required to create these tables is located in the following file: `supabase/migrations/20250924120000_create_compliance_tables.sql`.
 
-The SQL code required to create these tables is located in the following file:
-`supabase/migrations/20250924120000_create_compliance_tables.sql`
+Additionally, the activity tracking feature requires the `user_activities` table, found in `supabase/migrations/20250924190000_create_user_activities_table.sql`.
 
 **To apply these changes manually:**
 1.  Open your Supabase project on the Supabase website.
 2.  Navigate to the **SQL Editor**.
-3.  Click **New query**.
-4.  Copy the entire content of the `.sql` file mentioned above and paste it into the editor.
-5.  Click **Run**.
-
-This will create the `compliance_documents` and `crawled_sites` tables in your database.
+3.  For each new migration file, click **New query**, copy the file's contents into the editor, and click **Run**.
 
 ## 4. Running the Application
 
-The project is configured to run both the frontend and backend servers with a single command.
+You need to run two separate processes in two separate terminals: the backend server and the frontend development server.
 
-**To start the application:**
-1.  Open your terminal in the root directory of the project.
-2.  Install all dependencies for both the root and the backend.
-    ```bash
-    npm install
-    npm install --prefix backend
-    ```
-3.  Run the development server.
-    ```bash
-    npm run dev
-    ```
+**Terminal 1: Start the Backend**
+```bash
+# First, install dependencies for the backend
+npm install --prefix backend
 
-This command will start both the Next.js frontend (on `http://localhost:3000`) and the Node.js backend (on `http://localhost:4000`) at the same time.
+# Then, start the backend server
+npm run dev --prefix backend
+```
+This will start the Node.js server, which by default runs on `http://localhost:4000`.
 
-You can now access the application at `http://localhost:3000` and navigate to the `/compliance` page to use the new feature.
+**Terminal 2: Start the Frontend**
+```bash
+# First, install dependencies for the frontend
+npm install
+
+# Then, start the frontend server
+npm run dev
+```
+This will start the Next.js frontend, which by default runs on `http://localhost:3000`.
+
+Once both are running, you can access the application at `http://localhost:3000` and navigate to the `/compliance` page to use the new feature.

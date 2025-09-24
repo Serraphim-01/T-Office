@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { PWAProvider } from '@/components/pwa-provider';
+import { UIProvider } from '@/lib/ui-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -62,9 +63,11 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <PWAProvider>
-            {children}
-          </PWAProvider>
+          <UIProvider>
+            <PWAProvider>
+              {children}
+            </PWAProvider>
+          </UIProvider>
         </AuthProvider>
       </body>
     </html>

@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useUI } from '@/lib/ui-context';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -56,9 +57,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
   const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
   const [isTechTeamMenuOpen, setIsTechTeamMenuOpen] = useState(pathname.startsWith('/tech'));
-  const [isActivityBarOpen, setIsActivityBarOpen] = useState(true);
+  const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
-  const [activities, setActivities] = useState<{ text: string, timestamp: string }[]>([]);
+  const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
   const [onboardingModalShown, setOnboardingModalShown] = useState(false);
 
   useEffect(() => {
@@ -70,6 +71,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       setOnboardingModalShown(true);
     }
   }, [loading, session, profile, router, onboardingModalShown]);
+
+  // Fetch activities when the activity bar is opened
+  useEffect(() => {
+    const fetchActivities = async () => {
+      if (!session) return;
+      try {
+        const res = await fetch('http://localhost:4000/api/activities', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setActivities(data);
+        } else {
+          console.error('Failed to fetch activities');
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      }
+    };
+
+    if (isActivityBarOpen) {
+      fetchActivities();
+    }
+  }, [isActivityBarOpen, session]);
 
   if (loading || !session) {
     return (
@@ -94,6 +121,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+  };
+
+  const formatActivity = (activity: { action: string, details: any, created_at: string }) => {
+    const { action, details } = activity;
+    switch (action) {
+      case 'auth.login':
+        return 'Logged in successfully.';
+      case 'compliance.site.create':
+        return `Added a new site: ${details.url}`;
+      case 'compliance.site.delete':
+        return `Deleted a site (ID: ${details.siteId}).`;
+      case 'compliance.document.update':
+        return 'Updated the master compliance document.';
+      default:
+        return action;
+    }
   };
 
   return (
@@ -491,7 +534,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               variant="ghost"
               size="sm"
               className="hidden lg:inline-flex"
-              onClick={() => setIsActivityBarOpen(!isActivityBarOpen)}
+              onClick={toggleActivityBar}
             >
               {isActivityBarOpen ? <PanelRightClose /> : <PanelRightOpen />}
             </Button>
@@ -507,20 +550,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Activity Bar */}
       <div className={cn(
-        "border-l border-border bg-card p-4 hidden lg:block transition-all duration-300 ease-in-out",
+        "border-l border-border bg-card p-4 hidden lg:block transition-all duration-300 ease-in-out overflow-hidden",
         isActivityBarOpen ? "w-80" : "w-0 p-0"
       )}>
-        <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
-        <div className="space-y-4">
-          {activities.map((activity, index) => (
-            <div key={index} className="flex items-start">
-              <Activity className="h-4 w-4 mt-1 mr-3 text-primary" />
-              <div>
-                <p className="text-sm">{activity.text}</p>
-                <p className="text-xs text-muted-foreground">{new Date(activity.timestamp).toLocaleTimeString()}</p>
+        <div className={cn("transition-opacity", isActivityBarOpen ? "opacity-100" : "opacity-0")}>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
+          <div className="space-y-4">
+            {activities.length > 0 ? activities.map((activity, index) => (
+              <div key={index} className="flex items-start">
+                <Activity className="h-4 w-4 mt-1 mr-3 text-primary flex-shrink-0" />
+                <div className="flex-grow">
+                  <p className="text-sm">{formatActivity(activity)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(activity.created_at).toLocaleString()}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            )) : (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

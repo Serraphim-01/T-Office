@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { htmlToText } from 'html-to-text';
 import { diffChars } from 'diff';
 import crypto from 'crypto';
+import { logActivity } from './activity.js';
 
 // --- Helper Functions ---
 
@@ -35,13 +36,17 @@ export async function getSites(pool) {
   return result.rows;
 }
 
-export async function addSite(pool, url) {
+export async function addSite(pool, userId, { url }) {
   const result = await pool.query('INSERT INTO crawled_sites (url) VALUES ($1) RETURNING *', [url]);
-  return result.rows[0];
+  const newSite = result.rows[0];
+  await logActivity(pool, userId, 'compliance.site.create', { siteId: newSite.id, url: newSite.url });
+  return newSite;
 }
 
-export async function deleteSite(pool, id) {
+export async function deleteSite(pool, userId, id) {
+  // We should probably get the URL before deleting for the log, but for now this is fine.
   await pool.query('DELETE FROM crawled_sites WHERE id = $1', [id]);
+  await logActivity(pool, userId, 'compliance.site.delete', { siteId: id });
 }
 
 export async function getDocument(pool) {
@@ -49,10 +54,10 @@ export async function getDocument(pool) {
   return result.rows[0];
 }
 
-export async function updateDocument(pool, content) {
+export async function updateDocument(pool, userId, content) {
   // There should only ever be one document, so we update it.
-  // The initial empty doc was created by the migration.
   const result = await pool.query('UPDATE compliance_documents SET content = $1 WHERE id = 1 RETURNING *', [content]);
+  await logActivity(pool, userId, 'compliance.document.update');
   if (result.rowCount === 0) {
       // This is a fallback in case the initial document was deleted.
       const insertResult = await pool.query('INSERT INTO compliance_documents (content) VALUES ($1) RETURNING *', [content]);

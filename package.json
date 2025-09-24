@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx concurrently \"npm:dev:frontend\" \"npm:dev:backend\"",
-    "dev:frontend": "next dev",
-    "dev:backend": "npm run dev --prefix backend",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

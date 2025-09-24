@@ -92,12 +92,36 @@ app.post("/api/login", async (req, res) => {
       expiresIn: "1h",
     });
 
+    // Log the successful login activity
+    await logActivity(pool, user.id, 'auth.login');
+
     res.json({ token, user: { id: user.id, email: user.email } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ---------------------------------
+// Middleware for authentication
+// ---------------------------------
+const authenticateJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader) {
+    const token = authHeader.split(' ')[1]; // Bearer <token>
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        return res.sendStatus(403); // Forbidden
+      }
+      req.user = user; // { userId: ... }
+      next();
+    });
+  } else {
+    res.sendStatus(401); // Unauthorized
+  }
+};
 
 // ---------------------------------
 // Compliance Agent API Endpoints
@@ -110,9 +134,10 @@ import {
   updateDocument,
   crawlSite
 } from './compliance.js';
+import { logActivity, getActivities } from './activity.js';
 
 // Get all sites
-app.get("/api/compliance/sites", async (req, res) => {
+app.get("/api/compliance/sites", authenticateJWT, async (req, res) => {
   try {
     const sites = await getSites(pool);
     res.json(sites);
@@ -123,13 +148,13 @@ app.get("/api/compliance/sites", async (req, res) => {
 });
 
 // Add a site
-app.post("/api/compliance/sites", async (req, res) => {
+app.post("/api/compliance/sites", authenticateJWT, async (req, res) => {
   try {
     const { url } = req.body;
     if (!url) {
       return res.status(400).json({ error: "URL is required" });
     }
-    const newSite = await addSite(pool, url);
+    const newSite = await addSite(pool, req.user.userId, { url });
     res.status(201).json(newSite);
   } catch (err) {
     console.error(err);
@@ -138,10 +163,10 @@ app.post("/api/compliance/sites", async (req, res) => {
 });
 
 // Delete a site
-app.delete("/api/compliance/sites/:id", async (req, res) => {
+app.delete("/api/compliance/sites/:id", authenticateJWT, async (req, res) => {
   try {
     const { id } = req.params;
-    await deleteSite(pool, id);
+    await deleteSite(pool, req.user.userId, id);
     res.status(204).send(); // No Content
   } catch (err) {
     console.error(err);
@@ -150,24 +175,24 @@ app.delete("/api/compliance/sites/:id", async (req, res) => {
 });
 
 // Get the compliance document
-app.get("/api/compliance/document", async (req, res) => {
+app.get("/api/compliance/document", authenticateJWT, async (req, res) => {
   try {
     const doc = await getDocument(pool);
     res.json(doc);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
-  }
+  .}
 });
 
 // Update the compliance document
-app.post("/api/compliance/document", async (req, res) => {
+app.post("/api/compliance/document", authenticateJWT, async (req, res) => {
   try {
     const { content } = req.body;
     if (content === undefined) {
       return res.status(400).json({ error: "Content is required" });
     }
-    const updatedDoc = await updateDocument(pool, content);
+    const updatedDoc = await updateDocument(pool, req.user.userId, content);
     res.json(updatedDoc);
   } catch (err) {
     console.error(err);
@@ -176,7 +201,7 @@ app.post("/api/compliance/document", async (req, res) => {
 });
 
 // Crawl a site
-app.post("/api/compliance/crawl", async (req, res) => {
+app.post("/api/compliance/crawl", authenticateJWT, async (req, res) => {
   try {
     const { siteId } = req.body;
     if (!siteId) {
@@ -187,6 +212,32 @@ app.post("/api/compliance/crawl", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// Get all activities for the logged-in user
+app.get("/api/activities", authenticateJWT, async (req, res) => {
+  try {
+    const activities = await getActivities(pool, req.user.userId);
+    res.json(activities);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Generic endpoint for the frontend to log a specific activity
+app.post("/api/log-activity", authenticateJWT, async (req, res) => {
+  try {
+    const { action, details } = req.body;
+    if (!action) {
+      return res.status(400).json({ error: "Action is required" });
+    }
+    await logActivity(pool, req.user.userId, action, details);
+    res.status(200).json({ message: "Activity logged" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
