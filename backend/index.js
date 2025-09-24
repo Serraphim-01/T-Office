@@ -99,6 +99,98 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// ---------------------------------
+// Compliance Agent API Endpoints
+// ---------------------------------
+import {
+  getSites,
+  addSite,
+  deleteSite,
+  getDocument,
+  updateDocument,
+  crawlSite
+} from './compliance.js';
+
+// Get all sites
+app.get("/api/compliance/sites", async (req, res) => {
+  try {
+    const sites = await getSites(pool);
+    res.json(sites);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add a site
+app.post("/api/compliance/sites", async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+    const newSite = await addSite(pool, url);
+    res.status(201).json(newSite);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete a site
+app.delete("/api/compliance/sites/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteSite(pool, id);
+    res.status(204).send(); // No Content
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get the compliance document
+app.get("/api/compliance/document", async (req, res) => {
+  try {
+    const doc = await getDocument(pool);
+    res.json(doc);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update the compliance document
+app.post("/api/compliance/document", async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (content === undefined) {
+      return res.status(400).json({ error: "Content is required" });
+    }
+    const updatedDoc = await updateDocument(pool, content);
+    res.json(updatedDoc);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Crawl a site
+app.post("/api/compliance/crawl", async (req, res) => {
+  try {
+    const { siteId } = req.body;
+    if (!siteId) {
+      return res.status(400).json({ error: "siteId is required" });
+    }
+    const result = await crawlSite(pool, siteId);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+
 app.listen(PORT, () => {
   console.log(`✅ Backend running on port ${PORT}`);
 });
