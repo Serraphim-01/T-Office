@@ -11,70 +11,61 @@ The agent consists of:
 
 ## 2. Environment Variables
 
-The backend and database rely on environment variables.
+The backend and database rely on environment variables. You will need to create a `.env.local` file in the `backend/` directory.
 
-1.  **Navigate to the backend directory:**
-    ```bash
-    cd backend
-    ```
+**Add the following variables to `backend/.env.local`:**
+```
+# The full connection string for your PostgreSQL database.
+# This should point to your cloud-hosted Supabase project or other PostgreSQL instance.
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.xxxxxxxx.supabase.co:5432/postgres"
 
-2.  **Create a `.env.local` file:**
-    Copy the contents of `.env.example` (if it exists) or create a new file named `.env.local`.
+# A secret key for signing JWT tokens. Generate a secure random string.
+JWT_SECRET="your-super-secret-jwt-key"
 
-3.  **Add the following variables:**
-    ```
-    # The full connection string for your PostgreSQL database.
-    # If using the provided Docker setup for Supabase, this will be available
-    # from your Supabase project's settings.
-    DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@localhost:54322/postgres"
+# The port for the backend server.
+PORT=4000
 
-    # A secret key for signing JWT tokens. Generate a secure random string.
-    JWT_SECRET="your-super-secret-jwt-key"
+# The password for the preset admin user (admin@tasksystems.com)
+PRESET_ADMIN_PASSWORD="your-secure-admin-password"
 
-    # The port for the backend server.
-    PORT=4000
-
-    # The password for the preset admin user (admin@tasksystems.com)
-    # This is used by the db-init script.
-    PRESET_ADMIN_PASSWORD="your-secure-admin-password"
-
-    # The number of salt rounds for bcrypt hashing.
-    BCRYPT_SALT_ROUNDS=10
-    ```
+# The number of salt rounds for bcrypt hashing.
+BCRYPT_SALT_ROUNDS=10
+```
 
 **Note:** The frontend also requires environment variables for the Supabase client (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`), but these should already be configured as part of the main project setup.
 
 ## 3. Database Migration
 
-The new tables for the compliance agent (`compliance_documents` and `crawled_sites`) are defined in a migration file located in `supabase/migrations`.
+The new tables for the compliance agent must be added to your Supabase database.
 
-If you are using the Supabase local development environment with Docker, these migrations should be applied automatically when you start the services.
+The SQL code required to create these tables is located in the following file:
+`supabase/migrations/20250924120000_create_compliance_tables.sql`
 
-To start the Supabase stack (which includes the database):
-```bash
-# Make sure you have the Supabase CLI installed: npm install -g supabase
-supabase start
-```
-This command will start the Docker containers and apply any new migrations found in the `supabase/migrations` directory.
+**To apply these changes manually:**
+1.  Open your Supabase project on the Supabase website.
+2.  Navigate to the **SQL Editor**.
+3.  Click **New query**.
+4.  Copy the entire content of the `.sql` file mentioned above and paste it into the editor.
+5.  Click **Run**.
+
+This will create the `compliance_documents` and `crawled_sites` tables in your database.
 
 ## 4. Running the Application
 
-You need to run two separate processes: the backend server and the frontend development server.
+The project is configured to run both the frontend and backend servers with a single command.
 
-**Terminal 1: Start the Backend**
-```bash
-cd backend
-npm install
-npm run dev
-```
-This will start the Node.js server, which by default runs on `http://localhost:4000`.
+**To start the application:**
+1.  Open your terminal in the root directory of the project.
+2.  Install all dependencies for both the root and the backend.
+    ```bash
+    npm install
+    npm install --prefix backend
+    ```
+3.  Run the development server.
+    ```bash
+    npm run dev
+    ```
 
-**Terminal 2: Start the Frontend**
-```bash
-# In the root directory of the project
-npm install
-npm run dev
-```
-This will start the Next.js frontend, which by default runs on `http://localhost:3000`.
+This command will start both the Next.js frontend (on `http://localhost:3000`) and the Node.js backend (on `http://localhost:4000`) at the same time.
 
-Once both are running, you can access the application at `http://localhost:3000` and navigate to the `/compliance` page to use the new feature.
+You can now access the application at `http://localhost:3000` and navigate to the `/compliance` page to use the new feature.
