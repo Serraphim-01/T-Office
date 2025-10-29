@@ -31,7 +31,6 @@ export default function AboutPage() {
   const features = [
     'Real-time Dashboard Analytics',
     'Anonymous Communication Tools',
-    'Compliance Management',
     'Department Coordination',
     'Performance Tracking',
     'Mobile-First Design',

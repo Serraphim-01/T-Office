@@ -1,9 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from './supabase';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import { useRouter } from 'next/navigation';
 
 export interface Profile {
   id: string;
@@ -11,146 +8,95 @@ export interface Profile {
   full_name: string;
   avatar_url: string;
   department: string | null;
+  role: string | null;
 }
 
 interface AuthContextType {
-  session: Session | null;
-  user: SupabaseUser | null;
-  profile: Profile | null;
-  featureFlags: Record<string, boolean>;
+  user: Profile | null;
+  featureFlags: Record<string, any>;
   loading: boolean;
-  logout: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  setUser: (user: Profile | null) => void;
+  setFeatureFlags: (flags: Record<string, any>) => void;
+  logout: () => void;
+  hasFeatureAccess: (mainFeature: string, subfeature: string, func?: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [user, setUser] = useState<Profile | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true); // Start with loading true
 
+  // Check for existing session on mount
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(profileData);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // Verify token with backend
+          const response = await fetch('http://localhost:4000/api/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
 
-        if (profileData?.department) {
-          const { data: flagsData } = await supabase
-            .from('department_features')
-            .select('feature, is_enabled')
-            .eq('department', profileData.department);
-
-          if (flagsData) {
-            const flags = flagsData.reduce((acc: Record<string, boolean>, { feature, is_enabled }) => {
-              acc[feature] = is_enabled;
-              return acc;
-            }, {});
-            setFeatureFlags(flags);
+          if (response.ok) {
+            const userData = await response.json();
+            setUser({
+              id: userData.id,
+              updated_at: userData.created_at,
+              full_name: userData.full_name,
+              avatar_url: '',
+              department: userData.department,
+              role: userData.role,
+            });
+          } else {
+            // Token is invalid, remove it
+            localStorage.removeItem('token');
           }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          localStorage.removeItem('token');
         }
       }
       setLoading(false);
     };
 
-    getSession();
+    checkAuth();
+  }, []);
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setProfile(profileData);
-
-          if (profileData?.department) {
-            const { data: flagsData } = await supabase
-              .from('department_features')
-              .select('feature, is_enabled')
-              .eq('department', profileData.department);
-
-            if (flagsData) {
-              const flags = flagsData.reduce((acc: Record<string, boolean>, { feature, is_enabled }) => {
-                acc[feature] = is_enabled;
-                return acc;
-              }, {});
-              setFeatureFlags(flags);
-            }
-          }
-        } else {
-          setProfile(null);
-          setFeatureFlags({});
-        }
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [router]);
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+  const logout = () => {
+    setUser(null);
+    setFeatureFlags({});
+    localStorage.removeItem('token');
   };
 
-  const refreshProfile = async () => {
-    if (user) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      setProfile(profileData);
-    }
-  };
+  const hasFeatureAccess = (mainFeature: string, subfeature: string, func?: string): boolean => {
+    if (!user || !featureFlags) return false;
 
-  const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    });
+    const mainFeatureData = featureFlags[mainFeature];
+    if (!mainFeatureData) return false;
 
-    if (error) {
-        if (error.message === 'Invalid login credentials') {
-            const { error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-            });
-            if (signUpError) {
-                throw signUpError;
-            }
-        } else {
-            throw error;
-        }
+    const subfeatureData = mainFeatureData[subfeature];
+    if (!subfeatureData || !subfeatureData.enabled) return false;
+
+    // If func is specified, check if it exists in functions object, otherwise assume enabled
+    if (func) {
+      return subfeatureData.functions ? subfeatureData.functions[func] === true : true;
     }
+
+    return true;
   };
 
   const value = {
-    session,
     user,
-    profile,
     featureFlags,
     loading,
+    setUser,
+    setFeatureFlags,
     logout,
-    refreshProfile,
-    login,
+    hasFeatureAccess,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

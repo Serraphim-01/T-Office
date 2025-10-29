@@ -6,15 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const { user, setUser } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [department, setDepartment] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,23 +29,44 @@ export default function LoginPage() {
     }
   }, [user, router]);
 
+  const departments = [
+    'Admin',
+    'Engineering',
+    'Sales',
+    'HR',
+    'Marketing',
+    'Finance'
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    console.log('Signup attempt:', { name, email, password, department });
+
     try {
-      const response = await fetch('http://localhost:4000/api/login', {
+      console.log('Step 1: Sending signup request to backend');
+      const response = await fetch('http://localhost:4000/api/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password, department }),
       });
 
+      console.log('Step 2: Received response from backend');
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
+        console.log('Step 3: Signup successful, user added to DB');
+        console.log('User data:', data.user);
+        console.log('Token received:', data.token ? 'Yes' : 'No');
+
+        // Store token in localStorage
         localStorage.setItem('token', data.token);
+
+        // Set user in auth context
         setUser({
           id: data.user.id,
           full_name: data.user.full_name,
@@ -51,15 +75,16 @@ export default function LoginPage() {
           role: null,
           updated_at: new Date().toISOString()
         });
+
+        // Redirect to dashboard or login
         router.push('/dashboard');
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Login failed');
-        console.error('Login failed:', errorData);
+        console.log('Step 3: Signup failed');
+        setError(data.error || 'Signup failed');
       }
     } catch (err) {
-      console.error('Network error during login:', err);
-      setError('Network error');
+      console.error('Signup error:', err);
+      setError('Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -72,9 +97,9 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Building2 className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to Task Office</CardTitle>
+          <CardTitle className="text-2xl font-bold">Join Task Office</CardTitle>
           <CardDescription>
-            Enter any email and password to continue
+            Create your account to get started
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -86,11 +111,23 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter any email"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -103,7 +140,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter any password"
+                  placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -124,23 +161,36 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="department">Department</Label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Demo mode: Any credentials will work
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Don't have an account?{' '}
+              Already have an account?{' '}
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal"
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/login')}
               >
-                Sign up here
+                Login here
               </Button>
             </p>
           </div>

@@ -28,77 +28,59 @@ import {
   TrendingUp,
   ClipboardList,
   ShieldAlert,
-  GraduationCap,
-  CalendarCheck,
+
   Activity,
   KeyRound,
   Handshake,
   PanelRightClose,
   PanelRightOpen,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { OnboardingModal } from './onboarding-modal';
+
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { session, profile, featureFlags, loading, logout, refreshProfile } = useAuth();
+  const { user, featureFlags, loading, setUser, setFeatureFlags, hasFeatureAccess } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isHrMenuOpen, setIsHrMenuOpen] = useState(pathname.startsWith('/hr'));
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
-  const [isSalesMenuOpen, setIsSalesMenuOpen] = useState(pathname.startsWith('/sales'));
-  const [isAuditMenuOpen, setIsAuditMenuOpen] = useState(pathname.startsWith('/audit'));
-  const [isTechTeamMenuOpen, setIsTechTeamMenuOpen] = useState(pathname.startsWith('/tech'));
+  const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
-  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
-  const [onboardingModalShown, setOnboardingModalShown] = useState(false);
+  const [departmentFeatures, setDepartmentFeatures] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    if (!loading && !session) {
+    if (!loading && !user) {
       router.push('/login');
     }
-    if (!loading && profile && (!profile.full_name || !profile.department) && !onboardingModalShown) {
-      setIsOnboardingModalOpen(true);
-      setOnboardingModalShown(true);
-    }
-  }, [loading, session, profile, router, onboardingModalShown]);
+  }, [loading, user, router]);
 
-  // Fetch activities when the activity bar is opened
+  // Mock activities for demo mode
   useEffect(() => {
-    const fetchActivities = async () => {
-      if (!session) return;
-      try {
-        const res = await fetch('http://localhost:4000/api/activities', {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setActivities(data);
-        } else {
-          console.error('Failed to fetch activities');
-        }
-      } catch (error) {
-        console.error('Error fetching activities:', error);
-      }
-    };
-
     if (isActivityBarOpen) {
-      fetchActivities();
+      setActivities([
+        { action: 'auth.login', details: {}, created_at: new Date().toISOString() },
+        { action: 'dashboard.view', details: {}, created_at: new Date(Date.now() - 3600000).toISOString() }
+      ]);
     }
-  }, [isActivityBarOpen, session]);
+  }, [isActivityBarOpen]);
 
-  if (loading || !session) {
+  useEffect(() => {
+    if (user && user.department) {
+      fetchDepartmentFeatures();
+    }
+  }, [user]); // Keep only user as dependency to avoid infinite loops
+
+  if (loading || !user) {
     return (
         <div className="flex items-center justify-center h-screen">
             <div className="text-center">
@@ -111,15 +93,133 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const sidebarItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
-    { href: '/profile', label: 'Profile', icon: User },
-    { href: '/onboarding', label: 'Onboarding', icon: GraduationCap, feature: 'Onboarding' },
-    { href: '/attendance', label: 'Attendance', icon: CalendarCheck, feature: 'Attendance' },
-    { href: '/report', label: 'Report', icon: AreaChart, feature: 'Report' },
-    { href: '/compliance', label: 'Compliance', icon: ShieldCheck, feature: 'Compliance' },
+    ...(hasFeatureAccess('Profile', 'profile') ? [{ href: '/profile', label: 'Profile', icon: User }] : []),
+  ];
+
+  const fetchDepartmentFeatures = async () => {
+    if (!user?.department) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/admin/department-config/${user.department}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Use role-specific features if user has a role, otherwise use department default
+        const userRole = user.role; // Assuming user object has role property
+        let features = data.features;
+
+        if (userRole && data.roles) {
+          const roleConfig = data.roles.find((r: any) => r.id === userRole);
+          if (roleConfig) {
+            features = roleConfig.features;
+          }
+        }
+
+        setDepartmentFeatures(features || {});
+        setFeatureFlags(features || {}); // Update auth context featureFlags
+      } else {
+        // Fallback to default features - for Admin, use super-admin features
+        const defaultFeatures = user?.department === 'Admin' ? {
+          'Admin': {
+            'features': { enabled: true },
+            'db': { enabled: true },
+            'users': { enabled: true }
+          },
+          'HR': {
+            'onboarding': { enabled: true },
+            'users': { enabled: true },
+            'queries': { enabled: true },
+            'attendance': { enabled: true }
+          },
+          'Compliance': {
+            'sites': { enabled: true },
+            'documents': { enabled: true },
+            'crawling': { enabled: true }
+          },
+          'Profile': {
+            'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
+          },
+          'Approvals': {
+            'certifications': { enabled: true },
+            'roles': { enabled: true },
+            'documents': { enabled: true }
+          },
+          'Chat': {
+            'messages': { enabled: true }
+          }
+        } : {
+          'HR': {
+            'onboarding': { enabled: true },
+            'users': { enabled: true },
+            'queries': { enabled: true }
+          }
+        };
+
+        setDepartmentFeatures(defaultFeatures);
+        setFeatureFlags(defaultFeatures); // Update auth context featureFlags
+      }
+    } catch (err) {
+      console.error('Error fetching department features:', err);
+      // Fallback for Admin
+      const fallbackFeatures = user?.department === 'Admin' ? {
+        'Admin': {
+          'features': { enabled: true },
+          'db': { enabled: true },
+          'users': { enabled: true }
+        },
+        'HR': {
+          'onboarding': { enabled: true },
+          'users': { enabled: true },
+          'queries': { enabled: true },
+          'attendance': { enabled: true }
+        },
+        'Compliance': {
+          'sites': { enabled: true },
+          'documents': { enabled: true },
+          'crawling': { enabled: true }
+        },
+        'Profile': {
+          'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
+        },
+        'Approvals': {
+          'certifications': { enabled: true },
+          'roles': { enabled: true },
+          'documents': { enabled: true }
+        },
+        'Chat': {
+          'messages': { enabled: true }
+        }
+      } : {};
+
+      setDepartmentFeatures(fallbackFeatures);
+      setFeatureFlags(fallbackFeatures); // Update auth context featureFlags
+    }
+  };
+
+  // Add a function to refresh features when they change
+  const refreshFeatures = () => {
+    if (user && user.department) {
+      fetchDepartmentFeatures();
+    }
+  };
+
+  const adminItems = [
+    { href: '/admin/features', label: 'Features', icon: Shield },
+    { href: '/admin/db', label: 'Database', icon: Database },
+  ];
+
+  const hrItems = [
+    { href: '/hr/onboarding', label: 'Onboarding', icon: UserPlus, feature: 'onboarding' },
+    { href: '/hr/users', label: 'User Management', icon: Users2, feature: 'users' },
+    { href: '/hr/queries', label: 'Queries', icon: MessageSquare, feature: 'queries' },
   ];
 
   const handleLogout = async () => {
-    await logout();
+    setUser(null);
     router.push('/login');
   };
 
@@ -141,11 +241,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="h-screen flex bg-background">
-      <OnboardingModal
-        open={isOnboardingModalOpen}
-        onOpenChange={setIsOnboardingModalOpen}
-        onProfileUpdate={refreshProfile}
-      />
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
@@ -170,27 +265,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-2">
-            {sidebarItems.map((item) =>
-              (!item.feature || featureFlags[item.feature]) && (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                    pathname === item.href
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                  )}
-                  onClick={() => {
-                    setSidebarOpen(false);
-                  }}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.label}
-                </Link>
-              )
-            )}
-            {profile?.department === 'Admin' && (
+            {sidebarItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === item.href
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                )}
+                onClick={() => {
+                  setSidebarOpen(false);
+                }}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.label}
+              </Link>
+            ))}
+            {user?.department === 'Admin' && hasFeatureAccess('Admin', 'features', 'view') && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
                 <CollapsibleTrigger className="w-full">
                   <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
@@ -199,47 +292,61 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-8 space-y-2">
-                  <Link
-                    href="/admin/roles"
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/admin/roles"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <Users2 className="mr-3 h-5 w-5" />
-                    Roles
-                  </Link>
-                  <Link
-                    href="/admin/departments"
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/admin/departments"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <Briefcase className="mr-3 h-5 w-5" />
-                    Departments
-                  </Link>
-                  <Link
-                    href="/admin/features"
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/admin/features"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <Briefcase className="mr-3 h-5 w-5" />
-                    Features
-                  </Link>
+                  {adminItems.map((item) => {
+                    const featureKey = item.href.split('/')[2]; // 'features', 'db'
+                    const hasAccess = hasFeatureAccess('Admin', featureKey, 'view');
+                    if (!hasAccess) return null;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                          pathname === item.href
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                        )}
+                      >
+                        <item.icon className="mr-3 h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                  {hasFeatureAccess('Approvals', 'certifications', 'view') && (
+                    <Link
+                      href="/admin/approvals"
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/admin/approvals"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      <ShieldCheck className="mr-3 h-5 w-5" />
+                      Approvals
+                    </Link>
+                  )}
                 </CollapsibleContent>
               </Collapsible>
             )}
-            {featureFlags['HR'] && (
-              <Collapsible open={isHrMenuOpen} onOpenChange={setIsHrMenuOpen}>
+
+            {hasFeatureAccess('Approvals', 'certifications', 'view') && user?.department !== 'Admin' && (
+              <Link
+                href="/admin/approvals"
+                className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === "/admin/approvals"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                )}
+              >
+                <ShieldCheck className="mr-3 h-5 w-5" />
+                Approvals
+              </Link>
+            )}
+
+            {(user?.department === 'Admin' || user?.department === 'HR') && hasFeatureAccess('HR', 'users', 'view') && (
+              <Collapsible open={isHRMenuOpen} onOpenChange={setIsHRMenuOpen}>
                 <CollapsibleTrigger className="w-full">
                   <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                     <Users2 className="mr-3 h-5 w-5" />
@@ -247,241 +354,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-8 space-y-2">
-                  {featureFlags['HREmployees'] && (
+                  {hrItems.filter(item => {
+                    if (!item.feature) return true;
+                    return hasFeatureAccess('HR', item.feature, 'view');
+                  }).map((item) => (
                     <Link
-                      href="/hr/employees"
+                      key={item.href}
+                      href={item.href}
                       className={cn(
                         "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/hr/employees"
+                        pathname === item.href
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       )}
                     >
-                      <Database className="mr-3 h-5 w-5" />
-                      Employee Database
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.label}
                     </Link>
-                  )}
-                  {featureFlags['HRAttendance'] && (
-                    <Link
-                      href="/hr/attendance"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/hr/attendance"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Clock className="mr-3 h-5 w-5" />
-                      Time and Attendance
-                    </Link>
-                  )}
-                  {featureFlags['HRReports'] && (
-                    <Link
-                      href="/hr/reports"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/hr/reports"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <AreaChart className="mr-3 h-5 w-5" />
-                      Reporting and Analytics
-                    </Link>
-                  )}
+                  ))}
                 </CollapsibleContent>
               </Collapsible>
             )}
-            {featureFlags['Sales'] && (
-              <Collapsible open={isSalesMenuOpen} onOpenChange={setIsSalesMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <TrendingUp className="mr-3 h-5 w-5" />
-                    Sales
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {featureFlags['SalesContacts'] && (
-                    <Link
-                      href="/sales/contacts"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/sales/contacts"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Contact className="mr-3 h-5 w-5" />
-                      Contact Management
-                    </Link>
-                  )}
-                  {featureFlags['SalesPipeline'] && (
-                    <Link
-                      href="/sales/pipeline"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/sales/pipeline"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <KanbanSquare className="mr-3 h-5 w-5" />
-                      Pipeline Management
-                    </Link>
-                  )}
-                  {featureFlags['SalesAutomation'] && (
-                    <Link
-                      href="/sales/automation"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/sales/automation"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Bot className="mr-3 h-5 w-5" />
-                      Task Automation
-                    </Link>
-                  )}
-                  {featureFlags['SalesDocuments'] && (
-                    <Link
-                      href="/sales/documents"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/sales/documents"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Folder className="mr-3 h-5 w-5" />
-                      Document Management
-                    </Link>
-                  )}
-                  {featureFlags['SalesGoals'] && (
-                    <Link
-                      href="/sales/goals"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/sales/goals"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Target className="mr-3 h-5 w-5" />
-                      Goal Setting & Tracking
-                    </Link>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            {featureFlags['Audit'] && (
-              <Collapsible open={isAuditMenuOpen} onOpenChange={setIsAuditMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <ShieldAlert className="mr-3 h-5 w-5" />
-                    Audit
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {featureFlags['AuditPlanning'] && (
-                    <Link
-                      href="/audit/planning"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/audit/planning"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <ClipboardList className="mr-3 h-5 w-5" />
-                      Audit Planning
-                    </Link>
-                  )}
-                  {featureFlags['AuditRiskAssessment'] && (
-                    <Link
-                      href="/audit/risk-assessment"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/audit/risk-assessment"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <ShieldAlert className="mr-3 h-5 w-5" />
-                      Risk Assessment
-                    </Link>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            {featureFlags['Tech'] && (
-              <Collapsible open={isTechTeamMenuOpen} onOpenChange={setIsTechTeamMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <Users2 className="mr-3 h-5 w-5" />
-                    Tech Team
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {featureFlags['TechLicensing'] && (
-                    <Link
-                      href="/tech/licensing"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/tech/licensing"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <KeyRound className="mr-3 h-5 w-5" />
-                      Licensing
-                    </Link>
-                  )}
-                  {featureFlags['TechAccounts'] && (
-                    <Link
-                      href="/tech/accounts"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/tech/accounts"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Users2 className="mr-3 h-5 w-5" />
-                      Accounts
-                    </Link>
-                  )}
-                  {featureFlags['TechOemPartners'] && (
-                    <Link
-                      href="/tech/oem-partners"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/tech/oem-partners"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Handshake className="mr-3 h-5 w-5" />
-                      OEM Partners
-                    </Link>
-                  )}
-                  {featureFlags['TechDeals'] && (
-                    <Link
-                      href="/tech/deals"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/tech/deals"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Briefcase className="mr-3 h-5 w-5" />
-                      Deals
-                    </Link>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+
           </nav>
 
           {/* User info and logout */}
@@ -489,15 +383,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center space-x-3 mb-3">
               <Avatar>
                 <AvatarFallback>
-                  {profile?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                  {user?.full_name?.split(' ').map((n: string) => n[0]).join('') || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {profile?.full_name || 'User'}
+                  {user?.full_name || 'User'}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {profile?.department || 'Department'}
+                  {user?.department || 'Department'}
                 </p>
               </div>
             </div>

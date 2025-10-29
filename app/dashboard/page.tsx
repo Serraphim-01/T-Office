@@ -4,14 +4,40 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <div className="text-center">Loading...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back!</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back, {user.full_name}!</h1>
           <p className="text-muted-foreground">Here's what's happening in your office today.</p>
         </div>
 

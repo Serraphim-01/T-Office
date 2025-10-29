@@ -1,21 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Building2, Menu, X } from 'lucide-react';
+import { Building2, Menu, X, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth-context';
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
   const navItems = [
-    { href: '/', label: 'Home' },
+    { href: '/dashboard', label: 'Dashboard' },
     { href: '/about', label: 'About' },
     { href: '/help', label: 'Help' },
-    { href: '/login', label: 'Login' },
   ];
 
   return (
@@ -45,6 +52,18 @@ export function Navbar() {
                 {item.label}
               </Link>
             ))}
+
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -84,6 +103,21 @@ export function Navbar() {
                   {item.label}
                 </Link>
               ))}
+
+              {user && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    handleLogout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full justify-start text-muted-foreground hover:text-foreground"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </Button>
+              )}
             </div>
           </div>
         )}
