@@ -1320,11 +1320,11 @@ app.get("/api/inventory/inbound", authenticateJWT, async (req, res) => {
   }
 });
 
-// Get outbound products (Outgoing, Dispatched)
+// Get outbound products (Outgoing, Dispatched, Delivered)
 app.get("/api/inventory/outbound", authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM products WHERE state IN ('Outgoing', 'Dispatched') ORDER BY updated_at DESC"
+      "SELECT * FROM products WHERE state IN ('Outgoing', 'Dispatched', 'Delivered') ORDER BY updated_at DESC"
     );
     res.json(result.rows);
   } catch (err) {

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Edit, Trash2, Package, ArrowRight, MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Trash2, ClipboardList, ArrowRight, MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -27,12 +27,7 @@ interface Product {
   arrival_date: string;
   created_at: string;
   updated_at: string;
-  state_history?: Array<{
-    id: number;
-    state: string;
-    timestamp: string;
-    notes: string;
-  }>;
+  current_inventory_quantity: number;
 }
 
 const stateColors = {
@@ -44,7 +39,7 @@ const stateColors = {
   'Delivered': 'bg-gray-100 text-gray-800',
 };
 
-export default function InventoryPage() {
+export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -117,9 +112,12 @@ export default function InventoryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Filter out products with "Incoming", "Arrived", "Outgoing", "Dispatched", and "Delivered" states as they belong to inbound/outbound, not inventory
-        const inventoryProducts = data.filter((product: any) => !['Incoming', 'Arrived', 'Outgoing', 'Dispatched', 'Delivered'].includes(product.state));
-        setProducts(inventoryProducts);
+        // Calculate current inventory quantity for each product
+        const productsWithInventory = data.map((product: any) => ({
+          ...product,
+          current_inventory_quantity: product.state === 'Stored' ? product.quantity : 0
+        }));
+        setProducts(productsWithInventory);
       } else {
         toast({
           title: 'Error',
@@ -138,8 +136,6 @@ export default function InventoryPage() {
       setLoading(false);
     }
   };
-
-
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,14 +310,12 @@ export default function InventoryPage() {
     setShowStateDialog(true);
   };
 
-
-
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <p className="text-lg">Loading inventory...</p>
+            <p className="text-lg">Loading products...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -333,8 +327,8 @@ export default function InventoryPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
-            <p className="text-gray-600">Manage your products and track their lifecycle</p>
+            <h1 className="text-3xl font-bold text-gray-900">All Products</h1>
+            <p className="text-gray-600">Complete catalog of all products and their current inventory levels</p>
           </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
@@ -430,8 +424,8 @@ export default function InventoryPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Products ({products.length})
+              <ClipboardList className="mr-2 h-5 w-5" />
+              All Products ({products.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -464,14 +458,11 @@ export default function InventoryPage() {
                   <TableHead className="cursor-pointer select-none" onClick={() => handleSort('name')}>
                     Name {sortColumn === 'name' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('serial_number')}>
-                    Serial Number {sortColumn === 'serial_number' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
-                  </TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => handleSort('part_number')}>
                     Part Number {sortColumn === 'part_number' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('quantity')}>
-                    Quantity {sortColumn === 'quantity' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
+                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('current_inventory_quantity')}>
+                    Current Inventory {sortColumn === 'current_inventory_quantity' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
                   </TableHead>
                   <TableHead className="cursor-pointer select-none" onClick={() => handleSort('state')}>
                     State {sortColumn === 'state' && (sortDirection === 'asc' ? <ChevronUp className="inline h-4 w-4" /> : <ChevronDown className="inline h-4 w-4" />)}
@@ -485,9 +476,10 @@ export default function InventoryPage() {
                     <TableCell className="font-medium cursor-pointer" onClick={() => { setSelectedProduct(product); setShowDetailsDialog(true); }}>
                       {product.name}
                     </TableCell>
-                    <TableCell>{product.serial_number}</TableCell>
                     <TableCell>{product.part_number || '-'}</TableCell>
-                    <TableCell>{product.quantity}</TableCell>
+                    <TableCell className="font-semibold">
+                      {product.current_inventory_quantity}
+                    </TableCell>
                     <TableCell>
                       <Badge className={stateColors[product.state as keyof typeof stateColors] || 'bg-gray-100 text-gray-800'}>
                         {product.state}
@@ -663,8 +655,12 @@ export default function InventoryPage() {
                     <p className="text-sm text-gray-600">{selectedProduct.part_number || '-'}</p>
                   </div>
                   <div>
-                    <Label className="font-semibold">Quantity</Label>
+                    <Label className="font-semibold">Total Quantity</Label>
                     <p className="text-sm text-gray-600">{selectedProduct.quantity}</p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Current Inventory</Label>
+                    <p className="text-sm text-gray-600 font-semibold">{selectedProduct.current_inventory_quantity}</p>
                   </div>
                   <div>
                     <Label className="font-semibold">State</Label>

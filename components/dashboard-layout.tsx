@@ -35,7 +35,9 @@ import {
   PanelRightClose,
   PanelRightOpen,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  ArrowDown,
+  ArrowUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -99,6 +101,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const inventoryItems = [
     { href: '/inventory', label: 'Inventory', icon: Package },
+    { href: '/inventory/products', label: 'Products', icon: ClipboardList },
+    { href: '/inventory/inbound', label: 'Inbound', icon: ArrowDown },
+    { href: '/inventory/outbound', label: 'Outbound', icon: ArrowUp },
   ];
 
   const fetchDepartmentFeatures = async () => {

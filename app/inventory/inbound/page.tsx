@@ -44,7 +44,7 @@ const stateColors = {
   'Delivered': 'bg-gray-100 text-gray-800',
 };
 
-export default function InventoryPage() {
+export default function InboundPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -109,7 +109,7 @@ export default function InventoryPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/inventory/products', {
+      const response = await fetch('http://localhost:4000/api/inventory/inbound', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -117,29 +117,25 @@ export default function InventoryPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Filter out products with "Incoming", "Arrived", "Outgoing", "Dispatched", and "Delivered" states as they belong to inbound/outbound, not inventory
-        const inventoryProducts = data.filter((product: any) => !['Incoming', 'Arrived', 'Outgoing', 'Dispatched', 'Delivered'].includes(product.state));
-        setProducts(inventoryProducts);
+        setProducts(data);
       } else {
         toast({
           title: 'Error',
-          description: 'Failed to fetch products',
+          description: 'Failed to fetch inbound products',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching inbound products:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch products',
+        description: 'Failed to fetch inbound products',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
-
-
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,14 +310,12 @@ export default function InventoryPage() {
     setShowStateDialog(true);
   };
 
-
-
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <p className="text-lg">Loading inventory...</p>
+            <p className="text-lg">Loading inbound products...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -333,8 +327,8 @@ export default function InventoryPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
-            <p className="text-gray-600">Manage your products and track their lifecycle</p>
+            <h1 className="text-3xl font-bold text-gray-900">Inbound Products</h1>
+            <p className="text-gray-600">Manage incoming and arrived products</p>
           </div>
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
@@ -431,7 +425,7 @@ export default function InventoryPage() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Package className="mr-2 h-5 w-5" />
-              Products ({products.length})
+              Inbound Products ({products.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -451,10 +445,6 @@ export default function InventoryPage() {
                   <SelectItem value="all">All States</SelectItem>
                   <SelectItem value="Incoming">Incoming</SelectItem>
                   <SelectItem value="Arrived">Arrived</SelectItem>
-                  <SelectItem value="Stored">Stored</SelectItem>
-                  <SelectItem value="Outgoing">Outgoing</SelectItem>
-                  <SelectItem value="Dispatched">Dispatched</SelectItem>
-                  <SelectItem value="Delivered">Delivered</SelectItem>
                 </SelectContent>
               </Select>
             </div>
