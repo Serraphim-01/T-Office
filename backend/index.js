@@ -447,7 +447,7 @@ app.post("/api/chat/messages", async (req, res) => {
 async function checkToxicity(text) {
   try {
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/unitary/toxic-bert',
+      'https://router.huggingface.co/hf-inference/models/unitary/toxic-bert',
       { inputs: text },
       {
         headers: {
@@ -479,7 +479,7 @@ async function summarizeChat(messages) {
     const conversationText = messages.map(msg => msg.text).join(' ');
 
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/facebook/bart-large-cnn',
+      'https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn',
       {
         inputs: conversationText,
         parameters: {
@@ -1095,4 +1095,329 @@ app.post("/api/chat/summarize", authenticateJWT, requireHR, async (req, res) => 
 
 app.listen(PORT, () => {
   console.log(`✅ Backend running on port ${PORT}`);
+});
+
+// ---------------------------------
+// Temporary endpoint to setup inventory schema
+// ---------------------------------
+app.post("/api/admin/setup-inventory", authenticateJWT, requireAdmin, async (req, res) => {
+  try {
+    const fs = await import('fs');
+    const schema = fs.readFileSync('./inventory_schema.sql', 'utf8');
+
+    // First drop existing inventory tables if they exist
+    await pool.query('DROP TABLE IF EXISTS sub_products CASCADE');
+    await pool.query('DROP TABLE IF EXISTS product_states CASCADE');
+    await pool.query('DROP TABLE IF EXISTS products CASCADE');
+
+    // Split schema into individual statements
+    const statements = schema.split(';').filter(stmt => stmt.trim().length > 0);
+
+    for (const statement of statements) {
+      if (statement.trim()) {
+        await pool.query(statement);
+      }
+    }
+
+    res.json({ message: "Inventory schema setup completed" });
+  } catch (err) {
+    console.error('Error setting up inventory schema:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------
+// Inventory API Endpoints
+// ---------------------------------
+
+// Get all products with state history
+app.get("/api/inventory/products", authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.*,
+             json_agg(
+               json_build_object(
+                 'id', ps.id,
+                 'state', ps.state,
+                 'timestamp', ps.timestamp,
+                 'notes', ps.notes
+               ) ORDER BY ps.timestamp DESC
+             ) as state_history
+      FROM products p
+      LEFT JOIN product_states ps ON p.id = ps.product_id
+      GROUP BY p.id
+      ORDER BY p.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Create new product
+app.post("/api/inventory/products", authenticateJWT, async (req, res) => {
+  const { name, serial_number, part_number, quantity, container, type, child_products } = req.body;
+
+  // Validate child_products - only allowed for cartons
+  if (child_products && child_products.length > 0 && container !== 'Carton') {
+    return res.status(400).json({ error: "Child products can only be added to cartons" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      'INSERT INTO products (name, serial_number, part_number, quantity, container, type) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, serial_number, part_number, quantity, container, type]
+    );
+    const product = result.rows[0];
+
+    // Add initial state to history
+    await client.query(
+      'INSERT INTO product_states (product_id, state, notes) VALUES ($1, $2, $3)',
+      [product.id, 'Incoming', 'Product created']
+    );
+
+    // Add child products if provided
+    if (child_products && child_products.length > 0) {
+      for (const childId of child_products) {
+        await client.query(
+          'INSERT INTO sub_products (parent_id, child_id) VALUES ($1, $2)',
+          [product.id, childId]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json(product);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error creating product:', err);
+    if (err.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: "Serial number already exists or child product relationship already exists" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  } finally {
+    client.release();
+  }
+});
+
+// Update product
+app.put("/api/inventory/products/:id", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { name, serial_number, part_number, quantity, container, type, child_products } = req.body;
+
+  // Validate child_products - only allowed for cartons
+  if (child_products && child_products.length > 0 && container !== 'Carton') {
+    return res.status(400).json({ error: "Child products can only be added to cartons" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      'UPDATE products SET name = $1, serial_number = $2, part_number = $3, quantity = $4, container = $5, type = $6, updated_at = NOW() WHERE id = $7 RETURNING *',
+      [name, serial_number, part_number, quantity, container, type, id]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Update child products - remove existing and add new ones
+    if (child_products !== undefined) {
+      // Remove existing child relationships
+      await client.query('DELETE FROM sub_products WHERE parent_id = $1', [id]);
+
+      // Add new child products if provided
+      if (child_products && child_products.length > 0) {
+        for (const childId of child_products) {
+          await client.query(
+            'INSERT INTO sub_products (parent_id, child_id) VALUES ($1, $2)',
+            [id, childId]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json(result.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating product:', err);
+    if (err.code === '23505') {
+      res.status(400).json({ error: "Serial number already exists or child product relationship already exists" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  } finally {
+    client.release();
+  }
+});
+
+// Delete product
+app.delete("/api/inventory/products/:id", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update product state
+app.put("/api/inventory/products/:id/state", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { state, notes } = req.body;
+
+  try {
+    // Update product state
+    const productResult = await pool.query(
+      'UPDATE products SET state = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [state, id]
+    );
+
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    // Add to state history
+    await pool.query(
+      'INSERT INTO product_states (product_id, state, notes) VALUES ($1, $2, $3)',
+      [id, state, notes || 'State changed to ' + state]
+    );
+
+    res.json(productResult.rows[0]);
+  } catch (err) {
+    console.error('Error updating product state:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get inbound products (Incoming, Arrived)
+app.get("/api/inventory/inbound", authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM products WHERE state IN ('Incoming', 'Arrived') ORDER BY created_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching inbound products:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get outbound products (Outgoing, Dispatched)
+app.get("/api/inventory/outbound", authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM products WHERE state IN ('Outgoing', 'Dispatched') ORDER BY updated_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching outbound products:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get child products for a parent product
+app.get("/api/inventory/products/:id/children", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(`
+      SELECT p.* FROM products p
+      INNER JOIN sub_products sp ON p.id = sp.child_id
+      WHERE sp.parent_id = $1
+      ORDER BY p.created_at DESC
+    `, [id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching child products:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add child product to a parent product
+app.post("/api/inventory/products/:id/children", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { child_id } = req.body;
+
+  if (!child_id) {
+    return res.status(400).json({ error: "child_id is required" });
+  }
+
+  try {
+    // Check if parent exists and is a carton
+    const parentResult = await pool.query('SELECT container FROM products WHERE id = $1', [id]);
+    if (parentResult.rows.length === 0) {
+      return res.status(404).json({ error: "Parent product not found" });
+    }
+    if (parentResult.rows[0].container !== 'Carton') {
+      return res.status(400).json({ error: "Parent product must be a carton" });
+    }
+
+    // Check if child exists
+    const childResult = await pool.query('SELECT id FROM products WHERE id = $1', [child_id]);
+    if (childResult.rows.length === 0) {
+      return res.status(404).json({ error: "Child product not found" });
+    }
+
+    // Check if relationship already exists
+    const existingResult = await pool.query(
+      'SELECT id FROM sub_products WHERE parent_id = $1 AND child_id = $2',
+      [id, child_id]
+    );
+    if (existingResult.rows.length > 0) {
+      return res.status(400).json({ error: "Child product already added to this parent" });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO sub_products (parent_id, child_id) VALUES ($1, $2) RETURNING *',
+      [id, child_id]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error adding child product:', err);
+    if (err.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: "Child product already exists for this parent" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+// Remove child product from a parent product
+app.delete("/api/inventory/products/:id/children/:childId", authenticateJWT, async (req, res) => {
+  const { id, childId } = req.params;
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM sub_products WHERE parent_id = $1 AND child_id = $2 RETURNING *',
+      [id, childId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Child product relationship not found" });
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error removing child product:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });

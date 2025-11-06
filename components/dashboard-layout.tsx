@@ -28,7 +28,7 @@ import {
   TrendingUp,
   ClipboardList,
   ShieldAlert,
-
+  Package,
   Activity,
   KeyRound,
   Handshake,
@@ -54,6 +54,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
+  const [isInventoryMenuOpen, setIsInventoryMenuOpen] = useState(pathname.startsWith('/inventory'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
   const [departmentFeatures, setDepartmentFeatures] = useState<Record<string, any>>({});
@@ -94,6 +95,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
     ...(hasFeatureAccess('Profile', 'profile') ? [{ href: '/profile', label: 'Profile', icon: User }] : []),
+  ];
+
+  const inventoryItems = [
+    { href: '/inventory', label: 'Inventory', icon: Package },
   ];
 
   const fetchDepartmentFeatures = async () => {
@@ -283,6 +288,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {item.label}
               </Link>
             ))}
+
+            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Package className="mr-3 h-5 w-5" />
+                  Inventory
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                {inventoryItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === item.href
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    )}
+                    onClick={() => {
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
             {user?.department === 'Admin' && hasFeatureAccess('Admin', 'features', 'view') && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
                 <CollapsibleTrigger className="w-full">
