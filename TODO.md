@@ -1,23 +1,23 @@
-# TODO List
+# TODO: Implement Resources Wiki in Sidenav
 
-## Task: Modify Inventory Page to Exclude Inbound Products
+## Current Status
+- [x] Analyze dashboard layout and navigation structure
+- [x] Create implementation plan
+- [x] Get user approval for plan
+- [x] Add Resources collapsible section to dashboard-layout.tsx
+- [x] Add Wiki submenu under Resources
+- [x] Add department collapsible items under Wiki (Admin, HR, Compliance, etc.)
+- [x] Add topics under each department (Introduction, etc.)
 
-### Current Status
-- [x] Analyze current inventory page implementation
-- [x] Understand backend API endpoints
-- [x] Confirm requirement interpretation
-- [x] Create plan for implementation
-- [x] Modify fetchProducts function in app/inventory/page.tsx to filter out "Incoming" and "Arrived" products
-- [x] Test the inventory page to verify only non-inbound products are displayed (Application started successfully on port 3002)
-- [x] Confirm inbound products remain accessible via other endpoints if needed (Backend API endpoints are available)
-- [x] Create inbound page at /inventory/inbound to handle "Incoming" and "Arrived" products
-- [x] Add outbound navigation link to sidebar
-- [x] Create outbound page at /inventory/outbound to handle "Outgoing", "Dispatched", and "Delivered" products
-
-### Next Steps
-- [x] Modify fetchProducts function in app/inventory/page.tsx to filter out "Incoming" and "Arrived" products
-- [x] Test the inventory page to verify only non-inbound products are displayed (Application started successfully on port 3002)
-- [x] Confirm inbound products remain accessible via other endpoints if needed (Backend API endpoints are available)
-- [x] Create inbound page at /inventory/inbound to handle "Incoming" and "Arrived" products
-- [x] Add outbound navigation link to sidebar
-- [x] Create outbound page at /inventory/outbound to handle "Outgoing", "Dispatched", and "Delivered" products
+## Next Steps
+- [x] Create page routes for lesson content: app/resources/wiki/[department]/[topic]/page.tsx
+- [x] Implement lesson content display components
+- [x] Test navigation and collapsible behavior
+- [x] Add backend API endpoints for wiki content
+- [x] Create wiki_topics database table
+- [x] Seed initial wiki content
+- [x] Create wiki index page (app/resources/wiki/page.tsx)
+- [x] Create wiki create page (app/resources/wiki/create/page.tsx)
+- [x] Create department wiki pages (app/resources/wiki/[department]/page.tsx)
+- [x] Update navigation to use dynamic wiki system
+- [x] Test full wiki functionality

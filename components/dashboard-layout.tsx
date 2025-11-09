@@ -1,5 +1,6 @@
 'use client';
 
+import { type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -37,7 +38,10 @@ import {
   ShieldCheck,
   UserPlus,
   ArrowDown,
-  ArrowUp
+  ArrowUp,
+  BookOpen,
+  FileText,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -46,7 +50,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -57,6 +61,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
   const [isInventoryMenuOpen, setIsInventoryMenuOpen] = useState(pathname.startsWith('/inventory'));
+  const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(pathname.startsWith('/resources'));
+  const [isWikiMenuOpen, setIsWikiMenuOpen] = useState(pathname.startsWith('/resources/wiki'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
   const [departmentFeatures, setDepartmentFeatures] = useState<Record<string, any>>({});
@@ -414,6 +420,52 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </CollapsibleContent>
               </Collapsible>
             )}
+
+            {/* Resources Section */}
+            <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <BookOpen className="mr-3 h-5 w-5" />
+                  Resources
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                      <FileText className="mr-3 h-5 w-5" />
+                      Wiki
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-8 space-y-2">
+                    <Link
+                      href="/resources/wiki"
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/resources/wiki"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Wiki Overview
+                    </Link>
+                    <Link
+                      href="/resources/wiki/create"
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/resources/wiki/create"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Wiki
+                    </Link>
+                  </CollapsibleContent>
+                </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
 
           </nav>
 

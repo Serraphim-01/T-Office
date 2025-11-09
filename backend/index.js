@@ -1330,3 +1330,119 @@ app.delete("/api/inventory/products/:id/children/:childId", authenticateJWT, asy
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ---------------------------------
+// Wiki API Endpoints
+// ---------------------------------
+
+// Get all departments
+app.get("/api/wiki/departments", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT name FROM departments ORDER BY name');
+    res.json(result.rows.map(row => row.name));
+  } catch (err) {
+    console.error('Error fetching wiki departments:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all topics for a department
+app.get("/api/wiki/:department/topics", async (req, res) => {
+  const { department } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT id, topic, content, created_at, updated_at FROM wiki_topics WHERE department = $1 ORDER BY topic',
+      [department]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching wiki topics:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get specific topic content
+app.get("/api/wiki/:department/:topic", async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM wiki_topics WHERE department = $1 AND topic = $2',
+      [department, topic]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    const wikiTopic = result.rows[0];
+    res.json({
+      id: wikiTopic.id,
+      department: wikiTopic.department,
+      topic: wikiTopic.topic,
+      content: wikiTopic.content,
+      created_by: wikiTopic.created_by,
+      created_at: wikiTopic.created_at,
+      updated_at: wikiTopic.updated_at
+    });
+  } catch (err) {
+    console.error('Error fetching wiki topic:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Create or update topic content (Admin only)
+app.put("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (req, res) => {
+  const { department, topic } = req.params;
+  const { content } = req.body;
+
+  if (!content || content.trim().length === 0) {
+    return res.status(400).json({ error: "Content is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO wiki_topics (department, topic, content, created_by)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (department, topic)
+       DO UPDATE SET content = $3, updated_at = NOW()
+       RETURNING *`,
+      [department, topic, content.trim(), req.user.userId]
+    );
+
+    res.json({
+      id: result.rows[0].id,
+      department: result.rows[0].department,
+      topic: result.rows[0].topic,
+      content: result.rows[0].content,
+      created_by: result.rows[0].created_by,
+      created_at: result.rows[0].created_at,
+      updated_at: result.rows[0].updated_at
+    });
+  } catch (err) {
+    console.error('Error saving wiki topic:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete topic (Admin only)
+app.delete("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM wiki_topics WHERE department = $1 AND topic = $2 RETURNING *',
+      [department, topic]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    res.json({ message: "Topic deleted successfully" });
+  } catch (err) {
+    console.error('Error deleting wiki topic:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
