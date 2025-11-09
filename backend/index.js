@@ -385,15 +385,26 @@ async function checkToxicity(text) {
 // Function to summarize chat messages using Hugging Face API
 async function summarizeChat(messages) {
   try {
-    const conversationText = messages.map(msg => msg.text).join(' ');
+    const conversationText = messages.map(msg => msg.text).join('\n');
+
+    const prompt = `
+Summarize the following internal company chat for management.
+Focus on: tone, professionalism, conflicts, moderator actions, and overall atmosphere.
+Write 5–8 concise bullet points, not just one or two sentences.
+Avoid mentioning specific names or identities.
+
+Chat:
+${conversationText}
+`;
 
     const response = await axios.post(
-      'https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn',
+      'https://router.huggingface.co/hf-inference/models/philschmid/bart-large-cnn-samsum',
       {
-        inputs: conversationText,
+        inputs: prompt,
         parameters: {
-          max_length: 150,
-          min_length: 30,
+          max_length: 250, // increased for more detail
+          min_length: 80,
+          temperature: 0.7,
           do_sample: false
         }
       },
@@ -405,12 +416,19 @@ async function summarizeChat(messages) {
       }
     );
 
-    return response.data[0]?.summary_text || 'Unable to generate summary.';
+    const summaryText = response.data[0]?.summary_text || 'Unable to generate summary.';
+    return summaryText
+      .split(/[•\-\n]/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(s => `• ${s}`)
+      .join('\n');
   } catch (error) {
     console.error('Error summarizing chat:', error);
     return 'Summary generation failed. Please try again later.';
   }
 }
+
 
 // ---------------------------------
 // Department Configuration API Endpoints
