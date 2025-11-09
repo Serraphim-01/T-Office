@@ -10,6 +10,17 @@ CREATE TABLE wiki_topics (
     UNIQUE(department, topic)
 );
 
+-- Wiki Questions Table
+CREATE TABLE wiki_questions (
+    id SERIAL PRIMARY KEY,
+    topic_id INTEGER REFERENCES wiki_topics(id) ON DELETE CASCADE,
+    question TEXT NOT NULL,
+    options JSONB NOT NULL, -- Array of options
+    correct_answer INTEGER NOT NULL, -- Index of correct option (0-based)
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Create index for better performance
 CREATE INDEX idx_wiki_topics_department ON wiki_topics(department);
 CREATE INDEX idx_wiki_topics_topic ON wiki_topics(topic);
+CREATE INDEX idx_wiki_questions_topic_id ON wiki_questions(topic_id);

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { DashboardLayout } from '@/components/dashboard-layout';
+import { DashboardLayout } from '../../../../components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +23,12 @@ export default function CreateWikiPage() {
   const [formData, setFormData] = useState({
     department: '',
     topic: '',
-    content: ''
+    content: '',
+    questions: [] as Array<{
+      question: string;
+      options: string[];
+      correct_answer: number;
+    }>
   });
 
   useEffect(() => {
@@ -59,6 +64,19 @@ export default function CreateWikiPage() {
       return;
     }
 
+    // Validate questions
+    for (let i = 0; i < formData.questions.length; i++) {
+      const q = formData.questions[i];
+      if (!q.question.trim() || q.options.length < 2 || q.correct_answer === undefined) {
+        toast({
+          title: "Validation Error",
+          description: `Question ${i + 1} is incomplete. Each question needs text, at least 2 options, and a correct answer.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -69,7 +87,8 @@ export default function CreateWikiPage() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          content: formData.content
+          content: formData.content,
+          questions: formData.questions
         }),
       });
 
@@ -103,6 +122,69 @@ export default function CreateWikiPage() {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const addQuestion = () => {
+    setFormData(prev => ({
+      ...prev,
+      questions: [...prev.questions, {
+        question: '',
+        options: ['', ''],
+        correct_answer: 0
+      }]
+    }));
+  };
+
+  const removeQuestion = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateQuestion = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) =>
+        i === index ? { ...q, [field]: value } : q
+      )
+    }));
+  };
+
+  const addOption = (questionIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) =>
+        i === questionIndex
+          ? { ...q, options: [...q.options, ''] }
+          : q
+      )
+    }));
+  };
+
+  const removeOption = (questionIndex: number, optionIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) =>
+        i === questionIndex
+          ? { ...q, options: q.options.filter((_, j) => j !== optionIndex) }
+          : q
+      )
+    }));
+  };
+
+  const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) =>
+        i === questionIndex
+          ? {
+              ...q,
+              options: q.options.map((opt, j) => j === optionIndex ? value : opt)
+            }
+          : q
+      )
     }));
   };
 
@@ -177,15 +259,94 @@ export default function CreateWikiPage() {
                 <Label htmlFor="content">Content *</Label>
                 <Textarea
                   id="content"
-                  placeholder="Enter the wiki content as plain text..."
+                  placeholder="Enter the wiki content in HTML format..."
                   value={formData.content}
                   onChange={(e) => handleInputChange('content', e.target.value)}
                   rows={20}
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Enter your content as normal text. You can paste images directly into the text box.
+                  You can use HTML tags for formatting (e.g., &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;).
                 </p>
+              </div>
+
+              {/* Questions Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Multiple Choice Questions (Max 2)</Label>
+                  {formData.questions.length < 2 && (
+                    <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Question
+                    </Button>
+                  )}
+                </div>
+
+                {formData.questions.map((question, qIndex) => (
+                  <Card key={qIndex} className="p-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Question {qIndex + 1}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeQuestion(qIndex)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <Textarea
+                        placeholder="Enter your question..."
+                        value={question.question}
+                        onChange={(e) => updateQuestion(qIndex, 'question', e.target.value)}
+                        rows={2}
+                      />
+
+                      <div className="space-y-2">
+                        <Label>Options</Label>
+                        {question.options.map((option, oIndex) => (
+                          <div key={oIndex} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`correct-${qIndex}`}
+                              checked={question.correct_answer === oIndex}
+                              onChange={() => updateQuestion(qIndex, 'correct_answer', oIndex)}
+                            />
+                            <Input
+                              placeholder={`Option ${oIndex + 1}`}
+                              value={option}
+                              onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                              className="flex-1"
+                            />
+                            {question.options.length > 2 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeOption(qIndex, oIndex)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        {question.options.length < 4 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addOption(qIndex)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Option
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
 
               {/* Submit Button */}

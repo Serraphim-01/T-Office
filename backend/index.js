@@ -1377,11 +1377,24 @@ app.get("/api/wiki/:department/:topic", async (req, res) => {
     }
 
     const wikiTopic = result.rows[0];
+
+    // Get questions for this topic
+    const questionsResult = await pool.query(
+      'SELECT id, question, options, correct_answer FROM wiki_questions WHERE topic_id = $1 ORDER BY id',
+      [wikiTopic.id]
+    );
+
     res.json({
       id: wikiTopic.id,
       department: wikiTopic.department,
       topic: wikiTopic.topic,
       content: wikiTopic.content,
+      questions: questionsResult.rows.map(q => ({
+        id: q.id,
+        question: q.question,
+        options: q.options,
+        correct_answer: q.correct_answer
+      })),
       created_by: wikiTopic.created_by,
       created_at: wikiTopic.created_at,
       updated_at: wikiTopic.updated_at
@@ -1395,14 +1408,18 @@ app.get("/api/wiki/:department/:topic", async (req, res) => {
 // Create or update topic content (Admin only)
 app.put("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (req, res) => {
   const { department, topic } = req.params;
-  const { content } = req.body;
+  const { content, questions } = req.body;
 
   if (!content || content.trim().length === 0) {
     return res.status(400).json({ error: "Content is required" });
   }
 
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+
+    // Insert or update the topic
+    const result = await client.query(
       `INSERT INTO wiki_topics (department, topic, content, created_by)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (department, topic)
@@ -1410,6 +1427,25 @@ app.put("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (re
        RETURNING *`,
       [department, topic, content.trim(), req.user.userId]
     );
+
+    const topicId = result.rows[0].id;
+
+    // Delete existing questions for this topic
+    await client.query('DELETE FROM wiki_questions WHERE topic_id = $1', [topicId]);
+
+    // Insert new questions if provided
+    if (questions && Array.isArray(questions) && questions.length > 0) {
+      for (const question of questions) {
+        if (question.question && question.options && question.correct_answer !== undefined) {
+          await client.query(
+            'INSERT INTO wiki_questions (topic_id, question, options, correct_answer) VALUES ($1, $2, $3, $4)',
+            [topicId, question.question.trim(), JSON.stringify(question.options), question.correct_answer]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
 
     res.json({
       id: result.rows[0].id,
@@ -1421,8 +1457,11 @@ app.put("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (re
       updated_at: result.rows[0].updated_at
     });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('Error saving wiki topic:', err);
     res.status(500).json({ error: "Internal server error" });
+  } finally {
+    client.release();
   }
 });
 
