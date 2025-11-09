@@ -1,23 +1,18 @@
-# TODO: Implement Resources Wiki in Sidenav
+# TODO: Chat Modifications
 
-## Current Status
-- [x] Analyze dashboard layout and navigation structure
-- [x] Create implementation plan
-- [x] Get user approval for plan
-- [x] Add Resources collapsible section to dashboard-layout.tsx
-- [x] Add Wiki submenu under Resources
-- [x] Add department collapsible items under Wiki (Admin, HR, Compliance, etc.)
-- [x] Add topics under each department (Introduction, etc.)
+## Backend Changes
+- [x] Add endpoint to clear all chat messages from DB (admin only)
+- [x] Add table/endpoint for chat pause status
+- [x] Modify POST /api/chat/messages to check pause status and moderator access
+- [x] Add endpoint to toggle chat pause (moderator only)
 
-## Next Steps
-- [x] Create page routes for lesson content: app/resources/wiki/[department]/[topic]/page.tsx
-- [x] Implement lesson content display components
-- [x] Test navigation and collapsible behavior
-- [x] Add backend API endpoints for wiki content
-- [x] Create wiki_topics database table
-- [x] Seed initial wiki content
-- [x] Create wiki index page (app/resources/wiki/page.tsx)
-- [x] Create wiki create page (app/resources/wiki/create/page.tsx)
-- [x] Create department wiki pages (app/resources/wiki/[department]/page.tsx)
-- [x] Update navigation to use dynamic wiki system
-- [x] Test full wiki functionality
+## Frontend Changes
+- [x] Remove "Clear Chat" button from chat page
+- [x] Add pause toggle button for moderators
+- [x] Update message sending logic to handle paused state
+- [x] Display paused status in UI
+- [x] Update guidelines to mention pause functionality
+
+## Database Changes
+- [x] Create chat_settings table for pause status
+- [x] Run migration to clear existing messages

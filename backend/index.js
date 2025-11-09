@@ -310,6 +310,59 @@ app.delete("/api/admin/users/:id", authenticateJWT, requireAdmin, async (req, re
 // Anonymous Chat API Endpoints
 // ---------------------------------
 
+// Get chat settings (pause status)
+app.get("/api/chat/settings", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT is_paused, paused_by, paused_at FROM chat_settings WHERE id = 1');
+    if (result.rows.length === 0) {
+      // Initialize settings if not exists
+      await pool.query('INSERT INTO chat_settings (id, is_paused) VALUES (1, false)');
+      res.json({ is_paused: false, paused_by: null, paused_at: null });
+    } else {
+      res.json(result.rows[0]);
+    }
+  } catch (err) {
+    console.error('Error fetching chat settings:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Toggle chat pause (Moderator only)
+app.put("/api/chat/settings/pause", authenticateJWT, requireHR, async (req, res) => {
+  const { is_paused } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE chat_settings SET is_paused = $1, paused_by = $2, paused_at = CASE WHEN $1 THEN NOW() ELSE NULL END WHERE id = 1 RETURNING *',
+      [is_paused, req.user.userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Create settings if not exists
+      await pool.query(
+        'INSERT INTO chat_settings (id, is_paused, paused_by, paused_at) VALUES (1, $1, $2, CASE WHEN $1 THEN NOW() ELSE NULL END)',
+        [is_paused, req.user.userId]
+      );
+    }
+
+    res.json({ message: `Chat ${is_paused ? 'paused' : 'unpaused'} successfully` });
+  } catch (err) {
+    console.error('Error updating chat settings:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Clear all chat messages (Admin only)
+app.post("/api/chat/clear", authenticateJWT, requireAdmin, async (req, res) => {
+  try {
+    await pool.query('TRUNCATE TABLE chat_messages CASCADE');
+    res.json({ message: "All chat messages cleared successfully" });
+  } catch (err) {
+    console.error('Error clearing chat messages:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get all chat messages
 app.get("/api/chat/messages", async (req, res) => {
   try {
@@ -327,6 +380,14 @@ app.post("/api/chat/messages", async (req, res) => {
     const { text, isModerator } = req.body;
     if (!text || text.trim().length === 0) {
       return res.status(400).json({ error: "Message text is required" });
+    }
+
+    // Check if chat is paused
+    const settingsResult = await pool.query('SELECT is_paused FROM chat_settings WHERE id = 1');
+    const isPaused = settingsResult.rows.length > 0 ? settingsResult.rows[0].is_paused : false;
+
+    if (isPaused && !isModerator) {
+      return res.status(403).json({ error: "Chat is currently paused. Only moderators can send messages." });
     }
 
     // Check for toxic content using Hugging Face API (only for anonymous messages)
@@ -973,34 +1034,67 @@ app.put("/api/admin/approvals/roles/:requestId", authenticateJWT, requireAdmin, 
   }
 });
 
+// Function to calculate date range based on time range option
+function getDateRange(timeRange) {
+  const now = new Date();
+  let startDate;
+
+  switch (timeRange) {
+    case 'today':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case 'last_7_days':
+      startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+      break;
+    case 'last_2_weeks':
+      startDate = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000));
+      break;
+    case 'last_1_month':
+      startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      break;
+    default:
+      startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // Default to last 7 days
+  }
+
+  return {
+    startDate: startDate.toISOString(),
+    endDate: now.toISOString()
+  };
+}
+
+// Function to cleanup old messages based on lifespan
+async function cleanupOldMessages() {
+  try {
+    const lifespanDays = parseInt(process.env.MESSAGE_LIFESPAN_DAYS, 10) || 30; // Default 30 days
+    const cutoffDate = new Date(Date.now() - (lifespanDays * 24 * 60 * 60 * 1000));
+
+    const result = await pool.query(
+      'DELETE FROM chat_messages WHERE created_at < $1',
+      [cutoffDate.toISOString()]
+    );
+
+    if (result.rowCount > 0) {
+      console.log(`Cleaned up ${result.rowCount} old chat messages older than ${lifespanDays} days`);
+    }
+  } catch (err) {
+    console.error('Error cleaning up old messages:', err);
+  }
+}
+
 // Summarize chat messages (Admin/HR only)
 app.post("/api/chat/summarize", authenticateJWT, requireHR, async (req, res) => {
   try {
-    const { startDate, endDate, useCurrentTime } = req.body;
+    const { timeRange } = req.body;
 
-    let query = 'SELECT id, text, created_at, is_moderator FROM chat_messages WHERE 1=1';
-    const params = [];
-    let paramIndex = 1;
+    // Clean up old messages before summarizing
+    await cleanupOldMessages();
 
-    if (useCurrentTime) {
-      // Use current time as end date, start from beginning
-      query += ` AND created_at <= NOW()`;
-    } else {
-      if (startDate) {
-        query += ` AND created_at >= $${paramIndex}`;
-        params.push(startDate);
-        paramIndex++;
-      }
-      if (endDate) {
-        query += ` AND created_at <= $${paramIndex}`;
-        params.push(endDate);
-        paramIndex++;
-      }
-    }
+    const { startDate, endDate } = getDateRange(timeRange);
 
-    query += ' ORDER BY created_at ASC';
-
-    const result = await pool.query(query, params);
+    const result = await pool.query(
+      'SELECT id, text, created_at, is_moderator FROM chat_messages WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at ASC',
+      [startDate, endDate]
+    );
 
     if (result.rows.length === 0) {
       return res.json({ summary: 'No messages found in the specified time range.' });
@@ -1011,7 +1105,7 @@ app.post("/api/chat/summarize", authenticateJWT, requireHR, async (req, res) => 
     res.json({
       summary,
       messageCount: result.rows.length,
-      timeRange: useCurrentTime ? 'All messages up to now' : `${startDate || 'Beginning'} to ${endDate || 'Now'}`
+      timeRange: timeRange.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
     });
   } catch (err) {
     console.error('Error summarizing chat:', err);
