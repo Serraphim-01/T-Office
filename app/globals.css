@@ -80,3 +80,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+.wiki-link {
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+  animation: fadeUnderline 3s ease-in-out infinite;
+}
+
+@keyframes fadeUnderline {
+  0%, 100% {
+    text-decoration-color: currentColor;
+    opacity: 1;
+  }
+  50% {
+    text-decoration-color: transparent;
+    opacity: 0.6;
+  }
+}
+
+.wiki-link:hover {
+  text-decoration-color: currentColor;
+  opacity: 1;
+  animation-play-state: paused;
+}

@@ -21,10 +21,12 @@ export default function CreateWikiPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<string[]>([]);
+  const [departmentTopics, setDepartmentTopics] = useState<{[key: string]: Array<{id: number, topic: string}>}>({});
   const [formData, setFormData] = useState({
     department: '',
     topic: '',
     content: '',
+    video_url: '',
     questions: [] as Array<{
       question: string;
       options: string[];
@@ -32,7 +34,6 @@ export default function CreateWikiPage() {
     }>
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   useEffect(() => {
     // Check if user has create access
     if (user && !hasFeatureAccess('Resources', 'wiki', 'create')) {
@@ -49,6 +50,24 @@ export default function CreateWikiPage() {
       const response = await fetch('http://localhost:4000/api/wiki/departments');
       const data = await response.json();
       setDepartments(data);
+
+      // Fetch topics for each department
+      const topicsData: {[key: string]: Array<{id: number, topic: string}>} = {};
+      for (const dept of data) {
+        try {
+          const topicsResponse = await fetch(`http://localhost:4000/api/wiki/${dept}/topics`);
+          if (topicsResponse.ok) {
+            const topics = await topicsResponse.json();
+            topicsData[dept] = topics;
+          } else {
+            topicsData[dept] = [];
+          }
+        } catch (error) {
+          console.error(`Error fetching topics for ${dept}:`, error);
+          topicsData[dept] = [];
+        }
+      }
+      setDepartmentTopics(topicsData);
     } catch (error) {
       console.error('Error fetching departments:', error);
     }
@@ -90,6 +109,7 @@ export default function CreateWikiPage() {
         },
         body: JSON.stringify({
           content: formData.content,
+          video_url: formData.video_url,
           questions: formData.questions
         }),
       });
@@ -238,6 +258,171 @@ export default function CreateWikiPage() {
     }
   };
 
+  const applyLink = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+
+    if (selectedText) {
+      const url = prompt('Enter URL:');
+      if (url) {
+        const beforeText = formData.content.substring(0, start);
+        const afterText = formData.content.substring(end);
+        const linkText = `<a href="${url}" target="_blank" rel="noopener noreferrer">${selectedText}</a>`;
+        const newContent = beforeText + linkText + afterText;
+
+        setFormData(prev => ({ ...prev, content: newContent }));
+
+        // Restore cursor position
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start, start + linkText.length);
+        }, 0);
+      }
+    } else {
+      alert('Please select text to link first.');
+    }
+  };
+
+  const applyLessonLink = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+
+    if (selectedText) {
+      if (!formData.department) {
+        alert('Please select a department first.');
+        return;
+      }
+
+      const availableTopics = departmentTopics[formData.department] || [];
+      if (availableTopics.length === 0) {
+        alert('No lessons available in this department.');
+        return;
+      }
+
+      // Create a dropdown for lesson selection
+      const lessonSelect = document.createElement('select');
+      lessonSelect.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      `;
+
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Select a lesson...';
+      lessonSelect.appendChild(defaultOption);
+
+      availableTopics.forEach(topic => {
+        const option = document.createElement('option');
+        option.value = `/resources/wiki/${formData.department}/${topic.topic}`;
+        option.textContent = topic.topic.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        lessonSelect.appendChild(option);
+      });
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+      `;
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Link';
+      confirmBtn.style.cssText = `
+        margin-left: 10px;
+        padding: 5px 10px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = `
+        margin-left: 10px;
+        padding: 5px 10px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.cssText = 'display: flex; justify-content: flex-end; gap: 10px;';
+      buttonContainer.appendChild(confirmBtn);
+      buttonContainer.appendChild(cancelBtn);
+
+      const container = document.createElement('div');
+      container.appendChild(lessonSelect);
+      container.appendChild(buttonContainer);
+      container.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      `;
+
+      overlay.appendChild(container);
+      document.body.appendChild(overlay);
+
+      const cleanup = () => {
+        document.body.removeChild(overlay);
+      };
+
+      confirmBtn.onclick = () => {
+        const selectedValue = lessonSelect.value;
+        if (selectedValue) {
+          const beforeText = formData.content.substring(0, start);
+          const afterText = formData.content.substring(end);
+          const linkText = `<a href="${selectedValue}">${selectedText}</a>`;
+          const newContent = beforeText + linkText + afterText;
+
+          setFormData(prev => ({ ...prev, content: newContent }));
+
+          // Restore cursor position
+          setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start, start + linkText.length);
+          }, 0);
+        }
+        cleanup();
+      };
+
+      cancelBtn.onclick = () => {
+        cleanup();
+      };
+
+      overlay.onclick = (e) => {
+        if (e.target === overlay) {
+          cleanup();
+        }
+      };
+    } else {
+      alert('Please select text to link first.');
+    }
+  };
+
 
 
   if (!hasFeatureAccess('Resources', 'wiki', 'create')) {
@@ -275,7 +460,11 @@ export default function CreateWikiPage() {
                 <Label htmlFor="department">Department *</Label>
                 <Select
                   value={formData.department}
-                  onValueChange={(value) => handleInputChange('department', value)}
+                  onValueChange={(value) => {
+                    handleInputChange('department', value);
+                    // Clear topic when department changes
+                    handleInputChange('topic', '');
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a department" />
@@ -306,7 +495,7 @@ export default function CreateWikiPage() {
                 </p>
               </div>
 
-              {/* Content */}
+              {/* Rich Text Editor */}
               <div className="space-y-2">
                 <Label htmlFor="content">Content *</Label>
                 <div className="border rounded-md">
@@ -338,6 +527,26 @@ export default function CreateWikiPage() {
                     >
                       <Underline className="h-4 w-4" />
                     </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyLink()}
+                      className="h-8 w-8 p-0"
+                      title="Add External Link"
+                    >
+                      🔗
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyLessonLink()}
+                      className="h-8 w-8 p-0"
+                      title="Link to Lesson"
+                    >
+                      📚
+                    </Button>
                     <div className="h-4 w-px bg-border mx-1" />
                     <Select onValueChange={applyFontSize}>
                       <SelectTrigger className="h-8 w-24">
@@ -367,6 +576,26 @@ export default function CreateWikiPage() {
                 <p className="text-sm text-muted-foreground">
                   You can use HTML tags for formatting (e.g., &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;).
                 </p>
+              </div>
+
+              {/* More Resources */}
+              <div className="space-y-4">
+                <Label>More Resources</Label>
+
+                {/* Video URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="video_url">Video URL (Optional)</Label>
+                  <Input
+                    id="video_url"
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                    value={formData.video_url}
+                    onChange={(e) => handleInputChange('video_url', e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Add a video URL to embed in the topic (YouTube, Vimeo, etc.)
+                  </p>
+                </div>
               </div>
 
               {/* Questions Section */}

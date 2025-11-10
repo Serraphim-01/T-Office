@@ -1501,6 +1501,7 @@ app.get("/api/wiki/:department/:topic", async (req, res) => {
       department: wikiTopic.department,
       topic: wikiTopic.topic,
       content: wikiTopic.content,
+      video_url: wikiTopic.video_url,
       questions: questionsResult.rows.map(q => ({
         id: q.id,
         question: q.question,
@@ -1532,12 +1533,12 @@ app.put("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async (re
 
     // Insert or update the topic
     const result = await client.query(
-      `INSERT INTO wiki_topics (department, topic, content, created_by)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO wiki_topics (department, topic, content, video_url, created_by)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (department, topic)
-       DO UPDATE SET content = $3, updated_at = NOW()
+       DO UPDATE SET content = $3, video_url = $4, updated_at = NOW()
        RETURNING *`,
-      [department, topic, content.trim(), req.user.userId]
+      [department, topic, content.trim(), req.body.video_url || null, req.user.userId]
     );
 
     const topicId = result.rows[0].id;
@@ -1594,6 +1595,117 @@ app.delete("/api/wiki/:department/:topic", authenticateJWT, requireAdmin, async 
     res.json({ message: "Topic deleted successfully" });
   } catch (err) {
     console.error('Error deleting wiki topic:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Check if user has completed a lesson
+app.get("/api/wiki/:department/:topic/completion", authenticateJWT, async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    // First get the topic ID
+    const topicResult = await pool.query(
+      'SELECT id FROM wiki_topics WHERE department = $1 AND topic = $2',
+      [department, topic]
+    );
+
+    if (topicResult.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    const topicId = topicResult.rows[0].id;
+
+    // Check if user has completed this topic
+    const completionResult = await pool.query(
+      'SELECT id, completed_at FROM wiki_lesson_completions WHERE user_id = $1 AND topic_id = $2',
+      [req.user.userId, topicId]
+    );
+
+    res.json({
+      completed: completionResult.rows.length > 0,
+      completed_at: completionResult.rows[0]?.completed_at || null
+    });
+  } catch (err) {
+    console.error('Error checking lesson completion:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Mark lesson as completed
+app.post("/api/wiki/:department/:topic/completion", authenticateJWT, async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    // First get the topic ID
+    const topicResult = await pool.query(
+      'SELECT id FROM wiki_topics WHERE department = $1 AND topic = $2',
+      [department, topic]
+    );
+
+    if (topicResult.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    const topicId = topicResult.rows[0].id;
+
+    // Insert completion record (ON CONFLICT DO NOTHING due to UNIQUE constraint)
+    const result = await pool.query(
+      'INSERT INTO wiki_lesson_completions (user_id, topic_id) VALUES ($1, $2) ON CONFLICT (user_id, topic_id) DO NOTHING RETURNING *',
+      [req.user.userId, topicId]
+    );
+
+    res.json({
+      completed: true,
+      completed_at: result.rows[0]?.completed_at || new Date().toISOString(),
+      was_already_completed: result.rows.length === 0
+    });
+  } catch (err) {
+    console.error('Error marking lesson as completed:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get next lesson in department
+app.get("/api/wiki/:department/:topic/next", authenticateJWT, async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    // Get all topics in the department ordered by topic name
+    const topicsResult = await pool.query(
+      'SELECT id, topic FROM wiki_topics WHERE department = $1 ORDER BY topic',
+      [department]
+    );
+
+    if (topicsResult.rows.length === 0) {
+      return res.json({ next_lesson: null });
+    }
+
+    // Find current topic index
+    const currentIndex = topicsResult.rows.findIndex(t => t.topic === topic);
+
+    if (currentIndex === -1) {
+      return res.json({ next_lesson: null });
+    }
+
+    // Get next topic
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= topicsResult.rows.length) {
+      // No more lessons in this department
+      return res.json({ next_lesson: null });
+    }
+
+    const nextTopic = topicsResult.rows[nextIndex];
+
+    res.json({
+      next_lesson: {
+        department: department,
+        topic: nextTopic.topic,
+        id: nextTopic.id
+      }
+    });
+  } catch (err) {
+    console.error('Error getting next lesson:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, BookOpen, Plus, FolderOpen, Menu } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookOpen, Plus, FolderOpen, Menu, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useUI } from '@/lib/ui-context';
@@ -16,16 +16,22 @@ interface WikiTopic {
   created_by: number;
   created_at: string;
   updated_at: string;
+  completed?: boolean;
 }
 
 interface DepartmentTopics {
   [department: string]: WikiTopic[];
 }
 
+interface CompletionData {
+  [key: string]: boolean; // topic_id -> completed
+}
+
 export default function WikiPage() {
   const { user, hasFeatureAccess } = useAuth();
   const [departments, setDepartments] = useState<string[]>([]);
   const [departmentTopics, setDepartmentTopics] = useState<DepartmentTopics>({});
+  const [completionData, setCompletionData] = useState<CompletionData>({});
   const [loading, setLoading] = useState(true);
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -33,6 +39,56 @@ export default function WikiPage() {
   useEffect(() => {
     fetchWikiData();
   }, []);
+
+  const fetchCompletionData = async (topicsData: DepartmentTopics): Promise<CompletionData> => {
+    try {
+      const completionPromises = [];
+      const topicIds: number[] = [];
+
+      // Collect all topic IDs
+      Object.values(topicsData).forEach(topics => {
+        topics.forEach(topic => {
+          topicIds.push(topic.id);
+        });
+      });
+
+      // Fetch completion status for each topic
+      for (const topicId of topicIds) {
+        // Find the department and topic name for this ID
+        let dept = '';
+        let topicName = '';
+        Object.entries(topicsData).forEach(([department, topics]) => {
+          const topic = topics.find(t => t.id === topicId);
+          if (topic) {
+            dept = department;
+            topicName = topic.topic;
+          }
+        });
+
+        if (dept && topicName) {
+          completionPromises.push(
+            fetch(`http://localhost:4000/api/wiki/${dept}/${topicName}/completion`, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+            }).then(res => res.ok ? res.json() : { completed: false })
+              .then(data => ({ topicId, completed: data.completed }))
+          );
+        }
+      }
+
+      const completionResults = await Promise.all(completionPromises);
+      const completionMap: CompletionData = {};
+      completionResults.forEach(result => {
+        completionMap[result.topicId] = result.completed;
+      });
+
+      return completionMap;
+    } catch (error) {
+      console.error('Error fetching completion data:', error);
+      return {};
+    }
+  };
 
   const fetchWikiData = async () => {
     try {
@@ -58,6 +114,10 @@ export default function WikiPage() {
         }
       }
       setDepartmentTopics(topicsData);
+
+      // Fetch completion data for all topics
+      const completionMap = await fetchCompletionData(topicsData);
+      setCompletionData(completionMap);
     } catch (error) {
       console.error('Error fetching wiki data:', error);
     } finally {
@@ -138,7 +198,7 @@ export default function WikiPage() {
                         {getDepartmentDisplayName(department)}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {departmentTopics[department]?.length || 0}
+                        {departmentTopics[department]?.filter(topic => completionData[topic.id]).length || 0}/{departmentTopics[department]?.length || 0}
                       </span>
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${
@@ -158,12 +218,19 @@ export default function WikiPage() {
                           href={`/resources/wiki/${department}/${topic.topic}`}
                           className="block p-2 rounded-lg hover:bg-muted transition-colors text-sm"
                         >
-                          <div className="font-medium">
-                            {topic.topic.replace(/-/g, ' ').charAt(0).toUpperCase() +
-                             topic.topic.replace(/-/g, ' ').slice(1)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Updated {new Date(topic.updated_at).toLocaleDateString()}
+                          <div className="flex items-center gap-2">
+                            {completionData[topic.id] && (
+                              <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
+                            )}
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                {topic.topic.replace(/-/g, ' ').charAt(0).toUpperCase() +
+                                 topic.topic.replace(/-/g, ' ').slice(1)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Updated {new Date(topic.updated_at).toLocaleDateString()}
+                              </div>
+                            </div>
                           </div>
                         </Link>
                       ))

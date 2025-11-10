@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, BookOpen, Clock, Edit, Trash2, CheckCircle, XCircle, Save, X, Plus, Bold, Italic, Underline, Type } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Edit, Trash2, CheckCircle, XCircle, Save, X, Plus, Bold, Italic, Underline, Type, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,7 +26,7 @@ interface QuestionProps {
   questionIndex: number;
 }
 
-function QuestionCard({ question, questionIndex }: QuestionProps) {
+function QuestionCard({ question, questionIndex, onAllCorrect }: QuestionProps & { onAllCorrect?: () => void }) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
 
@@ -37,6 +37,9 @@ function QuestionCard({ question, questionIndex }: QuestionProps) {
 
   const handleSubmit = () => {
     setShowResult(true);
+    if (selectedAnswer === question.correct_answer && onAllCorrect) {
+      onAllCorrect();
+    }
   };
 
   const isCorrect = selectedAnswer === question.correct_answer;
@@ -131,6 +134,7 @@ interface WikiTopic {
   department: string;
   topic: string;
   content: string;
+  video_url: string | null;
   questions: Array<{
     id: number;
     question: string;
@@ -141,6 +145,41 @@ interface WikiTopic {
   created_at: string;
   updated_at: string;
 }
+
+interface CompletionStatus {
+  completed: boolean;
+  completed_at: string | null;
+}
+
+interface NextLesson {
+  department: string;
+  topic: string;
+  id: number;
+}
+
+const getYouTubeVideoId = (url: string) => {
+  // Handle various YouTube URL formats
+  const patterns = [
+    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^"&?\/\s]{11})/i,
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^"&?\/\s]{11})/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return null;
+};
+
+const getVimeoVideoId = (url: string) => {
+  const regExp = /vimeo\.com\/(?:video\/)?(\d+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+};
 
 export default function WikiLessonPage() {
   const params = useParams();
@@ -153,6 +192,8 @@ export default function WikiLessonPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [completionStatus, setCompletionStatus] = useState<CompletionStatus | null>(null);
+  const [nextLesson, setNextLesson] = useState<NextLesson | null>(null);
   const [editFormData, setEditFormData] = useState({
     topic: '',
     content: '',
@@ -168,6 +209,8 @@ export default function WikiLessonPage() {
 
   useEffect(() => {
     fetchLesson();
+    fetchCompletionStatus();
+    fetchNextLesson();
   }, [department, topic]);
 
   const fetchLesson = async () => {
@@ -189,6 +232,60 @@ export default function WikiLessonPage() {
       setError('Failed to load topic');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompletionStatus = async () => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/completion`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCompletionStatus(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch completion status:', err);
+    }
+  };
+
+  const fetchNextLesson = async () => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/next`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNextLesson(data.next_lesson);
+      }
+    } catch (err) {
+      console.error('Failed to fetch next lesson:', err);
+    }
+  };
+
+  const markLessonCompleted = async () => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/completion`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCompletionStatus({
+          completed: data.completed,
+          completed_at: data.completed_at
+        });
+        // Refresh next lesson in case completion affects it
+        fetchNextLesson();
+      }
+    } catch (err) {
+      console.error('Failed to mark lesson as completed:', err);
     }
   };
 
@@ -409,6 +506,60 @@ export default function WikiLessonPage() {
     }
   };
 
+  const handleLinkClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A') {
+      e.preventDefault();
+      const href = target.getAttribute('href');
+      if (href) {
+        // Check if it's a lesson link
+        if (href.startsWith('/resources/wiki/')) {
+          const pathParts = href.split('/');
+          if (pathParts.length >= 5) {
+            const linkDepartment = pathParts[3];
+            const linkTopic = pathParts[4];
+
+            // Check if the linked lesson is completed
+            try {
+              const response = await fetch(`http://localhost:4000/api/wiki/${linkDepartment}/${linkTopic}/completion`, {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                },
+              });
+              if (response.ok) {
+                const data = await response.json();
+                if (data.completed) {
+                  // Allow navigation to completed lesson
+                  window.location.href = href;
+                } else {
+                  // Show message that lesson must be completed first
+                  toast({
+                    title: "Lesson Locked",
+                    description: "You must complete this lesson before accessing the linked content.",
+                    variant: "destructive",
+                  });
+                }
+              } else {
+                // If we can't check completion, allow navigation
+                window.location.href = href;
+              }
+            } catch (error) {
+              console.error('Error checking lesson completion:', error);
+              // Allow navigation on error
+              window.location.href = href;
+            }
+          } else {
+            // Not a valid lesson path, treat as external link
+            window.open(href, '_blank');
+          }
+        } else {
+          // External link
+          window.open(href, '_blank');
+        }
+      }
+    }
+  };
+
 
 
   if (loading) {
@@ -508,6 +659,54 @@ export default function WikiLessonPage() {
         {/* Content */}
         <Card>
           <CardContent className="p-6">
+            {/* Video Content */}
+            {lesson.video_url && !isEditing && (
+              <div className="space-y-4 mb-6">
+                <Label className="text-lg font-semibold">Video Content</Label>
+                <div className="aspect-video bg-muted rounded-lg overflow-hidden shadow-lg">
+                  {lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be') ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${getYouTubeVideoId(lesson.video_url)}`}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title="Video Content"
+                    />
+                  ) : lesson.video_url.includes('vimeo.com') ? (
+                    <iframe
+                      src={`https://player.vimeo.com/video/${getVimeoVideoId(lesson.video_url)}`}
+                      className="w-full h-full"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                      title="Video Content"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900 dark:to-indigo-900">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-blue-500 rounded-full flex items-center justify-center">
+                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <a
+                          href={lesson.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" />
+                          </svg>
+                          Watch Video
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {isEditing ? (
               <div className="space-y-6">
                 {/* Content Editor */}
@@ -654,9 +853,40 @@ export default function WikiLessonPage() {
               </div>
             ) : (
               <div className="prose prose-slate dark:prose-invert max-w-none overflow-hidden break-words">
-                <div dangerouslySetInnerHTML={{
-                  __html: lesson.content.replace(/\n/g, '<br>')
-                }} />
+                <style jsx>{`
+                  .wiki-link {
+                    text-decoration: underline;
+                    text-decoration-color: currentColor;
+                    text-underline-offset: 2px;
+                    animation: fadeUnderline 3s ease-in-out infinite;
+                  }
+
+                  @keyframes fadeUnderline {
+                    0%, 100% {
+                      text-decoration-color: currentColor;
+                      opacity: 1;
+                    }
+                    50% {
+                      text-decoration-color: transparent;
+                      opacity: 0.6;
+                    }
+                  }
+
+                  .wiki-link:hover {
+                    text-decoration-color: currentColor;
+                    opacity: 1;
+                    animation-play-state: paused;
+                  }
+                `}</style>
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: lesson.content.replace(/\n/g, '<br>').replace(
+                      /<a /g,
+                      '<a class="wiki-link" '
+                    )
+                  }}
+                  onClick={(e) => handleLinkClick(e)}
+                />
               </div>
             )}
           </CardContent>
@@ -677,8 +907,104 @@ export default function WikiLessonPage() {
                   key={question.id}
                   question={question}
                   questionIndex={qIndex}
+                  onAllCorrect={() => {
+                    // For simplicity, mark lesson as completed when user answers a question correctly
+                    // In a more complex implementation, you could track all answers and require all correct
+                    if (!completionStatus?.completed) {
+                      markLessonCompleted();
+                    }
+                  }}
                 />
               ))}
+
+              {/* Completion Status and Next Lesson */}
+              {completionStatus && (
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {completionStatus.completed ? (
+                        <>
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="font-medium text-green-800 dark:text-green-200">
+                            Lesson Completed!
+                          </span>
+                          {completionStatus.completed_at && (
+                            <span className="text-sm text-muted-foreground">
+                              on {new Date(completionStatus.completed_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-5 w-5 text-orange-600" />
+                          <span className="font-medium text-orange-800 dark:text-orange-200">
+                            Complete the questions to finish this lesson
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {completionStatus.completed && nextLesson && (
+                      <Button asChild>
+                        <Link href={`/resources/wiki/${nextLesson.department}/${nextLesson.topic}`}>
+                          Next Lesson: {nextLesson.topic.replace(/-/g, ' ').charAt(0).toUpperCase() + nextLesson.topic.replace(/-/g, ' ').slice(1)}
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Completion Section for Lessons without Questions */}
+        {(!lesson.questions || lesson.questions.length === 0) && !isEditing && completionStatus && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {completionStatus.completed ? (
+                    <>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800 dark:text-green-200">
+                        Lesson Completed!
+                      </span>
+                      {completionStatus.completed_at && (
+                        <span className="text-sm text-muted-foreground">
+                          on {new Date(completionStatus.completed_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium text-blue-800 dark:text-blue-200">
+                        Ready to complete this lesson?
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  {!completionStatus.completed && (
+                    <Button onClick={markLessonCompleted} className="bg-green-600 hover:bg-green-700">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Complete Lesson
+                    </Button>
+                  )}
+
+                  {completionStatus.completed && nextLesson && (
+                    <Button asChild>
+                      <Link href={`/resources/wiki/${nextLesson.department}/${nextLesson.topic}`}>
+                        Next Lesson: {nextLesson.topic.replace(/-/g, ' ').charAt(0).toUpperCase() + nextLesson.topic.replace(/-/g, ' ').slice(1)}
+                        <ChevronRight className="h-4 w-4 ml-2" />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}

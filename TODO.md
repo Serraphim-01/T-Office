@@ -1,19 +1,18 @@
-# Task: Add Inventory and Resources Features to Admin Feature Management
+i# Wiki Completion Progress Implementation
 
-## Overview
-Add Inventory and Resources features to the admin features page so they can be toggled on and off for certain departments and roles, just like other features.
+## Backend Changes
+- [x] Add API endpoint to check if user has completed a lesson
+- [x] Add API endpoint to mark lesson as completed
+- [x] Add API endpoint to get next lesson in department
 
-## Steps
-- [x] Update featureHierarchy in app/admin/features/page.tsx to include Inventory and Resources
-- [x] Update default Admin features in app/admin/features/page.tsx to include Inventory and Resources
-- [x] Update dashboard-layout.tsx to gate Inventory and Resources menus based on feature access
-- [x] Update wiki page to use feature access instead of department check for create button
-- [x] Fix delete functionality to respect feature permissions
-- [x] Ensure Admin doesn't have default access to Resources create/delete operations
-- [x] Implement inline editing for wiki topics
-- [ ] Test the feature toggling functionality
+## Frontend Changes
+- [x] Update lesson page to check completion status on load
+- [x] Add completion logic when all questions are answered correctly
+- [x] Add "Next Lesson" button when lesson is completed
+- [x] Update wiki index page to show completion indicators
+- [x] Add visual styling for completed lessons
 
-## Files to Edit
-- app/admin/features/page.tsx
-- components/dashboard-layout.tsx
-- app/resources/wiki/page.tsx
+## Testing
+- [x] Test completion tracking
+- [x] Test next lesson navigation
+- [x] Test completion indicators in wiki index

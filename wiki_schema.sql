@@ -4,6 +4,7 @@ CREATE TABLE wiki_topics (
     department VARCHAR(100) NOT NULL,
     topic VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    video_url TEXT, -- Optional video URL for the topic
     created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
