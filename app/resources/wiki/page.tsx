@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, BookOpen, Plus, FolderOpen, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useUI } from '@/lib/ui-context';
 
 interface WikiTopic {
   id: number;
@@ -22,7 +23,7 @@ interface DepartmentTopics {
 }
 
 export default function WikiPage() {
-  const { user } = useAuth();
+  const { user, hasFeatureAccess } = useAuth();
   const [departments, setDepartments] = useState<string[]>([]);
   const [departmentTopics, setDepartmentTopics] = useState<DepartmentTopics>({});
   const [loading, setLoading] = useState(true);
@@ -178,7 +179,7 @@ export default function WikiPage() {
             ))}
           </div>
 
-          {!sidebarCollapsed && user?.department === 'Admin' && (
+          {!sidebarCollapsed && hasFeatureAccess('Resources', 'wiki', 'create') && (
             <div className="p-4 border-t">
               <Button asChild className="w-full">
                 <Link href="/resources/wiki/create">
@@ -199,7 +200,7 @@ export default function WikiPage() {
               <p className="text-muted-foreground mb-6">
                 Select a department from the sidebar to browse available topics, or create new content if you're an admin.
               </p>
-              {user?.department === 'Admin' && (
+              {hasFeatureAccess('Resources', 'wiki', 'create') && (
                 <Button asChild>
                   <Link href="/resources/wiki/create">
                     <Plus className="mr-2 h-4 w-4" />

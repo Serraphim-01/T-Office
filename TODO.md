@@ -1,18 +1,19 @@
-# TODO: Chat Modifications
+# Task: Add Inventory and Resources Features to Admin Feature Management
 
-## Backend Changes
-- [x] Add endpoint to clear all chat messages from DB (admin only)
-- [x] Add table/endpoint for chat pause status
-- [x] Modify POST /api/chat/messages to check pause status and moderator access
-- [x] Add endpoint to toggle chat pause (moderator only)
+## Overview
+Add Inventory and Resources features to the admin features page so they can be toggled on and off for certain departments and roles, just like other features.
 
-## Frontend Changes
-- [x] Remove "Clear Chat" button from chat page
-- [x] Add pause toggle button for moderators
-- [x] Update message sending logic to handle paused state
-- [x] Display paused status in UI
-- [x] Update guidelines to mention pause functionality
+## Steps
+- [x] Update featureHierarchy in app/admin/features/page.tsx to include Inventory and Resources
+- [x] Update default Admin features in app/admin/features/page.tsx to include Inventory and Resources
+- [x] Update dashboard-layout.tsx to gate Inventory and Resources menus based on feature access
+- [x] Update wiki page to use feature access instead of department check for create button
+- [x] Fix delete functionality to respect feature permissions
+- [x] Ensure Admin doesn't have default access to Resources create/delete operations
+- [x] Implement inline editing for wiki topics
+- [ ] Test the feature toggling functionality
 
-## Database Changes
-- [x] Create chat_settings table for pause status
-- [x] Run migration to clear existing messages
+## Files to Edit
+- app/admin/features/page.tsx
+- components/dashboard-layout.tsx
+- app/resources/wiki/page.tsx

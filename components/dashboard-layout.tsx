@@ -300,34 +300,41 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             ))}
 
-            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <Package className="mr-3 h-5 w-5" />
-                  Inventory
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                {inventoryItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === item.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                    onClick={() => {
-                      setSidebarOpen(false);
-                    }}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
+            {hasFeatureAccess('Inventory', 'inventory', 'view') && (
+              <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                    <Package className="mr-3 h-5 w-5" />
+                    Inventory
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-8 space-y-2">
+                  {inventoryItems.map((item) => {
+                    const featureKey = item.href.split('/')[2]; // 'inventory', 'products', 'inbound', 'outbound'
+                    const hasAccess = hasFeatureAccess('Inventory', featureKey, 'view');
+                    if (!hasAccess) return null;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                          pathname === item.href
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                        )}
+                        onClick={() => {
+                          setSidebarOpen(false);
+                        }}
+                      >
+                        <item.icon className="mr-3 h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             {user?.department === 'Admin' && hasFeatureAccess('Admin', 'features', 'view') && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
                 <CollapsibleTrigger className="w-full">
@@ -422,50 +429,54 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
 
             {/* Resources Section */}
-            <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <BookOpen className="mr-3 h-5 w-5" />
-                  Resources
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
-                  <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                      <FileText className="mr-3 h-5 w-5" />
-                      Wiki
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-8 space-y-2">
-                    <Link
-                      href="/resources/wiki"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/resources/wiki"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            {hasFeatureAccess('Resources', 'wiki', 'view') && (
+              <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                    <BookOpen className="mr-3 h-5 w-5" />
+                    Resources
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-8 space-y-2">
+                  <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                        <FileText className="mr-3 h-5 w-5" />
+                        Wiki
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-8 space-y-2">
+                      <Link
+                        href="/resources/wiki"
+                        className={cn(
+                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                          pathname === "/resources/wiki"
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                        )}
+                      >
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        Wiki Overview
+                      </Link>
+                      {hasFeatureAccess('Resources', 'wiki', 'create') && (
+                        <Link
+                          href="/resources/wiki/create"
+                          className={cn(
+                            "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                            pathname === "/resources/wiki/create"
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                          )}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Wiki
+                        </Link>
                       )}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Wiki Overview
-                    </Link>
-                    <Link
-                      href="/resources/wiki/create"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/resources/wiki/create"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Wiki
-                    </Link>
-                  </CollapsibleContent>
-                </Collapsible>
-              </CollapsibleContent>
-            </Collapsible>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
           </nav>
 

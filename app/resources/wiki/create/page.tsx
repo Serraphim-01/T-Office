@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '../../../../components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,13 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Plus, Trash2, Bold, Italic, Underline, Type } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useUI } from '@/lib/ui-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function CreateWikiPage() {
-  const { user } = useAuth();
+  const { user, hasFeatureAccess } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -30,17 +31,18 @@ export default function CreateWikiPage() {
       correct_answer: number;
     }>
   });
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    // Check if user is admin
-    if (user && user.department !== 'Admin') {
+    // Check if user has create access
+    if (user && !hasFeatureAccess('Resources', 'wiki', 'create')) {
       router.push('/resources/wiki');
       return;
     }
 
     // Fetch available departments
     fetchDepartments();
-  }, [user, router]);
+  }, [user, router, hasFeatureAccess]);
 
   const fetchDepartments = async () => {
     try {
@@ -188,7 +190,57 @@ export default function CreateWikiPage() {
     }));
   };
 
-  if (user?.department !== 'Admin') {
+  const applyFormatting = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+
+    if (selectedText) {
+      const beforeText = formData.content.substring(0, start);
+      const afterText = formData.content.substring(end);
+      const formattedText = `<${tag}>${selectedText}</${tag}>`;
+      const newContent = beforeText + formattedText + afterText;
+
+      setFormData(prev => ({ ...prev, content: newContent }));
+
+      // Restore cursor position
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + formattedText.length);
+      }, 0);
+    }
+  };
+
+  const applyFontSize = (size: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+
+    if (selectedText) {
+      const beforeText = formData.content.substring(0, start);
+      const afterText = formData.content.substring(end);
+      const formattedText = `<span style="font-size: ${size};">${selectedText}</span>`;
+      const newContent = beforeText + formattedText + afterText;
+
+      setFormData(prev => ({ ...prev, content: newContent }));
+
+      // Restore cursor position
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + formattedText.length);
+      }, 0);
+    }
+  };
+
+
+
+  if (!hasFeatureAccess('Resources', 'wiki', 'create')) {
     return null; // Will redirect in useEffect
   }
 
@@ -246,25 +298,72 @@ export default function CreateWikiPage() {
                   type="text"
                   placeholder="e.g., introduction, onboarding, features"
                   value={formData.topic}
-                  onChange={(e) => handleInputChange('topic', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  onChange={(e) => handleInputChange('topic', e.target.value.replace(/\s+/g, '-'))}
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Use lowercase letters, numbers, and hyphens only. Spaces will be converted to hyphens.
+                  Use letters (upper or lowercase), numbers, and hyphens only. Spaces will be converted to hyphens.
                 </p>
               </div>
 
               {/* Content */}
               <div className="space-y-2">
                 <Label htmlFor="content">Content *</Label>
-                <Textarea
-                  id="content"
-                  placeholder="Enter the wiki content in HTML format..."
-                  value={formData.content}
-                  onChange={(e) => handleInputChange('content', e.target.value)}
-                  rows={20}
-                  required
-                />
+                <div className="border rounded-md">
+                  <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyFormatting('b')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyFormatting('i')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyFormatting('u')}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Underline className="h-4 w-4" />
+                    </Button>
+                    <div className="h-4 w-px bg-border mx-1" />
+                    <Select onValueChange={applyFontSize}>
+                      <SelectTrigger className="h-8 w-24">
+                        <Type className="h-4 w-4 mr-1" />
+                        <SelectValue placeholder="Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="12px">Small</SelectItem>
+                        <SelectItem value="16px">Normal</SelectItem>
+                        <SelectItem value="20px">Large</SelectItem>
+                        <SelectItem value="24px">Extra Large</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                  </div>
+                  <Textarea
+                    ref={textareaRef}
+                    id="content"
+                    placeholder="Enter the wiki content..."
+                    value={formData.content}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('content', e.target.value)}
+                    rows={20}
+                    className="border-0 rounded-none focus-visible:ring-0"
+                    required
+                  />
+                </div>
                 <p className="text-sm text-muted-foreground">
                   You can use HTML tags for formatting (e.g., &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;).
                 </p>
@@ -381,7 +480,9 @@ export default function CreateWikiPage() {
             <CardContent>
               <div
                 className="prose prose-slate dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: formData.content }}
+                dangerouslySetInnerHTML={{
+                  __html: formData.content.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;')
+                }}
               />
             </CardContent>
           </Card>

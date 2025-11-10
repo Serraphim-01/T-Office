@@ -529,50 +529,30 @@ export default function ChatPage() {
                   <h3 className="text-lg font-semibold text-foreground mb-4">Chat Guidelines</h3>
               
               <div className="space-y-4">
-                <Card className="border-border shadow-sm bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Anonymous Communication</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    Your identity is protected. Use randomly assigned names for open, honest discussions.
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border shadow-sm bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Respectful Environment</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    Maintain professionalism and respect for all participants in discussions.
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border shadow-sm bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Session-Based Storage</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    Messages are stored in the database and can be cleared by administrators.
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border shadow-sm bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Chat Moderation</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    Moderators (Admin/HR) can pause the chat to prevent new messages from regular users.
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border shadow-sm bg-background">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Constructive Feedback</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    Use this space for constructive feedback and collaborative problem-solving.
-                  </CardContent>
-                </Card>
+                <div>
+                  <h4 className="text-sm font-medium">Anonymous Communication</h4>
+                  <p className="text-sm text-muted-foreground">Your identity is protected. Use randomly assigned names for open, honest discussions.</p>
+                </div>
+                <hr className="border-border" />
+                <div>
+                  <h4 className="text-sm font-medium">Respectful Environment</h4>
+                  <p className="text-sm text-muted-foreground">Maintain professionalism and respect for all participants in discussions.</p>
+                </div>
+                <hr className="border-border" />
+                <div>
+                  <h4 className="text-sm font-medium">Session-Based Storage</h4>
+                  <p className="text-sm text-muted-foreground">Messages are stored in the database and can be cleared by administrators.</p>
+                </div>
+                <hr className="border-border" />
+                <div>
+                  <h4 className="text-sm font-medium">Chat Moderation</h4>
+                  <p className="text-sm text-muted-foreground">Moderators (Admin/HR) can pause the chat to prevent new messages from regular users.</p>
+                </div>
+                <hr className="border-border" />
+                <div>
+                  <h4 className="text-sm font-medium">Constructive Feedback</h4>
+                  <p className="text-sm text-muted-foreground">Use this space for constructive feedback and collaborative problem-solving.</p>
+                </div>
               </div>
 
               <div className="mt-6 p-4 bg-primary/10 rounded-lg">

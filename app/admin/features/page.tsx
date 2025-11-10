@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Users, Shield, MessageSquare, FileText, Database, UserCheck, Calendar, Briefcase, CheckCircle } from 'lucide-react';
+import { Plus, X, Users, Shield, MessageSquare, FileText, Database, UserCheck, Calendar, Briefcase, CheckCircle, Package, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 interface Role {
@@ -116,6 +116,36 @@ const featureHierarchy: Record<string, { icon: any; subfeatures: Record<string, 
         functions: ['view', 'send', 'moderate', 'summarize']
       }
     }
+  },
+  'Inventory': {
+    icon: Package,
+    subfeatures: {
+      'inventory': {
+        label: 'Inventory Management',
+        functions: ['view', 'create', 'edit', 'delete']
+      },
+      'products': {
+        label: 'Product Management',
+        functions: ['view', 'create', 'edit', 'delete', 'update_state']
+      },
+      'inbound': {
+        label: 'Inbound Management',
+        functions: ['view', 'create', 'edit', 'process']
+      },
+      'outbound': {
+        label: 'Outbound Management',
+        functions: ['view', 'create', 'edit', 'process']
+      }
+    }
+  },
+  'Resources': {
+    icon: BookOpen,
+    subfeatures: {
+      'wiki': {
+        label: 'Wiki Management',
+        functions: ['view', 'create', 'edit', 'delete']
+      }
+    }
   }
 };
 
@@ -142,6 +172,7 @@ export default function FeaturesPage() {
   const [loading, setLoading] = useState(false);
   const [showAddDepartment, setShowAddDepartment] = useState(false);
   const [showAddRole, setShowAddRole] = useState(false);
+  const [collapsedFeatures, setCollapsedFeatures] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user && user.department !== 'Admin') {
@@ -213,6 +244,15 @@ export default function FeaturesPage() {
                 },
                 'Chat': {
                   'messages': { enabled: true }
+                },
+                'Inventory': {
+                  'inventory': { enabled: true },
+                  'products': { enabled: true },
+                  'inbound': { enabled: true },
+                  'outbound': { enabled: true }
+                },
+                'Resources': {
+                  'wiki': { enabled: false }
                 }
               }
             },
@@ -228,6 +268,15 @@ export default function FeaturesPage() {
                 },
                 'Chat': {
                   'messages': { enabled: true }
+                },
+                'Inventory': {
+                  'inventory': { enabled: true },
+                  'products': { enabled: true },
+                  'inbound': { enabled: true },
+                  'outbound': { enabled: true }
+                },
+                'Resources': {
+                  'wiki': { enabled: false }
                 }
               }
             }
@@ -382,6 +431,16 @@ export default function FeaturesPage() {
     }
   };
 
+  const toggleFeatureCollapse = (feature: string) => {
+    const newCollapsed = new Set(collapsedFeatures);
+    if (newCollapsed.has(feature)) {
+      newCollapsed.delete(feature);
+    } else {
+      newCollapsed.add(feature);
+    }
+    setCollapsedFeatures(newCollapsed);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
@@ -493,96 +552,102 @@ export default function FeaturesPage() {
               <CardTitle>Feature Configuration for {departmentConfig.roles.find(r => r.id === selectedRole)?.name} ({selectedDepartment})</CardTitle>
               <CardDescription>Enable/disable features and their functions for this role.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               {Object.entries(featureHierarchy).map(([mainFeature, config]) => {
                 const IconComponent = config.icon;
+                const isCollapsed = collapsedFeatures.has(mainFeature);
                 return (
-                  <div key={mainFeature} className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <IconComponent className="h-5 w-5" />
-                      <h3 className="text-lg font-semibold">{mainFeature}</h3>
-                    </div>
+                  <div key={mainFeature} className="border rounded-lg">
+                    <button
+                      onClick={() => toggleFeatureCollapse(mainFeature)}
+                      className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <IconComponent className="h-5 w-5" />
+                        <h3 className="text-lg font-semibold">{mainFeature}</h3>
+                      </div>
+                      {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </button>
 
-                    <div className="ml-6 space-y-4">
-                      {Object.entries(config.subfeatures).map(([subfeature, subConfig]) => (
-                        <div key={subfeature} className="space-y-3 p-4 border rounded-lg">
-                          <div className="flex items-center space-x-2">
-                            {mainFeature === 'Admin' && subfeature === 'features' && selectedRole === 'super-admin' ? (
-                              <>
-                                <Switch
-                                  id={`${mainFeature}-${subfeature}`}
-                                  checked={true}
-                                  disabled={true}
-                                />
-                                <Label htmlFor={`${mainFeature}-${subfeature}`} className="font-semibold">
-                                  {subConfig.label} (Always Enabled for Super Admin)
-                                </Label>
-                              </>
-                            ) : (
-                              <>
-                                <Switch
-                                  id={`${mainFeature}-${subfeature}`}
-                                  checked={departmentConfig.features[mainFeature]?.[subfeature]?.enabled || false}
-                                  onCheckedChange={(checked) => handleFeatureToggle(mainFeature, subfeature, checked)}
-                                />
-                                <Label htmlFor={`${mainFeature}-${subfeature}`} className="font-semibold">
-                                  {subConfig.label}
-                                </Label>
-                              </>
+                    {!isCollapsed && (
+                      <div className="px-4 pb-4 space-y-4">
+                        {Object.entries(config.subfeatures).map(([subfeature, subConfig]) => (
+                          <div key={subfeature} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                            <div className="flex items-center space-x-2">
+                              {mainFeature === 'Admin' && subfeature === 'features' && selectedRole === 'super-admin' ? (
+                                <>
+                                  <Switch
+                                    id={`${mainFeature}-${subfeature}`}
+                                    checked={true}
+                                    disabled={true}
+                                  />
+                                  <Label htmlFor={`${mainFeature}-${subfeature}`} className="font-semibold">
+                                    {subConfig.label} (Always Enabled for Super Admin)
+                                  </Label>
+                                </>
+                              ) : (
+                                <>
+                                  <Switch
+                                    id={`${mainFeature}-${subfeature}`}
+                                    checked={departmentConfig.features[mainFeature]?.[subfeature]?.enabled || false}
+                                    onCheckedChange={(checked) => handleFeatureToggle(mainFeature, subfeature, checked)}
+                                  />
+                                  <Label htmlFor={`${mainFeature}-${subfeature}`} className="font-semibold">
+                                    {subConfig.label}
+                                  </Label>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Functions section */}
+                            {subConfig.functions && subConfig.functions.length > 0 && departmentConfig.features[mainFeature]?.[subfeature]?.enabled && (
+                              <div className="ml-6 space-y-2">
+                                <Label className="text-sm font-medium text-muted-foreground">Functions:</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                  {subConfig.functions.map((func) => {
+                                    const isViewFunction = func.includes('view') || func.includes('details');
+                                    const currentValue = departmentConfig.features[mainFeature]?.[subfeature]?.functions?.[func];
+                                    const isChecked = currentValue !== undefined ? currentValue : (isViewFunction ? true : false);
+
+                                    return (
+                                      <div key={func} className="flex items-center space-x-2">
+                                        <Switch
+                                          id={`${mainFeature}-${subfeature}-${func}`}
+                                          checked={isChecked}
+                                          disabled={isViewFunction && departmentConfig.features[mainFeature]?.[subfeature]?.enabled}
+                                          onCheckedChange={(checked) => {
+                                            const updatedConfig = { ...departmentConfig };
+                                            const targetFeatures = selectedRole ? updatedConfig.roles.find(r => r.id === selectedRole)?.features : updatedConfig.features;
+
+                                            if (!targetFeatures) return;
+
+                                            if (!targetFeatures[mainFeature]) {
+                                              targetFeatures[mainFeature] = {};
+                                            }
+                                            if (!targetFeatures[mainFeature][subfeature]) {
+                                              targetFeatures[mainFeature][subfeature] = { enabled: false };
+                                            }
+                                            if (!targetFeatures[mainFeature][subfeature].functions) {
+                                              targetFeatures[mainFeature][subfeature].functions = {};
+                                            }
+
+                                            targetFeatures[mainFeature][subfeature].functions![func] = checked;
+                                            setDepartmentConfig(updatedConfig);
+                                          }}
+                                        />
+                                        <Label htmlFor={`${mainFeature}-${subfeature}-${func}`} className="text-xs">
+                                          {func.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </Label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             )}
                           </div>
-
-                          {/* Functions section */}
-                          {subConfig.functions && subConfig.functions.length > 0 && departmentConfig.features[mainFeature]?.[subfeature]?.enabled && (
-                            <div className="ml-6 space-y-2">
-                              <Label className="text-sm font-medium text-muted-foreground">Functions:</Label>
-                              <div className="grid grid-cols-1 gap-2">
-                                {subConfig.functions.map((func) => {
-                                  const isViewFunction = func.includes('view') || func.includes('details');
-                                  const currentValue = departmentConfig.features[mainFeature]?.[subfeature]?.functions?.[func];
-                                  const isChecked = currentValue !== undefined ? currentValue : (isViewFunction ? true : false);
-
-                                  return (
-                                    <div key={func} className="flex items-center space-x-2">
-                                      <Switch
-                                        id={`${mainFeature}-${subfeature}-${func}`}
-                                        checked={isChecked}
-                                        disabled={isViewFunction && departmentConfig.features[mainFeature]?.[subfeature]?.enabled}
-                                        onCheckedChange={(checked) => {
-                                          const updatedConfig = { ...departmentConfig };
-                                          const targetFeatures = selectedRole ? updatedConfig.roles.find(r => r.id === selectedRole)?.features : updatedConfig.features;
-
-                                          if (!targetFeatures) return;
-
-                                          if (!targetFeatures[mainFeature]) {
-                                            targetFeatures[mainFeature] = {};
-                                          }
-                                          if (!targetFeatures[mainFeature][subfeature]) {
-                                            targetFeatures[mainFeature][subfeature] = { enabled: false };
-                                          }
-                                          if (!targetFeatures[mainFeature][subfeature].functions) {
-                                            targetFeatures[mainFeature][subfeature].functions = {};
-                                          }
-
-                                          targetFeatures[mainFeature][subfeature].functions![func] = checked;
-                                          setDepartmentConfig(updatedConfig);
-                                        }}
-                                      />
-                                      <Label htmlFor={`${mainFeature}-${subfeature}-${func}`} className="text-sm">
-                                        {func.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        {isViewFunction && departmentConfig.features[mainFeature]?.[subfeature]?.enabled && (
-                                          <span className="text-xs text-muted-foreground ml-2">(Always enabled when subfeature is active)</span>
-                                        )}
-                                      </Label>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
