@@ -102,6 +102,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const sidebarItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
+    { href: '/clock', label: 'Clock In/Out', icon: Clock },
     ...(hasFeatureAccess('Profile', 'profile') ? [{ href: '/profile', label: 'Profile', icon: User }] : []),
   ];
 

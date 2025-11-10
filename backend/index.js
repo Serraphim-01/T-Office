@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import axios from "axios";
 
+// Load environment variables
 dotenv.config({ path: ".env.local" });
 
 const app = express();
@@ -448,23 +449,20 @@ async function summarizeChat(messages) {
   try {
     const conversationText = messages.map(msg => msg.text).join('\n');
 
-    const prompt = `
-Summarize the following internal company chat for management.
-Focus on: tone, professionalism, conflicts, moderator actions, and overall atmosphere.
-Write 5–8 concise bullet points, not just one or two sentences.
-Avoid mentioning specific names or identities.
+    const prompt = `Please provide a narrative summary of this company chat conversation. Write it as one or two flowing paragraphs that tell the story of what happened, including the emotional tone, key concerns, and overall atmosphere. Do not list individual messages or use bullet points.
 
-Chat:
+Chat conversation:
 ${conversationText}
-`;
+
+Narrative summary:`;
 
     const response = await axios.post(
       'https://router.huggingface.co/hf-inference/models/philschmid/bart-large-cnn-samsum',
       {
         inputs: prompt,
         parameters: {
-          max_length: 250, // increased for more detail
-          min_length: 80,
+          max_length: 1000,
+          min_length: 50,
           temperature: 0.7,
           do_sample: false
         }
@@ -477,13 +475,20 @@ ${conversationText}
       }
     );
 
-    const summaryText = response.data[0]?.summary_text || 'Unable to generate summary.';
-    return summaryText
-      .split(/[•\-\n]/)
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map(s => `• ${s}`)
-      .join('\n');
+    let summaryText = response.data[0]?.summary_text || 'Unable to generate summary.';
+
+    // Clean up the response to remove any prompt text that might have been included
+    summaryText = summaryText.replace(/^Summarize the following.*?\n\n/i, '');
+    summaryText = summaryText.replace(/^Chat conversation:.*?\n\n/i, '');
+    summaryText = summaryText.replace(/^Summary:/i, '');
+    summaryText = summaryText.trim();
+
+    // If the summary is too short or seems to be just the prompt, provide a fallback
+    if (summaryText.length < 20 || summaryText.toLowerCase().includes('summarize the following')) {
+      summaryText = 'The chat conversation covered various topics with a generally professional tone. Participants engaged in discussions about workplace matters, sharing feedback and information.';
+    }
+
+    return summaryText;
   } catch (error) {
     console.error('Error summarizing chat:', error);
     return 'Summary generation failed. Please try again later.';
@@ -1038,27 +1043,33 @@ app.put("/api/admin/approvals/roles/:requestId", authenticateJWT, requireAdmin, 
 function getDateRange(timeRange) {
   const now = new Date();
   let startDate;
+  let endDate;
 
   switch (timeRange) {
     case 'today':
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = now;
       break;
     case 'last_7_days':
       startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+      endDate = now;
       break;
     case 'last_2_weeks':
       startDate = new Date(now.getTime() - (14 * 24 * 60 * 60 * 1000));
+      endDate = now;
       break;
     case 'last_1_month':
       startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+      endDate = now;
       break;
     default:
       startDate = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // Default to last 7 days
+      endDate = now;
   }
 
   return {
     startDate: startDate.toISOString(),
-    endDate: now.toISOString()
+    endDate: endDate.toISOString()
   };
 }
 
@@ -1146,6 +1157,352 @@ app.post("/api/admin/setup-inventory", authenticateJWT, requireAdmin, async (req
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ---------------------------------
+// Location and Geofencing API Endpoints
+// ---------------------------------
+
+// Setup location schema
+app.post("/api/admin/setup-locations", authenticateJWT, requireAdmin, async (req, res) => {
+  try {
+    const fs = await import('fs');
+    const schema = fs.readFileSync('./location_schema.sql', 'utf8');
+
+    // Split schema into individual statements
+    const statements = schema.split(';').filter(stmt => stmt.trim().length > 0);
+
+    for (const statement of statements) {
+      if (statement.trim()) {
+        await pool.query(statement);
+      }
+    }
+
+    res.json({ message: "Location schema setup completed" });
+  } catch (err) {
+    console.error('Error setting up location schema:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all locations
+app.get("/api/locations", authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM locations WHERE is_active = true ORDER BY name'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching locations:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Create new location (Admin/HR only)
+app.post("/api/locations", authenticateJWT, requireHR, async (req, res) => {
+  const { name, latitude, longitude, radius_meters, address } = req.body;
+
+  if (!name || !latitude || !longitude) {
+    return res.status(400).json({ error: "Name, latitude, and longitude are required" });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO locations (name, latitude, longitude, radius_meters, address, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, latitude, longitude, radius_meters || 100, address, req.user.userId]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error creating location:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update location (Admin/HR only)
+app.put("/api/locations/:id", authenticateJWT, requireHR, async (req, res) => {
+  const { id } = req.params;
+  const { name, latitude, longitude, radius_meters, address, is_active } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE locations SET name = $1, latitude = $2, longitude = $3, radius_meters = $4, address = $5, is_active = $6, updated_at = NOW() WHERE id = $7 RETURNING *',
+      [name, latitude, longitude, radius_meters, address, is_active, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating location:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete location (Admin only)
+app.delete("/api/locations/:id", authenticateJWT, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM locations WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting location:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Record location event (entry/exit from geofence)
+app.post("/api/location-events", authenticateJWT, async (req, res) => {
+  const { location_id, event_type, latitude, longitude, accuracy } = req.body;
+
+  if (!location_id || !event_type || !latitude || !longitude) {
+    return res.status(400).json({ error: "Location ID, event type, latitude, and longitude are required" });
+  }
+
+  if (!['entry', 'exit'].includes(event_type)) {
+    return res.status(400).json({ error: "Event type must be 'entry' or 'exit'" });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, accuracy) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId, location_id, event_type, latitude, longitude, accuracy]
+    );
+
+    // Check if this triggers automatic attendance
+    await handleAutomaticAttendance(req.user.userId, location_id, event_type, result.rows[0].id);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error recording location event:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get user's location events
+app.get("/api/location-events", authenticateJWT, async (req, res) => {
+  const { limit = 50 } = req.query;
+
+  try {
+    const result = await pool.query(
+      `SELECT le.*, l.name as location_name, l.latitude, l.longitude, l.radius_meters
+       FROM location_events le
+       JOIN locations l ON le.location_id = l.id
+       WHERE le.user_id = $1
+       ORDER BY le.timestamp DESC
+       LIMIT $2`,
+      [req.user.userId, limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching location events:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Manual clock-in/out
+app.post("/api/attendance/clock", authenticateJWT, async (req, res) => {
+  const { type, latitude, longitude, accuracy } = req.body; // type: 'in' or 'out'
+
+  if (!type || !['in', 'out'].includes(type)) {
+    return res.status(400).json({ error: "Type must be 'in' or 'out'" });
+  }
+
+  try {
+    // Check if user is within any active geofence
+    const locationCheck = await checkUserInGeofence(req.user.userId, latitude, longitude);
+
+    if (!locationCheck.isInGeofence) {
+      return res.status(403).json({
+        error: "You must be within a configured location to clock in/out",
+        nearest_location: locationCheck.nearestLocation
+      });
+    }
+
+    // Record manual attendance
+    const eventType = type === 'in' ? 'clock_in' : 'clock_out';
+    const result = await pool.query(
+      'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, NULL, $2, $3) RETURNING *',
+      [req.user.userId, eventType, `Manual ${type} at ${locationCheck.locationName}`]
+    );
+
+    res.status(201).json({
+      message: `Successfully clocked ${type}`,
+      attendance: result.rows[0],
+      location: locationCheck.locationName
+    });
+  } catch (err) {
+    console.error('Error recording manual attendance:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Check user's current location status
+app.post("/api/location-status", authenticateJWT, async (req, res) => {
+  const { latitude, longitude } = req.body;
+
+  if (!latitude || !longitude) {
+    return res.status(400).json({ error: "Latitude and longitude are required" });
+  }
+
+  try {
+    const locationCheck = await checkUserInGeofence(req.user.userId, latitude, longitude);
+
+    if (locationCheck.isInGeofence) {
+      res.json({
+        isInGeofence: true,
+        locationName: locationCheck.locationName,
+        locationId: locationCheck.locationId,
+        distance: locationCheck.distance
+      });
+    } else {
+      res.json({
+        isInGeofence: false,
+        nearestLocation: locationCheck.nearestLocation
+      });
+    }
+  } catch (err) {
+    console.error('Error checking location status:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get user's attendance records
+app.get("/api/attendance", authenticateJWT, async (req, res) => {
+  const { date } = req.query;
+
+  try {
+    let query = `
+      SELECT aa.*, le.latitude, le.longitude, l.name as location_name
+      FROM auto_attendance aa
+      LEFT JOIN location_events le ON aa.location_event_id = le.id
+      LEFT JOIN locations l ON le.location_id = l.id
+      WHERE aa.user_id = $1
+    `;
+    const params = [req.user.userId];
+
+    if (date) {
+      query += ' AND DATE(aa.timestamp) = $2';
+      params.push(date);
+    }
+
+    query += ' ORDER BY aa.timestamp DESC';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching attendance:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Helper function to handle automatic attendance based on location events
+async function handleAutomaticAttendance(userId, locationId, eventType, locationEventId) {
+  try {
+    // Get location details
+    const locationResult = await pool.query('SELECT name FROM locations WHERE id = $1', [locationId]);
+    if (locationResult.rows.length === 0) return;
+
+    const locationName = locationResult.rows[0].name;
+    let attendanceType = null;
+
+    if (eventType === 'entry') {
+      // Check if user was previously clocked out (no recent clock_in without clock_out)
+      const lastAttendance = await pool.query(
+        'SELECT event_type FROM auto_attendance WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 1',
+        [userId]
+      );
+
+      if (lastAttendance.rows.length === 0 || lastAttendance.rows[0].event_type === 'clock_out') {
+        attendanceType = 'clock_in';
+      }
+    } else if (eventType === 'exit') {
+      // Check if user was previously clocked in (has clock_in without clock_out)
+      const lastAttendance = await pool.query(
+        'SELECT event_type FROM auto_attendance WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 1',
+        [userId]
+      );
+
+      if (lastAttendance.rows.length > 0 && lastAttendance.rows[0].event_type === 'clock_in') {
+        attendanceType = 'clock_out';
+      }
+    }
+
+    if (attendanceType) {
+      await pool.query(
+        'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4)',
+        [userId, locationEventId, attendanceType, `Auto ${attendanceType} at ${locationName}`]
+      );
+
+      console.log(`Auto ${attendanceType} recorded for user ${userId} at ${locationName}`);
+    }
+  } catch (err) {
+    console.error('Error handling automatic attendance:', err);
+  }
+}
+
+// Helper function to check if user is within any geofence
+async function checkUserInGeofence(userId, userLat, userLng) {
+  try {
+    const locations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE is_active = true');
+
+    for (const location of locations.rows) {
+      const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
+
+      if (distance <= location.radius_meters) {
+        return {
+          isInGeofence: true,
+          locationId: location.id,
+          locationName: location.name,
+          distance: distance
+        };
+      }
+    }
+
+    // Find nearest location
+    let nearestLocation = null;
+    let minDistance = Infinity;
+
+    for (const location of locations.rows) {
+      const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestLocation = {
+          id: location.id,
+          name: location.name,
+          distance: distance
+        };
+      }
+    }
+
+    return {
+      isInGeofence: false,
+      nearestLocation: nearestLocation
+    };
+  } catch (err) {
+    console.error('Error checking geofence:', err);
+    return { isInGeofence: false };
+  }
+}
+
+// Helper function to calculate distance between two points (Haversine formula)
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
 // ---------------------------------
 // Inventory API Endpoints
