@@ -4,7 +4,8 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, LogIn, LogOut, Navigation } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { MapPin, Clock, LogIn, LogOut, Navigation, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect, useRef } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
@@ -19,6 +20,12 @@ interface Location {
   is_active: boolean;
 }
 
+interface UserLocation extends Location {
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface AttendanceRecord {
   id: number;
   type: 'clock_in' | 'clock_out';
@@ -30,17 +37,29 @@ export default function ClockPage() {
   const { user } = useAuth();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [isInGeofence, setIsInGeofence] = useState(false);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [lastClockAction, setLastClockAction] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<UserLocation | null>(null);
+  const [locationForm, setLocationForm] = useState({
+    name: '',
+    latitude: '',
+    longitude: '',
+    radius_meters: '100',
+    address: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<(google.maps.Marker | google.maps.marker.AdvancedMarkerElement)[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchLocations();
+      fetchUserLocations();
       fetchAttendanceRecords();
       getCurrentLocation();
     }
@@ -59,6 +78,22 @@ export default function ClockPage() {
       }
     } catch (error) {
       console.error('Failed to fetch locations:', error);
+    }
+  };
+
+  const fetchUserLocations = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/api/user-locations', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserLocations(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user locations:', error);
     }
   };
 
@@ -105,12 +140,21 @@ export default function ClockPage() {
   };
 
   const checkGeofenceStatus = (lat: number, lng: number) => {
-    const inGeofence = locations.some(location => {
+    // Check global locations
+    const inGlobalGeofence = locations.some(location => {
       if (!location.is_active) return false;
       const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
       return distance <= location.radius_meters;
     });
-    setIsInGeofence(inGeofence);
+
+    // Check user locations
+    const inUserGeofence = userLocations.some(location => {
+      if (!location.is_active) return false;
+      const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
+      return distance <= location.radius_meters;
+    });
+
+    setIsInGeofence(inGlobalGeofence || inUserGeofence);
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -184,9 +228,119 @@ export default function ClockPage() {
     }
   };
 
+  const handleSaveLocation = async () => {
+    if (!locationForm.name || !locationForm.latitude || !locationForm.longitude) {
+      setError('Name, latitude, and longitude are required');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('http://localhost:4000/api/user-locations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          name: locationForm.name,
+          latitude: parseFloat(locationForm.latitude),
+          longitude: parseFloat(locationForm.longitude),
+          radius_meters: parseInt(locationForm.radius_meters) || 100,
+          address: locationForm.address || null,
+        }),
+      });
+
+      if (response.ok) {
+        const newLocation = await response.json();
+        setUserLocations(prev => [...prev, newLocation]);
+        setLocationForm({
+          name: '',
+          latitude: '',
+          longitude: '',
+          radius_meters: '100',
+          address: ''
+        });
+        alert('Location saved successfully!');
+        renderMarkers(); // Update map markers
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to save location');
+      }
+    } catch (error) {
+      console.error('Error saving location:', error);
+      setError('Error saving location');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetDefaultLocation = () => {
+    setLocationForm({
+      name: 'Default Location',
+      latitude: '6.432849',
+      longitude: '3.419528',
+      radius_meters: '100',
+      address: ''
+    });
+  };
+
+  const handleToggleLocation = async (locationId: number, checked: boolean) => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/user-locations/${locationId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ is_active: checked }),
+      });
+
+      if (response.ok) {
+        setUserLocations(prev =>
+          prev.map(location =>
+            location.id === locationId ? { ...location, is_active: checked } : location
+          )
+        );
+        renderMarkers(); // Update map markers
+      } else {
+        alert('Failed to update location status');
+      }
+    } catch (error) {
+      console.error('Error updating location:', error);
+      alert('Error updating location');
+    }
+  };
+
+  const handleDeleteLocation = async (locationId: number) => {
+    if (!confirm('Are you sure you want to delete this location?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/user-locations/${locationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        setUserLocations(prev => prev.filter(location => location.id !== locationId));
+        renderMarkers(); // Update map markers
+        alert('Location deleted successfully!');
+      } else {
+        alert('Failed to delete location');
+      }
+    } catch (error) {
+      console.error('Error deleting location:', error);
+      alert('Error deleting location');
+    }
+  };
 
 
-  const MapComponent = ({ center, zoom, locations, currentLocation, onMapLoad }: any) => {
+
+  const MapComponent = ({ center, zoom, locations, userLocations, currentLocation, selectedLocation, onMapLoad }: any) => {
     useEffect(() => {
       const map = new google.maps.Map(document.getElementById('map')!, {
         center,
@@ -209,7 +363,9 @@ export default function ClockPage() {
       center={{ lat: currentLocation?.lat || 0, lng: currentLocation?.lng || 0 }}
       zoom={15}
       locations={locations}
+      userLocations={userLocations}
       currentLocation={currentLocation}
+      selectedLocation={selectedLocation}
       onMapLoad={setMapRef}
     />;
   };
@@ -232,8 +388,8 @@ export default function ClockPage() {
     });
     markersRef.current = [];
 
-    // Add location markers
-    locations.forEach(location => {
+    // Add global location markers (blue)
+    locations.forEach((location: Location) => {
       if (!location.is_active) return;
 
       const lat = parseFloat(location.latitude.toString());
@@ -300,6 +456,80 @@ export default function ClockPage() {
         strokeOpacity: 0.8,
         strokeWeight: 2,
         fillColor: '#3b82f6',
+        fillOpacity: 0.1,
+        map: googleMapRef.current,
+        center: { lat, lng },
+        radius: location.radius_meters,
+      });
+    });
+
+    // Add user location markers (green)
+    userLocations.forEach((location: UserLocation) => {
+      if (!location.is_active) return;
+
+      const lat = parseFloat(location.latitude.toString());
+      const lng = parseFloat(location.longitude.toString());
+
+      if (isNaN(lat) || isNaN(lng)) {
+        console.error('Invalid coordinates for user location:', location.name, location.latitude, location.longitude);
+        return;
+      }
+
+      let marker;
+      if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+        // Create custom marker element for user locations
+        const markerElement = document.createElement('div');
+        markerElement.innerHTML = `
+          <div style="
+            width: 24px;
+            height: 24px;
+            background: #10b981;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          ">
+            ${location.name.charAt(0)}
+          </div>
+        `;
+
+        marker = new google.maps.marker.AdvancedMarkerElement({
+          position: { lat, lng },
+          map: googleMapRef.current,
+          title: location.name,
+          content: markerElement,
+        });
+      } else {
+        // Fallback to regular Marker
+        marker = new google.maps.Marker({
+          position: { lat, lng },
+          map: googleMapRef.current,
+          title: location.name,
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="#10b981" stroke="white" stroke-width="2"/>
+                <text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${location.name.charAt(0)}</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(24, 24),
+          },
+        });
+      }
+
+      markersRef.current.push(marker);
+
+      // Add geofence circle for user locations
+      const circle = new google.maps.Circle({
+        strokeColor: '#10b981',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: '#10b981',
         fillOpacity: 0.1,
         map: googleMapRef.current,
         center: { lat, lng },
@@ -423,11 +653,143 @@ export default function ClockPage() {
           </CardContent>
         </Card>
 
+        {/* Location Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <MapPin className="mr-2 h-5 w-5" />
+              Manage Your Locations
+            </CardTitle>
+            <CardDescription>Add, edit, and manage your personal clock-in locations</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Location Name</label>
+                <input
+                  type="text"
+                  value={locationForm.name}
+                  onChange={(e) => setLocationForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Home Office"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address (Optional)</label>
+                <input
+                  type="text"
+                  value={locationForm.address}
+                  onChange={(e) => setLocationForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="e.g., 123 Main St, City"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Latitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={locationForm.latitude}
+                  onChange={(e) => setLocationForm(prev => ({ ...prev, latitude: e.target.value }))}
+                  placeholder="e.g., 40.7128"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Longitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={locationForm.longitude}
+                  onChange={(e) => setLocationForm(prev => ({ ...prev, longitude: e.target.value }))}
+                  placeholder="e.g., -74.0060"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Radius (meters)</label>
+                <input
+                  type="number"
+                  value={locationForm.radius_meters}
+                  onChange={(e) => setLocationForm(prev => ({ ...prev, radius_meters: e.target.value }))}
+                  placeholder="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-end space-x-2">
+                <Button
+                  onClick={handleSaveLocation}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  {isLoading ? 'Saving...' : 'Save Location'}
+                </Button>
+                <Button
+                  onClick={handleSetDefaultLocation}
+                  variant="outline"
+                  disabled={isLoading}
+                >
+                  Default Location
+                </Button>
+              </div>
+            </div>
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                {error}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* User Locations List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Locations</CardTitle>
+            <CardDescription>Manage your saved locations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {userLocations.length === 0 ? (
+                <div className="text-muted-foreground text-center py-4">No locations saved yet</div>
+              ) : (
+                userLocations.map((location) => (
+                  <div key={location.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <div>
+                        <div className="font-medium">{location.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {parseFloat(location.latitude.toString()).toFixed(6)}, {parseFloat(location.longitude.toString()).toFixed(6)}
+                          {location.address && ` • ${location.address}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={location.is_active}
+                        onCheckedChange={(checked) => handleToggleLocation(location.id, checked)}
+                      />
+                      <Button
+                        onClick={() => handleDeleteLocation(location.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Map */}
         <Card>
           <CardHeader>
             <CardTitle>Map View</CardTitle>
-            <CardDescription>Configured locations and your current position</CardDescription>
+            <CardDescription>Global locations (blue) and your locations (green) with current position</CardDescription>
           </CardHeader>
           <CardContent>
             <Wrapper apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyCkysrMJLB1w0pPgPqhHHR3oL2_djYzZOc'} libraries={['places']} render={renderMap} />

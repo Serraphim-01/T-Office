@@ -28,6 +28,7 @@ interface Product {
   created_at: string;
   updated_at: string;
   current_inventory_quantity: number;
+  state_history?: any[];
 }
 
 const stateColors = {

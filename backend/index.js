@@ -608,104 +608,15 @@ app.get("/api/profile", authenticateJWT, async (req, res) => {
 
     const user = result.rows[0];
 
-    // Get user features from department_configs
-    let userFeatures = {};
-    try {
-      const configResult = await pool.query(
-        'SELECT features FROM department_configs WHERE department = $1',
-        [user.department]
-      );
 
-      console.log('[PROFILE API] Department config query result:', configResult.rows);
 
-      if (configResult.rows.length > 0) {
-        userFeatures = configResult.rows[0].features || {};
-        console.log('[PROFILE API] Using existing config:', userFeatures);
-      } else {
-        // Set default features based on department
-        userFeatures = {
-          'Profile': {
-            'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
-          },
-          'Chat': {
-            'messages': { enabled: true }
-          },
-          'Inventory': {
-            'inventory': { enabled: true },
-            'products': { enabled: true },
-            'inbound': { enabled: true },
-            'outbound': { enabled: true }
-          },
-          'Resources': {
-            'wiki': { enabled: true }
-          }
-        };
 
-        // Add department-specific features
-        if (user.department === 'Admin') {
-          userFeatures = {
-            ...userFeatures,
-            'Admin': {
-              'features': { enabled: true },
-              'db': { enabled: true },
-              'users': { enabled: true }
-            },
-            'HR': {
-              'onboarding': { enabled: true },
-              'users': { enabled: true },
-              'queries': { enabled: true },
-              'attendance': { enabled: true }
-            },
-            'Compliance': {
-              'sites': { enabled: true },
-              'documents': { enabled: true },
-              'crawling': { enabled: true }
-            },
-            'Approvals': {
-              'certifications': { enabled: true },
-              'roles': { enabled: true },
-              'documents': { enabled: true }
-            }
-          };
-        } else if (user.department === 'HR') {
-          userFeatures['HR'] = {
-            'users': { enabled: true },
-            'queries': { enabled: true },
-            'attendance': { enabled: true }
-          };
-        } else if (user.department === 'Compliance') {
-          userFeatures['Compliance'] = {
-            'sites': { enabled: true },
-            'documents': { enabled: true },
-            'crawling': { enabled: true }
-          };
-        }
-
-        console.log('[PROFILE API] Using default config for department', user.department, ':', userFeatures);
-
-        // Insert default config into database for future use
-        try {
-          await pool.query(
-            'INSERT INTO department_configs (department, features) VALUES ($1, $2)',
-            [user.department, JSON.stringify(userFeatures)]
-          );
-          console.log('[PROFILE API] Inserted default config into database');
-        } catch (insertErr) {
-          console.error('Error inserting default config:', insertErr);
-        }
-      }
-    } catch (configErr) {
-      console.error('Error fetching user features:', configErr);
-    }
-
-    console.log('[PROFILE API] Final userFeatures being returned:', userFeatures);
 
     const responseData = {
       id: user.id,
       full_name: user.full_name,
       email: user.email,
       department: user.department,
-      features: userFeatures,
       created_at: user.created_at,
       certifications: user.certifications || [],
       cv: user.cv,
@@ -1237,6 +1148,104 @@ app.post("/api/admin/setup-locations", authenticateJWT, requireAdmin, async (req
   }
 });
 
+// Get user's locations
+app.get("/api/user-locations", authenticateJWT, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM user_locations WHERE user_id = $1 ORDER BY name',
+      [req.user.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching user locations:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Create new user location
+app.post("/api/user-locations", authenticateJWT, async (req, res) => {
+  const { name, latitude, longitude, radius_meters, address } = req.body;
+
+  if (!name || !latitude || !longitude) {
+    return res.status(400).json({ error: "Name, latitude, and longitude are required" });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO user_locations (user_id, name, latitude, longitude, radius_meters, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId, name, latitude, longitude, radius_meters || 100, address]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error creating user location:', err);
+    if (err.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: "Location name already exists" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+// Update user location
+app.put("/api/user-locations/:id", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { name, latitude, longitude, radius_meters, address, is_active } = req.body;
+
+  try {
+    // First check if the location belongs to the user
+    const checkResult = await pool.query(
+      'SELECT id FROM user_locations WHERE id = $1 AND user_id = $2',
+      [id, req.user.userId]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    const result = await pool.query(
+      'UPDATE user_locations SET name = $1, latitude = $2, longitude = $3, radius_meters = $4, address = $5, is_active = $6, updated_at = NOW() WHERE id = $7 AND user_id = $8 RETURNING *',
+      [name, latitude, longitude, radius_meters, address, is_active, id, req.user.userId]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating user location:', err);
+    if (err.code === '23505') {
+      res.status(400).json({ error: "Location name already exists" });
+    } else {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+});
+
+// Delete user location
+app.delete("/api/user-locations/:id", authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // First check if the location belongs to the user
+    const checkResult = await pool.query(
+      'SELECT id FROM user_locations WHERE id = $1 AND user_id = $2',
+      [id, req.user.userId]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Location not found" });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM user_locations WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, req.user.userId]
+    );
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting user location:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get all locations
 app.get("/api/locations", authenticateJWT, async (req, res) => {
   try {
@@ -1360,31 +1369,268 @@ app.get("/api/location-events", authenticateJWT, async (req, res) => {
   }
 });
 
-// Manual clock-in/out
+// Manual clock-in
+app.post("/api/attendance/clock-in", authenticateJWT, async (req, res) => {
+  const { latitude, longitude } = req.body;
+  const userId = req.user.userId;
+
+  console.log(`[CLOCK-IN] Starting clock-in attempt for user ${userId}`);
+  console.log(`[CLOCK-IN] Received coordinates: lat=${latitude}, lng=${longitude}`);
+
+  try {
+    // Validate input coordinates
+    if (!latitude || !longitude) {
+      console.error(`[CLOCK-IN] Missing coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Latitude and longitude are required" });
+    }
+
+    if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      console.error(`[CLOCK-IN] Invalid coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Invalid latitude or longitude values" });
+    }
+
+    // Check if user is within any active geofence
+    console.log(`[CLOCK-IN] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    const locationCheck = await checkUserInGeofence(userId, parseFloat(latitude), parseFloat(longitude));
+
+    console.log(`[CLOCK-IN] Geofence check result:`, {
+      isInGeofence: locationCheck.isInGeofence,
+      locationName: locationCheck.locationName,
+      locationId: locationCheck.locationId,
+      distance: locationCheck.distance,
+      locationType: locationCheck.locationType,
+      nearestLocation: locationCheck.nearestLocation
+    });
+
+    if (!locationCheck.isInGeofence) {
+      console.log(`[CLOCK-IN] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
+      return res.status(403).json({
+        error: "You must be within a configured location to clock in",
+        nearest_location: locationCheck.nearestLocation,
+        debug_info: {
+          user_coordinates: { lat: latitude, lng: longitude },
+          geofence_check: locationCheck
+        }
+      });
+    }
+
+    // Create a location event record for manual clock-in
+    console.log(`[CLOCK-IN] Creating location event for manual clock-in at location: ${locationCheck.locationName}`);
+    const locationEventResult = await pool.query(
+      'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [userId, locationCheck.locationId, 'entry', parseFloat(latitude), parseFloat(longitude), false]
+    );
+    const locationEventId = locationEventResult.rows[0].id;
+
+    // Record manual clock-in
+    console.log(`[CLOCK-IN] Recording clock-in for user ${userId} at location: ${locationCheck.locationName}`);
+    const result = await pool.query(
+      'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, locationEventId, 'clock_in', `Manual clock-in at ${locationCheck.locationName}`]
+    );
+
+    console.log(`[CLOCK-IN] Successfully recorded clock-in for user ${userId}:`, result.rows[0]);
+
+    res.status(201).json({
+      message: "Successfully clocked in",
+      attendance: result.rows[0],
+      location: locationCheck.locationName
+    });
+  } catch (err) {
+    console.error(`[CLOCK-IN] Error recording manual clock-in for user ${userId}:`, {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      where: err.where,
+      schema: err.schema,
+      table: err.table,
+      column: err.column,
+      dataType: err.dataType,
+      constraint: err.constraint,
+      file: err.file,
+      line: err.line,
+      routine: err.routine
+    });
+    res.status(500).json({
+      error: "Internal server error",
+      debug_info: {
+        error_message: err.message,
+        error_code: err.code
+      }
+    });
+  }
+});
+
+// Manual clock-out
+app.post("/api/attendance/clock-out", authenticateJWT, async (req, res) => {
+  const { latitude, longitude } = req.body;
+  const userId = req.user.userId;
+
+  console.log(`[CLOCK-OUT] Starting clock-out attempt for user ${userId}`);
+  console.log(`[CLOCK-OUT] Received coordinates: lat=${latitude}, lng=${longitude}`);
+
+  try {
+    // Validate input coordinates
+    if (!latitude || !longitude) {
+      console.error(`[CLOCK-OUT] Missing coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Latitude and longitude are required" });
+    }
+
+    if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      console.error(`[CLOCK-OUT] Invalid coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Invalid latitude or longitude values" });
+    }
+
+    // Check if user is within any active geofence
+    console.log(`[CLOCK-OUT] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    const locationCheck = await checkUserInGeofence(userId, parseFloat(latitude), parseFloat(longitude));
+
+    console.log(`[CLOCK-OUT] Geofence check result:`, {
+      isInGeofence: locationCheck.isInGeofence,
+      locationName: locationCheck.locationName,
+      locationId: locationCheck.locationId,
+      distance: locationCheck.distance,
+      locationType: locationCheck.locationType,
+      nearestLocation: locationCheck.nearestLocation
+    });
+
+    if (!locationCheck.isInGeofence) {
+      console.log(`[CLOCK-OUT] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
+      return res.status(403).json({
+        error: "You must be within a configured location to clock out",
+        nearest_location: locationCheck.nearestLocation,
+        debug_info: {
+          user_coordinates: { lat: latitude, lng: longitude },
+          geofence_check: locationCheck
+        }
+      });
+    }
+
+    // Create a location event record for manual clock-out
+    console.log(`[CLOCK-OUT] Creating location event for manual clock-out at location: ${locationCheck.locationName}`);
+    const locationEventResult = await pool.query(
+      'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [userId, locationCheck.locationId, 'exit', parseFloat(latitude), parseFloat(longitude), false]
+    );
+    const locationEventId = locationEventResult.rows[0].id;
+
+    // Record manual clock-out
+    console.log(`[CLOCK-OUT] Recording clock-out for user ${userId} at location: ${locationCheck.locationName}`);
+    const result = await pool.query(
+      'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, locationEventId, 'clock_out', `Manual clock-out at ${locationCheck.locationName}`]
+    );
+
+    console.log(`[CLOCK-OUT] Successfully recorded clock-out for user ${userId}:`, result.rows[0]);
+
+    res.status(201).json({
+      message: "Successfully clocked out",
+      attendance: result.rows[0],
+      location: locationCheck.locationName
+    });
+  } catch (err) {
+    console.error(`[CLOCK-OUT] Error recording manual clock-out for user ${userId}:`, {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      where: err.where,
+      schema: err.schema,
+      table: err.table,
+      column: err.column,
+      dataType: err.dataType,
+      constraint: err.constraint,
+      file: err.file,
+      line: err.line,
+      routine: err.routine
+    });
+    res.status(500).json({
+      error: "Internal server error",
+      debug_info: {
+        error_message: err.message,
+        error_code: err.code
+      }
+    });
+  }
+});
+
+// Manual clock-in/out (legacy endpoint)
 app.post("/api/attendance/clock", authenticateJWT, async (req, res) => {
   const { type, latitude, longitude, accuracy } = req.body; // type: 'in' or 'out'
+  const userId = req.user.userId;
+
+  console.log(`[CLOCK-LEGACY] Starting legacy clock attempt for user ${userId}, type: ${type}`);
+  console.log(`[CLOCK-LEGACY] Received coordinates: lat=${latitude}, lng=${longitude}, accuracy=${accuracy}`);
 
   if (!type || !['in', 'out'].includes(type)) {
+    console.error(`[CLOCK-LEGACY] Invalid type: ${type}`);
     return res.status(400).json({ error: "Type must be 'in' or 'out'" });
   }
 
   try {
+    // Validate input coordinates
+    if (!latitude || !longitude) {
+      console.error(`[CLOCK-LEGACY] Missing coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Latitude and longitude are required" });
+    }
+
+    if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+      console.error(`[CLOCK-LEGACY] Invalid coordinates: lat=${latitude}, lng=${longitude}`);
+      return res.status(400).json({ error: "Invalid latitude or longitude values" });
+    }
+
     // Check if user is within any active geofence
-    const locationCheck = await checkUserInGeofence(req.user.userId, latitude, longitude);
+    console.log(`[CLOCK-LEGACY] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    const locationCheck = await checkUserInGeofence(userId, parseFloat(latitude), parseFloat(longitude));
+
+    console.log(`[CLOCK-LEGACY] Geofence check result:`, {
+      isInGeofence: locationCheck.isInGeofence,
+      locationName: locationCheck.locationName,
+      locationId: locationCheck.locationId,
+      distance: locationCheck.distance,
+      locationType: locationCheck.locationType,
+      nearestLocation: locationCheck.nearestLocation
+    });
 
     if (!locationCheck.isInGeofence) {
+      console.log(`[CLOCK-LEGACY] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
       return res.status(403).json({
         error: "You must be within a configured location to clock in/out",
-        nearest_location: locationCheck.nearestLocation
+        nearest_location: locationCheck.nearestLocation,
+        debug_info: {
+          user_coordinates: { lat: latitude, lng: longitude },
+          geofence_check: locationCheck
+        }
       });
     }
 
+    // Create a location event record for manual attendance
+    const eventTypeLocation = type === 'in' ? 'entry' : 'exit';
+    console.log(`[CLOCK-LEGACY] Creating location event for manual ${type} at location: ${locationCheck.locationName}`);
+    const locationEventResult = await pool.query(
+      'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [userId, locationCheck.locationId, eventTypeLocation, parseFloat(latitude), parseFloat(longitude), false]
+    );
+    const locationEventId = locationEventResult.rows[0].id;
+
     // Record manual attendance
     const eventType = type === 'in' ? 'clock_in' : 'clock_out';
+    console.log(`[CLOCK-LEGACY] Recording ${eventType} for user ${userId} at location: ${locationCheck.locationName}`);
     const result = await pool.query(
-      'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, NULL, $2, $3) RETURNING *',
-      [req.user.userId, eventType, `Manual ${type} at ${locationCheck.locationName}`]
+      'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, locationEventId, eventType, `Manual ${type} at ${locationCheck.locationName}`]
     );
+
+    console.log(`[CLOCK-LEGACY] Successfully recorded ${eventType} for user ${userId}:`, result.rows[0]);
 
     res.status(201).json({
       message: `Successfully clocked ${type}`,
@@ -1392,28 +1638,73 @@ app.post("/api/attendance/clock", authenticateJWT, async (req, res) => {
       location: locationCheck.locationName
     });
   } catch (err) {
-    console.error('Error recording manual attendance:', err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error(`[CLOCK-LEGACY] Error recording manual attendance for user ${userId}:`, {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      where: err.where,
+      schema: err.schema,
+      table: err.table,
+      column: err.column,
+      dataType: err.dataType,
+      constraint: err.constraint,
+      file: err.file,
+      line: err.line,
+      routine: err.routine
+    });
+    res.status(500).json({
+      error: "Internal server error",
+      debug_info: {
+        error_message: err.message,
+        error_code: err.code
+      }
+    });
   }
 });
 
 // Check user's current location status
 app.post("/api/location-status", authenticateJWT, async (req, res) => {
   const { latitude, longitude } = req.body;
+  const userId = req.user.userId;
+
+  console.log(`[LOCATION-STATUS] Checking location status for user ${userId}`);
+  console.log(`[LOCATION-STATUS] Received coordinates: lat=${latitude}, lng=${longitude}`);
 
   if (!latitude || !longitude) {
+    console.error(`[LOCATION-STATUS] Missing coordinates: lat=${latitude}, lng=${longitude}`);
     return res.status(400).json({ error: "Latitude and longitude are required" });
   }
 
+  if (isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+    console.error(`[LOCATION-STATUS] Invalid coordinates: lat=${latitude}, lng=${longitude}`);
+    return res.status(400).json({ error: "Invalid latitude or longitude values" });
+  }
+
   try {
-    const locationCheck = await checkUserInGeofence(req.user.userId, latitude, longitude);
+    console.log(`[LOCATION-STATUS] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    const locationCheck = await checkUserInGeofence(userId, parseFloat(latitude), parseFloat(longitude));
+
+    console.log(`[LOCATION-STATUS] Geofence check result:`, {
+      isInGeofence: locationCheck.isInGeofence,
+      locationName: locationCheck.locationName,
+      locationId: locationCheck.locationId,
+      distance: locationCheck.distance,
+      locationType: locationCheck.locationType,
+      nearestLocation: locationCheck.nearestLocation
+    });
 
     if (locationCheck.isInGeofence) {
       res.json({
         isInGeofence: true,
         locationName: locationCheck.locationName,
         locationId: locationCheck.locationId,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        locationType: locationCheck.locationType
       });
     } else {
       res.json({
@@ -1422,8 +1713,32 @@ app.post("/api/location-status", authenticateJWT, async (req, res) => {
       });
     }
   } catch (err) {
-    console.error('Error checking location status:', err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error(`[LOCATION-STATUS] Error checking location status for user ${userId}:`, {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      where: err.where,
+      schema: err.schema,
+      table: err.table,
+      column: err.column,
+      dataType: err.dataType,
+      constraint: err.constraint,
+      file: err.file,
+      line: err.line,
+      routine: err.routine
+    });
+    res.status(500).json({
+      error: "Internal server error",
+      debug_info: {
+        error_message: err.message,
+        error_code: err.code
+      }
+    });
   }
 });
 
@@ -1501,46 +1816,114 @@ async function handleAutomaticAttendance(userId, locationId, eventType, location
   }
 }
 
-// Helper function to check if user is within any geofence
+// Helper function to check if user is within any geofence (global or user locations)
 async function checkUserInGeofence(userId, userLat, userLng) {
-  try {
-    const locations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE is_active = true');
+  console.log(`[GEOFENCE-CHECK] Starting geofence check for user ${userId} at (${userLat}, ${userLng})`);
 
-    for (const location of locations.rows) {
+  try {
+    // Check global locations
+    console.log(`[GEOFENCE-CHECK] Querying global locations...`);
+    const globalLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE is_active = true');
+    console.log(`[GEOFENCE-CHECK] Found ${globalLocations.rows.length} active global locations`);
+
+    for (const location of globalLocations.rows) {
+      console.log(`[GEOFENCE-CHECK] Checking global location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
+      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
 
       if (distance <= location.radius_meters) {
+        console.log(`[GEOFENCE-CHECK] User is within global geofence: ${location.name}`);
         return {
           isInGeofence: true,
           locationId: location.id,
           locationName: location.name,
-          distance: distance
+          distance: distance,
+          locationType: 'global'
         };
       }
     }
 
-    // Find nearest location
+    // Check user locations
+    console.log(`[GEOFENCE-CHECK] Querying user locations for user ${userId}...`);
+    const userLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM user_locations WHERE user_id = $1 AND is_active = true', [userId]);
+    console.log(`[GEOFENCE-CHECK] Found ${userLocations.rows.length} active user locations`);
+
+    for (const location of userLocations.rows) {
+      console.log(`[GEOFENCE-CHECK] Checking user location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
+      const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
+      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
+
+      if (distance <= location.radius_meters) {
+        console.log(`[GEOFENCE-CHECK] User is within user geofence: ${location.name}`);
+        return {
+          isInGeofence: true,
+          locationId: location.id,
+          locationName: location.name,
+          distance: distance,
+          locationType: 'user'
+        };
+      }
+    }
+
+    // Find nearest location (check both global and user locations)
+    console.log(`[GEOFENCE-CHECK] User not in any geofence, finding nearest location...`);
     let nearestLocation = null;
     let minDistance = Infinity;
 
-    for (const location of locations.rows) {
+    // Check global locations for nearest
+    for (const location of globalLocations.rows) {
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
       if (distance < minDistance) {
         minDistance = distance;
         nearestLocation = {
           id: location.id,
           name: location.name,
-          distance: distance
+          distance: distance,
+          type: 'global'
         };
       }
     }
+
+    // Check user locations for nearest
+    for (const location of userLocations.rows) {
+      const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestLocation = {
+          id: location.id,
+          name: location.name,
+          distance: distance,
+          type: 'user'
+        };
+      }
+    }
+
+    console.log(`[GEOFENCE-CHECK] Nearest location:`, nearestLocation);
 
     return {
       isInGeofence: false,
       nearestLocation: nearestLocation
     };
   } catch (err) {
-    console.error('Error checking geofence:', err);
+    console.error(`[GEOFENCE-CHECK] Error checking geofence for user ${userId}:`, {
+      error: err.message,
+      stack: err.stack,
+      code: err.code,
+      detail: err.detail,
+      hint: err.hint,
+      position: err.position,
+      internalPosition: err.internalPosition,
+      internalQuery: err.internalQuery,
+      where: err.where,
+      schema: err.schema,
+      table: err.table,
+      column: err.column,
+      dataType: err.dataType,
+      constraint: err.constraint,
+      file: err.file,
+      line: err.line,
+      routine: err.routine
+    });
     return { isInGeofence: false };
   }
 }

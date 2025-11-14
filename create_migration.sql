@@ -222,6 +222,34 @@ CREATE TABLE IF NOT EXISTS locations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- User-specific locations table for custom location management
+CREATE TABLE IF NOT EXISTS user_locations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    radius_meters INTEGER NOT NULL DEFAULT 100,
+    address TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, name) -- Prevent duplicate location names per user
+);
+
+-- ===========================================
+-- DEPARTMENT CONFIGURATION TABLES
+-- ===========================================
+
+-- Department configurations table
+CREATE TABLE IF NOT EXISTS department_configs (
+    id SERIAL PRIMARY KEY,
+    department VARCHAR(100) UNIQUE NOT NULL,
+    features JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Location events table
 CREATE TABLE IF NOT EXISTS location_events (
     id SERIAL PRIMARY KEY,
@@ -307,6 +335,8 @@ CREATE INDEX IF NOT EXISTS idx_wiki_completions_user_id ON wiki_lesson_completio
 CREATE INDEX IF NOT EXISTS idx_wiki_completions_topic_id ON wiki_lesson_completions(topic_id);
 
 -- Location indexes
+CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON user_locations(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_locations_active ON user_locations(user_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_location_events_user_timestamp ON location_events(user_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_location_events_location_timestamp ON location_events(location_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_auto_attendance_user_timestamp ON auto_attendance(user_id, timestamp DESC);
@@ -335,6 +365,8 @@ CREATE TRIGGER update_hr_queries_updated_at BEFORE UPDATE ON hr_queries FOR EACH
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_wiki_topics_updated_at BEFORE UPDATE ON wiki_topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_locations_updated_at BEFORE UPDATE ON user_locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_department_configs_updated_at BEFORE UPDATE ON department_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_compliance_documents_updated_at BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_crawled_sites_updated_at BEFORE UPDATE ON crawled_sites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
