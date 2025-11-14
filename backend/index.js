@@ -506,7 +506,7 @@ app.get("/api/admin/department-config/:department", authenticateJWT, requireAdmi
 
   try {
     const result = await pool.query(
-      'SELECT config FROM department_configs WHERE department = $1',
+      'SELECT features FROM department_configs WHERE department = $1',
       [department]
     );
 
@@ -514,13 +514,15 @@ app.get("/api/admin/department-config/:department", authenticateJWT, requireAdmi
       // Return default config if department not found
       const defaultConfig = {
         department,
-        roles: [],
         features: {}
       };
       return res.json(defaultConfig);
     }
 
-    res.json(result.rows[0].config);
+    res.json({
+      department,
+      features: result.rows[0].features
+    });
   } catch (err) {
     console.error('Error fetching department config:', err);
     res.status(500).json({ error: "Internal server error" });
@@ -534,7 +536,7 @@ app.put("/api/admin/department-config/:department", authenticateJWT, requireAdmi
 
   try {
     await pool.query(
-      'INSERT INTO department_configs (department, config) VALUES ($1, $2) ON CONFLICT (department) DO UPDATE SET config = $2',
+      'INSERT INTO department_configs (department, features) VALUES ($1, $2) ON CONFLICT (department) DO UPDATE SET features = $2',
       [department, JSON.stringify(config)]
     );
 
@@ -605,31 +607,105 @@ app.get("/api/profile", authenticateJWT, async (req, res) => {
     }
 
     const user = result.rows[0];
-    // Get user role from department_configs
-    let userRole = null;
+
+    // Get user features from department_configs
+    let userFeatures = {};
     try {
-      const roleResult = await pool.query(
-        'SELECT config FROM department_configs WHERE department = $1',
+      const configResult = await pool.query(
+        'SELECT features FROM department_configs WHERE department = $1',
         [user.department]
       );
-      if (roleResult.rows.length > 0) {
-        const config = roleResult.rows[0].config;
-        // For now, assign the first role or a default role
-        // In a real app, this would be stored in the user record
-        if (config.roles && config.roles.length > 0) {
-          userRole = config.roles[0].id; // Default to first role
+
+      console.log('[PROFILE API] Department config query result:', configResult.rows);
+
+      if (configResult.rows.length > 0) {
+        userFeatures = configResult.rows[0].features || {};
+        console.log('[PROFILE API] Using existing config:', userFeatures);
+      } else {
+        // Set default features based on department
+        userFeatures = {
+          'Profile': {
+            'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
+          },
+          'Chat': {
+            'messages': { enabled: true }
+          },
+          'Inventory': {
+            'inventory': { enabled: true },
+            'products': { enabled: true },
+            'inbound': { enabled: true },
+            'outbound': { enabled: true }
+          },
+          'Resources': {
+            'wiki': { enabled: true }
+          }
+        };
+
+        // Add department-specific features
+        if (user.department === 'Admin') {
+          userFeatures = {
+            ...userFeatures,
+            'Admin': {
+              'features': { enabled: true },
+              'db': { enabled: true },
+              'users': { enabled: true }
+            },
+            'HR': {
+              'onboarding': { enabled: true },
+              'users': { enabled: true },
+              'queries': { enabled: true },
+              'attendance': { enabled: true }
+            },
+            'Compliance': {
+              'sites': { enabled: true },
+              'documents': { enabled: true },
+              'crawling': { enabled: true }
+            },
+            'Approvals': {
+              'certifications': { enabled: true },
+              'roles': { enabled: true },
+              'documents': { enabled: true }
+            }
+          };
+        } else if (user.department === 'HR') {
+          userFeatures['HR'] = {
+            'users': { enabled: true },
+            'queries': { enabled: true },
+            'attendance': { enabled: true }
+          };
+        } else if (user.department === 'Compliance') {
+          userFeatures['Compliance'] = {
+            'sites': { enabled: true },
+            'documents': { enabled: true },
+            'crawling': { enabled: true }
+          };
+        }
+
+        console.log('[PROFILE API] Using default config for department', user.department, ':', userFeatures);
+
+        // Insert default config into database for future use
+        try {
+          await pool.query(
+            'INSERT INTO department_configs (department, features) VALUES ($1, $2)',
+            [user.department, JSON.stringify(userFeatures)]
+          );
+          console.log('[PROFILE API] Inserted default config into database');
+        } catch (insertErr) {
+          console.error('Error inserting default config:', insertErr);
         }
       }
-    } catch (roleErr) {
-      console.error('Error fetching user role:', roleErr);
+    } catch (configErr) {
+      console.error('Error fetching user features:', configErr);
     }
 
-    res.json({
+    console.log('[PROFILE API] Final userFeatures being returned:', userFeatures);
+
+    const responseData = {
       id: user.id,
       full_name: user.full_name,
       email: user.email,
       department: user.department,
-      role: userRole,
+      features: userFeatures,
       created_at: user.created_at,
       certifications: user.certifications || [],
       cv: user.cv,
@@ -639,9 +715,11 @@ app.get("/api/profile", authenticateJWT, async (req, res) => {
       query_count: user.query_count || 0,
       attendance: user.attendance || [],
       other_details: user.other_details || {}
-    });
+    };
+
+    res.json(responseData);
   } catch (err) {
-    console.error('Error fetching profile:', err);
+    console.error('[PROFILE API] Error fetching profile:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1012,32 +1090,7 @@ app.put("/api/admin/approvals/certifications/:certId", authenticateJWT, requireA
   }
 });
 
-// Get pending role change requests
-app.get("/api/admin/approvals/roles", authenticateJWT, requireAdmin, async (req, res) => {
-  try {
-    // For now, return empty array as we don't have a role_requests table yet
-    // This would be implemented when role change requests are stored in the database
-    res.json([]);
-  } catch (err) {
-    console.error('Error fetching role approvals:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
-// Update role change request status
-app.put("/api/admin/approvals/roles/:requestId", authenticateJWT, requireAdmin, async (req, res) => {
-  const { requestId } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
-
-  try {
-    // For now, this is a placeholder
-    // Implementation would update the role_requests table and potentially update user roles
-    res.json({ message: `Role change request ${status} successfully` });
-  } catch (err) {
-    console.error('Error updating role request:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 // Function to calculate date range based on time range option
 function getDateRange(timeRange) {

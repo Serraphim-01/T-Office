@@ -16,7 +16,7 @@ import { useUI } from '@/lib/ui-context';
 import { useToast } from '@/hooks/use-toast';
 
 export default function CreateWikiPage() {
-  const { user, hasFeatureAccess } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -35,15 +35,9 @@ export default function CreateWikiPage() {
   });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    // Check if user has create access
-    if (user && !hasFeatureAccess('Resources', 'wiki', 'create')) {
-      router.push('/resources/wiki');
-      return;
-    }
-
     // Fetch available departments
     fetchDepartments();
-  }, [user, router, hasFeatureAccess]);
+  }, [user, router]);
 
   const fetchDepartments = async () => {
     try {
@@ -425,9 +419,7 @@ export default function CreateWikiPage() {
 
 
 
-  if (!hasFeatureAccess('Resources', 'wiki', 'create')) {
-    return null; // Will redirect in useEffect
-  }
+
 
   return (
     <DashboardLayout>

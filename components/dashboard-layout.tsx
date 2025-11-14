@@ -54,7 +54,9 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, featureFlags, loading, setUser, setFeatureFlags, hasFeatureAccess } = useAuth();
+  const { user, loading, setUser } = useAuth();
+
+
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -65,7 +67,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isWikiMenuOpen, setIsWikiMenuOpen] = useState(pathname.startsWith('/resources/wiki'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
-  const [departmentFeatures, setDepartmentFeatures] = useState<Record<string, any>>({});
+
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,11 +85,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [isActivityBarOpen]);
 
-  useEffect(() => {
-    if (user && user.department) {
-      fetchDepartmentFeatures();
-    }
-  }, [user]); // Keep only user as dependency to avoid infinite loops
+  // Features are already loaded from auth context, no need to fetch separately
 
   if (loading || !user) {
     return (
@@ -103,7 +101,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
     { href: '/clock', label: 'Clock In/Out', icon: Clock },
-    ...(hasFeatureAccess('Profile', 'profile') ? [{ href: '/profile', label: 'Profile', icon: User }] : []),
+    { href: '/profile', label: 'Profile', icon: User },
   ];
 
   const inventoryItems = [
@@ -113,119 +111,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/inventory/outbound', label: 'Outbound', icon: ArrowUp },
   ];
 
-  const fetchDepartmentFeatures = async () => {
-    if (!user?.department) return;
+  // Features are loaded from auth context, no need for separate fetch
 
-    try {
-      const response = await fetch(`http://localhost:4000/api/admin/department-config/${user.department}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Use role-specific features if user has a role, otherwise use department default
-        const userRole = user.role; // Assuming user object has role property
-        let features = data.features;
-
-        if (userRole && data.roles) {
-          const roleConfig = data.roles.find((r: any) => r.id === userRole);
-          if (roleConfig) {
-            features = roleConfig.features;
-          }
-        }
-
-        setDepartmentFeatures(features || {});
-        setFeatureFlags(features || {}); // Update auth context featureFlags
-      } else {
-        // Fallback to default features - for Admin, use super-admin features
-        const defaultFeatures = user?.department === 'Admin' ? {
-          'Admin': {
-            'features': { enabled: true },
-            'db': { enabled: true },
-            'users': { enabled: true }
-          },
-          'HR': {
-            'onboarding': { enabled: true },
-            'users': { enabled: true },
-            'queries': { enabled: true },
-            'attendance': { enabled: true }
-          },
-          'Compliance': {
-            'sites': { enabled: true },
-            'documents': { enabled: true },
-            'crawling': { enabled: true }
-          },
-          'Profile': {
-            'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
-          },
-          'Approvals': {
-            'certifications': { enabled: true },
-            'roles': { enabled: true },
-            'documents': { enabled: true }
-          },
-          'Chat': {
-            'messages': { enabled: true }
-          }
-        } : {
-          'HR': {
-            'onboarding': { enabled: true },
-            'users': { enabled: true },
-            'queries': { enabled: true }
-          }
-        };
-
-        setDepartmentFeatures(defaultFeatures);
-        setFeatureFlags(defaultFeatures); // Update auth context featureFlags
-      }
-    } catch (err) {
-      console.error('Error fetching department features:', err);
-      // Fallback for Admin
-      const fallbackFeatures = user?.department === 'Admin' ? {
-        'Admin': {
-          'features': { enabled: true },
-          'db': { enabled: true },
-          'users': { enabled: true }
-        },
-        'HR': {
-          'onboarding': { enabled: true },
-          'users': { enabled: true },
-          'queries': { enabled: true },
-          'attendance': { enabled: true }
-        },
-        'Compliance': {
-          'sites': { enabled: true },
-          'documents': { enabled: true },
-          'crawling': { enabled: true }
-        },
-        'Profile': {
-          'profile': { enabled: true, functions: { 'view_details': true, 'update_details': true, 'view_role_management': true, 'request_role': true } }
-        },
-        'Approvals': {
-          'certifications': { enabled: true },
-          'roles': { enabled: true },
-          'documents': { enabled: true }
-        },
-        'Chat': {
-          'messages': { enabled: true }
-        }
-      } : {};
-
-      setDepartmentFeatures(fallbackFeatures);
-      setFeatureFlags(fallbackFeatures); // Update auth context featureFlags
-    }
-  };
-
-  // Add a function to refresh features when they change
-  const refreshFeatures = () => {
-    if (user && user.department) {
-      fetchDepartmentFeatures();
-    }
-  };
+  // Features are managed by auth context
 
   const adminItems = [
-    { href: '/admin/features', label: 'Features', icon: Shield },
     { href: '/admin/db', label: 'Database', icon: Database },
   ];
 
@@ -301,42 +191,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             ))}
 
-            {hasFeatureAccess('Inventory', 'inventory', 'view') && (
-              <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <Package className="mr-3 h-5 w-5" />
-                    Inventory
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {inventoryItems.map((item) => {
-                    const featureKey = item.href.split('/')[2]; // 'inventory', 'products', 'inbound', 'outbound'
-                    const hasAccess = hasFeatureAccess('Inventory', featureKey, 'view');
-                    if (!hasAccess) return null;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                          pathname === item.href
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                        )}
-                        onClick={() => {
-                          setSidebarOpen(false);
-                        }}
-                      >
-                        <item.icon className="mr-3 h-5 w-5" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            {user?.department === 'Admin' && hasFeatureAccess('Admin', 'features', 'view') && (
+            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Package className="mr-3 h-5 w-5" />
+                  Inventory
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                {inventoryItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === item.href
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    )}
+                    onClick={() => {
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+            {user?.department === 'Admin' && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
                 <CollapsibleTrigger className="w-full">
                   <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
@@ -345,45 +228,38 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-8 space-y-2">
-                  {adminItems.map((item) => {
-                    const featureKey = item.href.split('/')[2]; // 'features', 'db'
-                    const hasAccess = hasFeatureAccess('Admin', featureKey, 'view');
-                    if (!hasAccess) return null;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                          pathname === item.href
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                        )}
-                      >
-                        <item.icon className="mr-3 h-5 w-5" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                  {hasFeatureAccess('Approvals', 'certifications', 'view') && (
+                  {adminItems.map((item) => (
                     <Link
-                      href="/admin/approvals"
+                      key={item.href}
+                      href={item.href}
                       className={cn(
                         "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/admin/approvals"
+                        pathname === item.href
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       )}
                     >
-                      <ShieldCheck className="mr-3 h-5 w-5" />
-                      Approvals
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.label}
                     </Link>
-                  )}
+                  ))}
+                  <Link
+                    href="/admin/approvals"
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === "/admin/approvals"
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    )}
+                  >
+                    <ShieldCheck className="mr-3 h-5 w-5" />
+                    Approvals
+                  </Link>
                 </CollapsibleContent>
               </Collapsible>
             )}
 
-            {hasFeatureAccess('Approvals', 'certifications', 'view') && user?.department !== 'Admin' && (
+            {user?.department !== 'Admin' && (
               <Link
                 href="/admin/approvals"
                 className={cn(
@@ -398,7 +274,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             )}
 
-            {(user?.department === 'Admin' || user?.department === 'HR') && hasFeatureAccess('HR', 'users', 'view') && (
+            {(user?.department === 'Admin' || user?.department === 'HR') && (
               <Collapsible open={isHRMenuOpen} onOpenChange={setIsHRMenuOpen}>
                 <CollapsibleTrigger className="w-full">
                   <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
@@ -407,10 +283,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-8 space-y-2">
-                  {hrItems.filter(item => {
-                    if (!item.feature) return true;
-                    return hasFeatureAccess('HR', item.feature, 'view');
-                  }).map((item) => (
+                  {hrItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
@@ -430,54 +303,50 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             )}
 
             {/* Resources Section */}
-            {hasFeatureAccess('Resources', 'wiki', 'view') && (
-              <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <BookOpen className="mr-3 h-5 w-5" />
-                    Resources
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
-                    <CollapsibleTrigger className="w-full">
-                      <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                        <FileText className="mr-3 h-5 w-5" />
-                        Wiki
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-8 space-y-2">
-                      <Link
-                        href="/resources/wiki"
-                        className={cn(
-                          "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                          pathname === "/resources/wiki"
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                        )}
-                      >
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Wiki Overview
-                      </Link>
-                      {hasFeatureAccess('Resources', 'wiki', 'create') && (
-                        <Link
-                          href="/resources/wiki/create"
-                          className={cn(
-                            "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                            pathname === "/resources/wiki/create"
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                          )}
-                        >
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create Wiki
-                        </Link>
+            <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <BookOpen className="mr-3 h-5 w-5" />
+                  Resources
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                      <FileText className="mr-3 h-5 w-5" />
+                      Wiki
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pl-8 space-y-2">
+                    <Link
+                      href="/resources/wiki"
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/resources/wiki"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Wiki Overview
+                    </Link>
+                    <Link
+                      href="/resources/wiki/create"
+                      className={cn(
+                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        pathname === "/resources/wiki/create"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Wiki
+                    </Link>
+                  </CollapsibleContent>
+                </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
 
           </nav>
 

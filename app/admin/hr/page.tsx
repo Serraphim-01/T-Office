@@ -453,8 +453,6 @@ export default function HRPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Department</TableHead>
-                      <TableHead>Query Count</TableHead>
-                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -464,82 +462,6 @@ export default function HRPage() {
                         <TableCell>{user.email}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{user.department}</Badge>
-                        </TableCell>
-                        <TableCell>{user.query_count || 0}</TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
-                                View Details
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>{user.full_name}'s Details</DialogTitle>
-                                <DialogDescription>View and edit user information</DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label>Certifications</Label>
-                                    <Textarea
-                                      defaultValue={JSON.stringify(user.certifications || [], null, 2)}
-                                      onBlur={(e) => {
-                                        try {
-                                          const certs = JSON.parse(e.target.value);
-                                          updateUserDetails(user.id, { certifications: certs });
-                                        } catch (err) {
-                                          alert('Invalid JSON format');
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>CV</Label>
-                                    <Textarea
-                                      defaultValue={user.cv || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { cv: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Portfolio</Label>
-                                    <Textarea
-                                      defaultValue={user.portfolio || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { portfolio: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Job Description</Label>
-                                    <Textarea
-                                      defaultValue={user.job_description || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { job_description: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Contract</Label>
-                                    <Textarea
-                                      defaultValue={user.contract || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { contract: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Other Details</Label>
-                                    <Textarea
-                                      defaultValue={JSON.stringify(user.other_details || {}, null, 2)}
-                                      onBlur={(e) => {
-                                        try {
-                                          const details = JSON.parse(e.target.value);
-                                          updateUserDetails(user.id, { other_details: details });
-                                        } catch (err) {
-                                          alert('Invalid JSON format');
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}

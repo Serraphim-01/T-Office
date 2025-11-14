@@ -28,8 +28,7 @@ interface RoleChangeRequest {
   user_id: number;
   user_name: string;
   user_email: string;
-  current_role: string;
-  requested_role: string;
+  features: Record<string, boolean>;
   department: string;
   reason?: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -165,7 +164,7 @@ export default function ApprovalsPage() {
             </TabsTrigger>
             <TabsTrigger value="roles" className="flex items-center space-x-2">
               <User className="h-4 w-4" />
-              <span>Role Change Requests</span>
+              <span>Feature Change Requests</span>
               {roleRequests.filter(r => r.status === 'pending').length > 0 && (
                 <Badge variant="secondary" className="ml-2">
                   {roleRequests.filter(r => r.status === 'pending').length}
@@ -250,8 +249,8 @@ export default function ApprovalsPage() {
           <TabsContent value="roles" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Role Change Requests</CardTitle>
-                <CardDescription>Review and approve role change requests from users</CardDescription>
+                <CardTitle>Feature Change Requests</CardTitle>
+                <CardDescription>Review and approve feature change requests from users</CardDescription>
               </CardHeader>
               <CardContent>
                 {roleRequests.length > 0 ? (
@@ -274,7 +273,7 @@ export default function ApprovalsPage() {
                           <p className="text-sm text-muted-foreground mb-1">Email: {request.user_email}</p>
                           <p className="text-sm text-muted-foreground mb-1">Department: {request.department}</p>
                           <p className="text-sm text-muted-foreground">
-                            Request: {request.current_role} → {request.requested_role}
+                            Features: {request.features ? Object.keys(request.features).filter(f => request.features[f]).join(', ') : 'No features'}
                           </p>
                           {request.reason && (
                             <p className="text-sm text-muted-foreground mt-2">
@@ -308,7 +307,7 @@ export default function ApprovalsPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No role change requests pending.</p>
+                  <p className="text-sm text-muted-foreground">No feature change requests pending.</p>
                 )}
               </CardContent>
             </Card>

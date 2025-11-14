@@ -24,7 +24,7 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const { user, loading, hasFeatureAccess } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -51,6 +51,17 @@ export default function ChatPage() {
       fetchMessages();
       fetchChatSettings();
     }
+  }, [user]);
+
+  // Poll for new messages every 3 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      fetchMessages();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   // Auto scroll to bottom when new messages arrive
@@ -269,8 +280,8 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Summarize Button - Only for Admin/HR with feature access */}
-                {hasFeatureAccess('Chat', 'messages', 'summarize') && (
+                {/* Summarize Button - Only for Admin/HR */}
+                {(user?.department === 'Admin' || user?.department === 'HR') && (
                   <>
                     <Button
                       variant="outline"
@@ -344,20 +355,18 @@ export default function ChatPage() {
                     )}
 
                     {/* Pause/Resume Chat Button - Only for Admin/HR */}
-                    {hasFeatureAccess('Chat', 'messages', 'moderate') && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={toggleChatPause}
-                        className={cn(
-                          "flex items-center",
-                          isChatPaused ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
-                        )}
-                      >
-                        {isChatPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                        {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={toggleChatPause}
+                      className={cn(
+                        "flex items-center",
+                        isChatPaused ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
+                      )}
+                    >
+                      {isChatPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                      {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
+                    </Button>
 
                     {/* Clear Chat Button - Only for Admin */}
                     {user?.department === 'Admin' && (
@@ -383,7 +392,7 @@ export default function ChatPage() {
             {/* Messages */}
             <div className="flex-1 flex flex-col">
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {hasFeatureAccess('Chat', 'messages', 'view') ? (
+                {true ? (
                   messages.length === 0 ? (
                     <div className="text-center py-12">
                       <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -467,8 +476,8 @@ export default function ChatPage() {
                 )}
 
                 <div className="flex space-x-2">
-                  {/* Moderator Mode Toggle - Only with feature access */}
-                  {hasFeatureAccess('Chat', 'messages', 'moderate') && (
+                  {/* Moderator Mode Toggle - Only for Admin/HR */}
+                  {(user?.department === 'Admin' || user?.department === 'HR') && (
                     <div className="flex items-center space-x-2 pr-4 border-r border-border">
                       <input
                         type="checkbox"
@@ -485,9 +494,7 @@ export default function ChatPage() {
 
                   <Input
                     placeholder={
-                      !hasFeatureAccess('Chat', 'messages', 'send')
-                        ? "You don't have permission to send messages"
-                        : isChatPaused && !isModeratorMode
+                      isChatPaused && !isModeratorMode
                         ? "Chat is paused - only moderators can send messages"
                         : isModeratorMode
                         ? "Type your moderator message..."
@@ -500,11 +507,11 @@ export default function ChatPage() {
                     }}
                     onKeyPress={handleKeyPress}
                     className="flex-1"
-                    disabled={isCheckingToxicity || !hasFeatureAccess('Chat', 'messages', 'send') || (isChatPaused && !isModeratorMode)}
+                    disabled={isCheckingToxicity || (isChatPaused && !isModeratorMode)}
                   />
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || isCheckingToxicity || !hasFeatureAccess('Chat', 'messages', 'send') || (isChatPaused && !isModeratorMode)}
+                    disabled={!newMessage.trim() || isCheckingToxicity || (isChatPaused && !isModeratorMode)}
                   >
                     {isCheckingToxicity ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

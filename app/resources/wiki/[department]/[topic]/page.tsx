@@ -185,7 +185,7 @@ export default function WikiLessonPage() {
   const params = useParams();
   const department = params.department as string;
   const topic = params.topic as string;
-  const { user, hasFeatureAccess } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [lesson, setLesson] = useState<WikiTopic | null>(null);
@@ -627,33 +627,31 @@ export default function WikiLessonPage() {
               </div>
             </div>
           </div>
-          {hasFeatureAccess('Resources', 'wiki', 'edit') && (
-            <div className="flex gap-2">
-              {!isEditing ? (
-                <Button variant="outline" size="sm" onClick={handleEdit}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <Button variant="outline" size="sm" onClick={handleEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" size="sm" onClick={handleSaveEdit}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
                 </Button>
-              ) : (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleSaveEdit}>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                </>
-              )}
-              {hasFeatureAccess('Resources', 'wiki', 'delete') && !isEditing && (
-                <Button variant="outline" size="sm" onClick={handleDelete}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
                 </Button>
-              )}
-            </div>
-          )}
+              </>
+            )}
+            {!isEditing && (
+              <Button variant="outline" size="sm" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Content */}

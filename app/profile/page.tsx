@@ -31,7 +31,6 @@ interface Profile {
   full_name: string;
   email: string;
   department: string;
-  role: string;
   created_at: string;
   certifications: Certification[];
   cv?: string;
@@ -208,7 +207,7 @@ export default function ProfilePage() {
                   <div className="flex items-center space-x-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Role</span>
-                    <span className="text-sm font-medium text-foreground">{profile?.role || 'No Role'}</span>
+                    <span className="text-sm font-medium text-foreground">{profile?.department || 'No Role'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -216,50 +215,24 @@ export default function ProfilePage() {
             {/* Role Management */}
             <Card>
               <CardHeader>
-                <CardTitle>Role Management</CardTitle>
-                <CardDescription>Manage your role and permissions</CardDescription>
+                <CardTitle>Role Information</CardTitle>
+                <CardDescription>Your department and role details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Current Role</span>
-                    <Badge variant="default">{profile?.role || 'No Role Assigned'}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Department</span>
                     <Badge variant="secondary">{profile?.department || 'No Department'}</Badge>
                   </div>
-                </div>
-                <div className="space-y-3">
-                  <Label htmlFor="role-select">Request Role Change</Label>
-                  <select
-                    id="role-select"
-                    className="w-full p-2 border rounded-md"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Select a role to request</option>
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Admin">Admin</option>
-                    <option value="HR Manager">HR Manager</option>
-                    <option value="HR Employee">HR Employee</option>
-                    <option value="Engineering Lead">Engineering Lead</option>
-                    <option value="Developer">Developer</option>
-                  </select>
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => {
-                      // TODO: Implement role change request submission
-                      alert('Role change request submitted! This will be reviewed by an administrator.');
-                    }}
-                  >
-                    Submit Role Change Request
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Role</span>
+                    <Badge variant="outline">{profile?.department || 'No Role'}</Badge>
+                  </div>
                 </div>
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Role changes require approval from your department administrator. Contact your admin to request role updates.
+                    Your role and department determine your access to different features in the system.
                   </AlertDescription>
                 </Alert>
               </CardContent>
