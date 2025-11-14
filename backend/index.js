@@ -1148,12 +1148,12 @@ app.post("/api/admin/setup-locations", authenticateJWT, requireAdmin, async (req
   }
 });
 
-// Get user's locations
+// Get all user locations (for display purposes, all user-created locations)
 app.get("/api/user-locations", authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM user_locations WHERE user_id = $1 ORDER BY name',
-      [req.user.userId]
+      'SELECT id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at, created_by FROM locations WHERE created_by IS NOT NULL ORDER BY name',
+      []
     );
     res.json(result.rows);
   } catch (err) {
@@ -1162,7 +1162,7 @@ app.get("/api/user-locations", authenticateJWT, async (req, res) => {
   }
 });
 
-// Create new user location
+// Create new user location (save to global locations table with created_by)
 app.post("/api/user-locations", authenticateJWT, async (req, res) => {
   const { name, latitude, longitude, radius_meters, address } = req.body;
 
@@ -1172,8 +1172,8 @@ app.post("/api/user-locations", authenticateJWT, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO user_locations (user_id, name, latitude, longitude, radius_meters, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId, name, latitude, longitude, radius_meters || 100, address]
+      'INSERT INTO locations (name, latitude, longitude, radius_meters, address, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at',
+      [name, latitude, longitude, radius_meters || 100, address, req.user.userId]
     );
 
     res.status(201).json(result.rows[0]);
@@ -1187,24 +1187,24 @@ app.post("/api/user-locations", authenticateJWT, async (req, res) => {
   }
 });
 
-// Update user location
+// Update user location (in global locations table, check created_by)
 app.put("/api/user-locations/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
   const { name, latitude, longitude, radius_meters, address, is_active } = req.body;
 
   try {
-    // First check if the location belongs to the user
+    // First check if the location was created by the user
     const checkResult = await pool.query(
-      'SELECT id FROM user_locations WHERE id = $1 AND user_id = $2',
+      'SELECT id FROM locations WHERE id = $1 AND created_by = $2',
       [id, req.user.userId]
     );
 
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "Location not found" });
+      return res.status(404).json({ error: "Location not found or you don't have permission to edit it" });
     }
 
     const result = await pool.query(
-      'UPDATE user_locations SET name = $1, latitude = $2, longitude = $3, radius_meters = $4, address = $5, is_active = $6, updated_at = NOW() WHERE id = $7 AND user_id = $8 RETURNING *',
+      'UPDATE locations SET name = $1, latitude = $2, longitude = $3, radius_meters = $4, address = $5, is_active = $6, updated_at = NOW() WHERE id = $7 AND created_by = $8 RETURNING id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at',
       [name, latitude, longitude, radius_meters, address, is_active, id, req.user.userId]
     );
 
@@ -1219,24 +1219,24 @@ app.put("/api/user-locations/:id", authenticateJWT, async (req, res) => {
   }
 });
 
-// Delete user location
+// Delete user location (from global locations table, allow anyone to delete user-created locations)
 app.delete("/api/user-locations/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
 
   try {
-    // First check if the location belongs to the user
+    // Check if the location exists and is user-created (not system location)
     const checkResult = await pool.query(
-      'SELECT id FROM user_locations WHERE id = $1 AND user_id = $2',
-      [id, req.user.userId]
+      'SELECT id FROM locations WHERE id = $1 AND created_by IS NOT NULL',
+      [id]
     );
 
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "Location not found" });
+      return res.status(404).json({ error: "Location not found or cannot be deleted" });
     }
 
     const result = await pool.query(
-      'DELETE FROM user_locations WHERE id = $1 AND user_id = $2 RETURNING *',
-      [id, req.user.userId]
+      'DELETE FROM locations WHERE id = $1 AND created_by IS NOT NULL RETURNING *',
+      [id]
     );
 
     res.status(204).send();
@@ -1845,7 +1845,7 @@ async function checkUserInGeofence(userId, userLat, userLng) {
 
     // Check user locations
     console.log(`[GEOFENCE-CHECK] Querying user locations for user ${userId}...`);
-    const userLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM user_locations WHERE user_id = $1 AND is_active = true', [userId]);
+    const userLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE created_by = $1 AND is_active = true', [userId]);
     console.log(`[GEOFENCE-CHECK] Found ${userLocations.rows.length} active user locations`);
 
     for (const location of userLocations.rows) {

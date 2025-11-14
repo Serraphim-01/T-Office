@@ -21,7 +21,8 @@ interface Location {
 }
 
 interface UserLocation extends Location {
-  user_id: number;
+  user_id?: number;
+  created_by?: number;
   created_at: string;
   updated_at: string;
 }
@@ -106,9 +107,16 @@ export default function ClockPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setAttendanceRecords(data);
+        // Map backend fields to frontend expected fields
+        const mappedData = data.map((record: any) => ({
+          id: record.id,
+          type: record.event_type, // Map event_type to type
+          timestamp: record.timestamp,
+          location: record.location_name, // Map location_name to location
+        }));
+        setAttendanceRecords(mappedData);
         // Check if user is currently clocked in
-        const lastRecord = data[0];
+        const lastRecord = mappedData[0];
         if (lastRecord && lastRecord.type === 'clock_in') {
           setIsClockedIn(true);
         }
@@ -140,14 +148,14 @@ export default function ClockPage() {
   };
 
   const checkGeofenceStatus = (lat: number, lng: number) => {
-    // Check global locations
+    // Check global locations (system locations)
     const inGlobalGeofence = locations.some(location => {
       if (!location.is_active) return false;
       const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
       return distance <= location.radius_meters;
     });
 
-    // Check user locations
+    // Check user locations (all user-created locations)
     const inUserGeofence = userLocations.some(location => {
       if (!location.is_active) return false;
       const distance = calculateDistance(lat, lng, location.latitude, location.longitude);
