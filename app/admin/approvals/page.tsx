@@ -5,8 +5,8 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Clock, FileText, User, Eye, Download } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
 
 interface CertificationApproval {
@@ -17,33 +17,22 @@ interface CertificationApproval {
   title: string;
   issuer: string;
   file_url?: string;
+  file_data?: string;
+  file_type?: string;
   expiry_date?: string;
   has_expiry: boolean;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
 }
 
-interface RoleChangeRequest {
-  id: string;
-  user_id: number;
-  user_name: string;
-  user_email: string;
-  features: Record<string, boolean>;
-  department: string;
-  reason?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-}
+
 
 export default function ApprovalsPage() {
   const { user } = useAuth();
   const [certifications, setCertifications] = useState<CertificationApproval[]>([]);
-  const [roleRequests, setRoleRequests] = useState<RoleChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchApprovals();
-  }, []);
+  const [selectedCert, setSelectedCert] = useState<CertificationApproval | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   const fetchApprovals = async () => {
     try {
@@ -59,17 +48,7 @@ export default function ApprovalsPage() {
         setCertifications(certData);
       }
 
-      // Fetch pending role change requests
-      const roleResponse = await fetch('http://localhost:4000/api/admin/approvals/roles', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
 
-      if (roleResponse.ok) {
-        const roleData = await roleResponse.json();
-        setRoleRequests(roleData);
-      }
     } catch (error) {
       console.error('Failed to fetch approvals:', error);
     } finally {
@@ -77,7 +56,39 @@ export default function ApprovalsPage() {
     }
   };
 
+  useEffect(() => {
+    fetchApprovals();
+
+    // Add event listener for window focus to refetch approvals
+    const handleFocus = () => {
+      fetchApprovals();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Add polling for real-time updates every 5 seconds
+    const interval = setInterval(() => {
+      fetchApprovals();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleCertificationApproval = async (certId: string, status: 'approved' | 'rejected') => {
+    // Optimistic update - remove from UI immediately for approved, update status for rejected
+    if (status === 'approved') {
+      setCertifications(prev => prev.filter(cert => cert.id !== certId));
+    } else {
+      setCertifications(prev =>
+        prev.map(cert =>
+          cert.id === certId ? { ...cert, status } : cert
+        )
+      );
+    }
+
     try {
       const response = await fetch(`http://localhost:4000/api/admin/approvals/certifications/${certId}`, {
         method: 'PUT',
@@ -88,48 +99,35 @@ export default function ApprovalsPage() {
         body: JSON.stringify({ status }),
       });
 
-      if (response.ok) {
-        // Update local state
-        setCertifications(prev =>
-          prev.map(cert =>
-            cert.id === certId ? { ...cert, status } : cert
-          )
-        );
+      if (!response.ok) {
+        // Revert optimistic update on failure
+        await fetchApprovals(); // Refetch to restore the correct state
+        console.error('Failed to update certification status');
       }
     } catch (error) {
+      // Revert optimistic update on error
+      await fetchApprovals(); // Refetch to restore the correct state
       console.error('Failed to update certification:', error);
     }
   };
 
-  const handleRoleApproval = async (requestId: string, status: 'approved' | 'rejected') => {
-    try {
-      const response = await fetch(`http://localhost:4000/api/admin/approvals/roles/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ status }),
-      });
 
-      if (response.ok) {
-        // Update local state
-        setRoleRequests(prev =>
-          prev.map(request =>
-            request.id === requestId ? { ...request, status } : request
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Failed to update role request:', error);
-    }
-  };
 
   const openCertification = (cert: CertificationApproval) => {
-    if (cert.file_url) {
-      window.open(cert.file_url, '_blank');
-    }
+    console.log('Opening certification:', {
+      id: cert.id,
+      title: cert.title,
+      hasFileData: !!cert.file_data,
+      fileType: cert.file_type,
+      hasFileUrl: !!cert.file_url,
+      fileDataLength: cert.file_data?.length
+    });
+
+    setSelectedCert(cert);
+    setIsImageModalOpen(true);
   };
+
+
 
   if (loading) {
     return (
@@ -151,168 +149,121 @@ export default function ApprovalsPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="certifications" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="certifications" className="flex items-center space-x-2">
-              <FileText className="h-4 w-4" />
-              <span>Certificate Approvals</span>
-              {certifications.filter(c => c.status === 'pending').length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {certifications.filter(c => c.status === 'pending').length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="flex items-center space-x-2">
-              <User className="h-4 w-4" />
-              <span>Feature Change Requests</span>
-              {roleRequests.filter(r => r.status === 'pending').length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {roleRequests.filter(r => r.status === 'pending').length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="certifications" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Certificate Approvals</CardTitle>
-                <CardDescription>Review and approve user certification submissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {certifications.length > 0 ? (
-                  <div className="space-y-4">
-                    {certifications.map((cert) => (
-                      <div key={cert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{cert.title}</span>
-                            <Badge
-                              variant={cert.status === 'approved' ? 'default' : cert.status === 'rejected' ? 'destructive' : 'secondary'}
-                            >
-                              {cert.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {cert.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
-                              {cert.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                              {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-1">Issuer: {cert.issuer}</p>
-                          <p className="text-sm text-muted-foreground mb-1">Submitted by: {cert.user_name} ({cert.user_email})</p>
-                          {cert.has_expiry && cert.expiry_date && (
-                            <p className="text-sm text-muted-foreground">
-                              Expires: {new Date(cert.expiry_date).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {cert.file_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openCertification(cert)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {cert.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleCertificationApproval(cert.id, 'approved')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleCertificationApproval(cert.id, 'rejected')}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Certificate Approvals</CardTitle>
+            <CardDescription>Review and approve user certification submissions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {certifications.length > 0 ? (
+              <div className="space-y-4">
+                {certifications.map((cert) => (
+                  <div key={cert.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{cert.title}</span>
+                        <Badge
+                          variant={cert.status === 'approved' ? 'default' : cert.status === 'rejected' ? 'destructive' : 'secondary'}
+                        >
+                          {cert.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {cert.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                          {cert.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                          {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                        </Badge>
                       </div>
-                    ))}
+                      <p className="text-sm text-muted-foreground mb-1">Issuer: {cert.issuer}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Submitted by: {cert.user_name} ({cert.user_email})</p>
+                      {cert.has_expiry && cert.expiry_date && (
+                        <p className="text-sm text-muted-foreground">
+                          Expires: {new Date(cert.expiry_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {(cert.file_data || cert.file_url) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openCertification(cert)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {cert.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleCertificationApproval(cert.id, 'approved')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleCertificationApproval(cert.id, 'rejected')}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No certificate approvals pending.</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No certificate approvals pending.</p>
+            )}
+          </CardContent>
+        </Card>
 
-          <TabsContent value="roles" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Feature Change Requests</CardTitle>
-                <CardDescription>Review and approve feature change requests from users</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {roleRequests.length > 0 ? (
-                  <div className="space-y-4">
-                    {roleRequests.map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{request.user_name}</span>
-                            <Badge
-                              variant={request.status === 'approved' ? 'default' : request.status === 'rejected' ? 'destructive' : 'secondary'}
-                            >
-                              {request.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {request.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
-                              {request.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-1">Email: {request.user_email}</p>
-                          <p className="text-sm text-muted-foreground mb-1">Department: {request.department}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Features: {request.features ? Object.keys(request.features).filter(f => request.features[f]).join(', ') : 'No features'}
-                          </p>
-                          {request.reason && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Reason: {request.reason}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {request.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => handleRoleApproval(request.id, 'approved')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleRoleApproval(request.id, 'rejected')}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No feature change requests pending.</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Image Modal */}
+        <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedCert?.title}</DialogTitle>
+              <DialogDescription>
+                Certificate submitted by {selectedCert?.user_name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center">
+              {selectedCert?.file_data && selectedCert?.file_type ? (
+                <img
+                  src={`data:${selectedCert.file_type};base64,${selectedCert.file_data}`}
+                  alt={selectedCert.title}
+                  className="max-w-full max-h-[60vh] object-contain"
+                  onError={(e) => {
+                    console.error('Image failed to load:', e);
+                    e.currentTarget.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'Failed to load image';
+                    errorMsg.className = 'text-red-500 text-center';
+                    e.currentTarget.parentNode?.appendChild(errorMsg);
+                  }}
+                />
+              ) : selectedCert?.file_url ? (
+                <img
+                  src={selectedCert.file_url}
+                  alt={selectedCert.title}
+                  className="max-w-full max-h-[60vh] object-contain"
+                  onError={(e) => {
+                    console.error('Image failed to load from URL:', e);
+                    e.currentTarget.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'Failed to load image from URL';
+                    errorMsg.className = 'text-red-500 text-center';
+                    e.currentTarget.parentNode?.appendChild(errorMsg);
+                  }}
+                />
+              ) : (
+                <p className="text-muted-foreground">No image available</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

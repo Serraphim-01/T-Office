@@ -656,7 +656,85 @@ app.put("/api/profile", authenticateJWT, async (req, res) => {
 
 // Add certification to user profile
 app.post("/api/profile/certifications", authenticateJWT, async (req, res) => {
-  const { title, issuer, file_url, expiry_date, has_expiry } = req.body;
+  const { title, issuer, file_data, file_name, file_type, expiry_date, has_expiry } = req.body;
+
+  console.log('[CERT-ADD] Starting certification addition for user:', req.user.userId);
+  console.log('[CERT-ADD] Request body keys:', Object.keys(req.body));
+
+  if (!title || !issuer) {
+    return res.status(400).json({ error: "Title and issuer are required" });
+  }
+
+  try {
+    // Check if user_details row exists
+    const userDetailsCheck = await pool.query(
+      'SELECT id FROM user_details WHERE user_id = $1',
+      [req.user.userId]
+    );
+
+    console.log('[CERT-ADD] User details check result:', userDetailsCheck.rows);
+
+    if (userDetailsCheck.rows.length === 0) {
+      console.log('[CERT-ADD] No user_details row found, creating one...');
+      await pool.query(
+        'INSERT INTO user_details (user_id) VALUES ($1)',
+        [req.user.userId]
+      );
+      console.log('[CERT-ADD] Created user_details row');
+    }
+
+    // Get current certifications
+    const currentResult = await pool.query(
+      'SELECT certifications FROM user_details WHERE user_id = $1',
+      [req.user.userId]
+    );
+
+    console.log('[CERT-ADD] Current certifications query result:', currentResult.rows);
+
+    const currentCerts = currentResult.rows[0]?.certifications || [];
+    console.log('[CERT-ADD] Current certifications:', currentCerts);
+
+    const newCert = {
+      id: Date.now().toString(),
+      title,
+      issuer,
+      file_data: file_data || null, // Base64 encoded file data
+      file_name: file_name || null,
+      file_type: file_type || null,
+      expiry_date: has_expiry ? expiry_date : null,
+      has_expiry,
+      status: 'pending', // Pending approval
+      created_at: new Date().toISOString()
+    };
+
+    console.log('[CERT-ADD] New certification object created');
+
+    const updatedCerts = [...currentCerts, newCert];
+    console.log('[CERT-ADD] Updated certifications array length:', updatedCerts.length);
+
+    const updateResult = await pool.query(
+      'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
+      [JSON.stringify(updatedCerts), req.user.userId]
+    );
+
+    console.log('[CERT-ADD] Update query result:', updateResult.rowCount, 'rows affected');
+
+    console.log('[CERT-ADD] Certification added successfully');
+    res.status(201).json(newCert);
+  } catch (err) {
+    console.error('[CERT-ADD] Error adding certification:', err);
+    console.error('[CERT-ADD] Error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code
+    });
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete certification from user profile
+app.delete("/api/profile/certifications/:certId", authenticateJWT, async (req, res) => {
+  const { certId } = req.params;
 
   try {
     // Get current certifications
@@ -665,28 +743,28 @@ app.post("/api/profile/certifications", authenticateJWT, async (req, res) => {
       [req.user.userId]
     );
 
-    const currentCerts = currentResult.rows[0]?.certifications || [];
-    const newCert = {
-      id: Date.now().toString(),
-      title,
-      issuer,
-      file_url,
-      expiry_date: has_expiry ? expiry_date : null,
-      has_expiry,
-      status: 'pending', // Pending approval
-      created_at: new Date().toISOString()
-    };
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({ error: "User details not found" });
+    }
 
-    const updatedCerts = [...currentCerts, newCert];
+    const currentCerts = currentResult.rows[0]?.certifications || [];
+    const certIndex = currentCerts.findIndex(cert => cert.id === certId);
+
+    if (certIndex === -1) {
+      return res.status(404).json({ error: "Certification not found" });
+    }
+
+    // Remove the certification from the array
+    currentCerts.splice(certIndex, 1);
 
     await pool.query(
       'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
-      [JSON.stringify(updatedCerts), req.user.userId]
+      [JSON.stringify(currentCerts), req.user.userId]
     );
 
-    res.status(201).json(newCert);
+    res.json({ message: "Certification deleted successfully" });
   } catch (err) {
-    console.error('Error adding certification:', err);
+    console.error('Error deleting certification:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -932,7 +1010,7 @@ app.post("/api/hr/attendance", authenticateJWT, requireHR, async (req, res) => {
 // ---------------------------------
 
 // Get pending certificate approvals
-app.get("/api/admin/approvals/certifications", authenticateJWT, requireAdmin, async (req, res) => {
+app.get("/api/admin/approvals/certifications", authenticateJWT, async (req, res) => {
   try {
     // Get all users with their certifications
     const result = await pool.query(`
@@ -955,7 +1033,15 @@ app.get("/api/admin/approvals/certifications", authenticateJWT, requireAdmin, as
             user_id: userRow.user_id,
             user_name: userRow.user_name,
             user_email: userRow.user_email,
-            ...cert
+            title: cert.title,
+            issuer: cert.issuer,
+            file_url: cert.file_url,
+            file_data: cert.file_data,
+            file_type: cert.file_type,
+            expiry_date: cert.expiry_date,
+            has_expiry: cert.has_expiry,
+            status: cert.status,
+            created_at: cert.created_at
           });
         }
       }
@@ -969,7 +1055,7 @@ app.get("/api/admin/approvals/certifications", authenticateJWT, requireAdmin, as
 });
 
 // Update certificate approval status
-app.put("/api/admin/approvals/certifications/:certId", authenticateJWT, requireAdmin, async (req, res) => {
+app.put("/api/admin/approvals/certifications/:certId", authenticateJWT, async (req, res) => {
   const { certId } = req.params;
   const { status } = req.body; // 'approved' or 'rejected'
 
@@ -997,6 +1083,38 @@ app.put("/api/admin/approvals/certifications/:certId", authenticateJWT, requireA
     res.status(404).json({ error: "Certification not found" });
   } catch (err) {
     console.error('Error updating certification status:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete certificate
+app.delete("/api/admin/approvals/certifications/:certId", authenticateJWT, async (req, res) => {
+  const { certId } = req.params;
+
+  try {
+    // Find the user and certification
+    const allUsersResult = await pool.query('SELECT user_id, certifications FROM user_details');
+
+    for (const userRow of allUsersResult.rows) {
+      const certs = userRow.certifications || [];
+      const certIndex = certs.findIndex(cert => cert.id === certId);
+
+      if (certIndex !== -1) {
+        // Remove the certification from the array
+        certs.splice(certIndex, 1);
+
+        await pool.query(
+          'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
+          [JSON.stringify(certs), userRow.user_id]
+        );
+
+        return res.json({ message: "Certification deleted successfully" });
+      }
+    }
+
+    res.status(404).json({ error: "Certification not found" });
+  } catch (err) {
+    console.error('Error deleting certification:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
