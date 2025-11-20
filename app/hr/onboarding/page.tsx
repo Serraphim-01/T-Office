@@ -135,12 +135,14 @@ export default function HROnboardingPage() {
     setLoading(false);
   };
 
-  if (!user || (user.department !== 'Admin' && user.department !== 'HR')) {
+
+
+  if (!user) {
     return (
       <DashboardLayout>
         <div className="p-8 text-center">
-          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-          <p>You don't have permission to access this page.</p>
+          <h1 className="text-2xl font-bold text-red-600">Please Log In</h1>
+          <p>You need to be logged in to access this page.</p>
         </div>
       </DashboardLayout>
     );
@@ -258,7 +260,6 @@ export default function HROnboardingPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {users
-                      .filter(user => user.other_details?.induction_eligible !== false)
                       .map((user) => (
                         <SelectItem key={user.id} value={user.id.toString()}>
                           {user.full_name} ({user.email})

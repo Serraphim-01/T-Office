@@ -24,7 +24,7 @@
   "categories": ["business", "productivity"],
   "screenshots": [
     {
-      "src": "/screenshot-wide.png",
+      "src": "",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide"

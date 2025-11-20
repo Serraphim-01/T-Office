@@ -4,13 +4,12 @@ import bcrypt from "bcrypt";
 
 const router = express.Router();
 
-// Create a new user (HR/Admin only)
-router.post("/users", authenticateJWT, requireHR, async (req, res) => {
+// Create a new user
+router.post("/users", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { name, email, department } = req.body;
-  const induction_eligible = true; // Default all new users to eligible for induction
 
-  console.log('HR user creation:', { name, email, department, induction_eligible });
+  console.log('User creation:', { name, email, department });
 
   try {
     // Default password for new users
@@ -23,12 +22,6 @@ router.post("/users", authenticateJWT, requireHR, async (req, res) => {
     );
     const userId = result.rows[0].id;
 
-    // Create user details entry
-    await pool.query(
-      'INSERT INTO user_details (user_id, induction_eligible) VALUES ($1, $2)',
-      [userId, induction_eligible]
-    );
-
     console.log('User created successfully with default password');
     res.status(201).json({
       id: userId,
@@ -38,7 +31,7 @@ router.post("/users", authenticateJWT, requireHR, async (req, res) => {
       default_password: defaultPassword
     });
   } catch (err) {
-    console.error('HR user creation error:', err);
+    console.error('User creation error:', err);
     if (err.code === '23505') {
       res.status(400).json({ error: "Email already exists" });
     } else {

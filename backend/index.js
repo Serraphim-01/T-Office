@@ -18,8 +18,8 @@ import profileRoutes from "./routes/profile.js";
 import wikiRoutes from "./routes/wiki.js";
 import locationRoutes from "./routes/locations.js";
 import inventoryRoutes from "./routes/inventory.js";
-import inboundRoutes from "./routes/inbound.js"; // Added inbound routes
-import outboundRoutes from "./routes/outbound.js"; // Added outbound routes
+import inboundRoutes from "./routes/inbound.js"; 
+import outboundRoutes from "./routes/outbound.js"; 
 
 // Load environment variables
 dotenv.config({ path: ".env.local" });
@@ -32,7 +32,7 @@ const PORT = process.env.PORT || 4000;
 // ------------------------
 app.use(
   cors({
-    origin: "http://localhost:3000", // allow requests from your Next.js frontend
+    origin: "http://localhost:3000", // frontend requests
     credentials: true,
   })
 );
@@ -48,6 +48,7 @@ try {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
   });
+  
   // Test the connection
   pool.on('error', (err) => {
     console.error('Database connection error:', err.message);
@@ -77,25 +78,25 @@ app.get("/api/db-test", async (req, res) => {
 app.post("/api/signup", async (req, res) => {
   const { name, email, password, department } = req.body;
 
-  console.log('Signup attempt:', { name, email, password, department });
+  // Signup attempt: name, email, password, department
 
   try {
-    console.log('Step 1: Hashing password');
+    // Hashing password
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    console.log('Step 2: Inserting user into database');
+    // Inserting user into database
     const result = await pool.query(
       'INSERT INTO users (full_name, email, department, password_hash) VALUES ($1, $2, $3, $4) RETURNING id',
       [name, email, department, hashedPassword]
     );
     const userId = result.rows[0].id;
 
-    console.log('Step 3: Generating JWT token');
+    // Generating JWT token
     const token = jwt.sign({ userId, department }, process.env.JWT_SECRET || 'demo-secret', {
       expiresIn: "1h",
     });
 
-    console.log('Step 4: Signup successful, user added to DB');
+    // Signup successful, user added to DB
     res.status(201).json({
       token,
       user: {
@@ -119,10 +120,8 @@ app.post("/api/signup", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
 
-  console.log('Login attempt:', { email, password });
-
   try {
-    console.log('Step 1: Finding user by email');
+    // Finding user by email
     const userResult = await pool.query(
       'SELECT id, full_name, email, department, password_hash FROM users WHERE email = $1',
       [email]
@@ -134,18 +133,18 @@ app.post("/api/login", async (req, res) => {
 
     const user = userResult.rows[0];
 
-    console.log('Step 2: Verifying password');
+    // Verifying password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    console.log('Step 3: Generating JWT token');
+    // Generating JWT token
     const token = jwt.sign({ userId: user.id, department: user.department }, process.env.JWT_SECRET || 'demo-secret', {
       expiresIn: "1h",
     });
 
-    console.log('Step 4: Login successful');
+    // Login successful
     res.json({
       token,
       user: {
@@ -173,10 +172,10 @@ app.use("/api/hr", hrRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/wiki", wikiRoutes);
-app.use("/api", locationRoutes); // Mount location routes at /api
-app.use("/api/inventory", inventoryRoutes); // Mount inventory routes at /api/inventory
-app.use("/api/inventory/inbound", inboundRoutes); // Mount inbound routes at /api/inventory/inbound
-app.use("/api/inventory/outbound", outboundRoutes); // Mount outbound routes at /api/inventory/outbound
+app.use("/api", locationRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/inventory/inbound", inboundRoutes);
+app.use("/api/inventory/outbound", outboundRoutes);
 
 // Generic endpoint for the frontend to log a specific activity
 app.post("/api/log-activity", authenticateJWT, async (req, res) => {
