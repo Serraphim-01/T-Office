@@ -49,8 +49,9 @@ interface DepartmentInduction {
 interface Query {
   id: number;
   user_id: number;
-  query_text: string;
-  response?: string;
+  subject: string;
+  description: string;
+  resolution?: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -69,7 +70,7 @@ export default function HRDashboardPage() {
   // Form states
   const [newUser, setNewUser] = useState({ name: '', email: '', department: '', induction_eligible: true });
   const [newInductions, setNewInductions] = useState<DepartmentInduction[]>([{ department: '', induction_time: '', attendees: [] }]);
-  const [newQuery, setNewQuery] = useState({ user_id: '', query_text: '' });
+  const [newQuery, setNewQuery] = useState({ user_id: '', subject: '', description: '' });
 
   useEffect(() => {
     if (user) {
@@ -226,7 +227,7 @@ export default function HRDashboardPage() {
 
       if (response.ok) {
         alert('Query sent successfully!');
-        setNewQuery({ user_id: '', query_text: '' });
+        setNewQuery({ user_id: '', subject: '', description: '' });
         if (selectedUser) {
           fetchUserQueries(selectedUser.id);
         }
@@ -256,7 +257,7 @@ export default function HRDashboardPage() {
     }
   };
 
-  const updateQueryResponse = async (queryId: number, response: string, status: string) => {
+  const updateQueryResolution = async (queryId: number, resolution: string, status: string) => {
     try {
       const updateResponse = await fetch(`http://localhost:4000/api/hr/queries/${queryId}`, {
         method: 'PUT',
@@ -264,20 +265,20 @@ export default function HRDashboardPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ response, status }),
+        body: JSON.stringify({ resolution, status }),
       });
 
       if (updateResponse.ok) {
-        alert('Query response updated successfully!');
+        alert('Query resolution updated successfully!');
         if (selectedUser) {
           fetchUserQueries(selectedUser.id);
         }
       } else {
-        alert('Failed to update query response');
+        alert('Failed to update query resolution');
       }
     } catch (error) {
-      console.error('Error updating query response:', error);
-      alert('Error updating query response');
+      console.error('Error updating query resolution:', error);
+      alert('Error updating query resolution');
     }
   };
 
@@ -400,14 +401,6 @@ export default function HRDashboardPage() {
                         <SelectItem value="Finance">Finance</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="induction-eligible"
-                      checked={newUser.induction_eligible}
-                      onCheckedChange={(checked) => setNewUser({ ...newUser, induction_eligible: checked })}
-                    />
-                    <Label htmlFor="induction-eligible">Eligible for Induction</Label>
                   </div>
                   <Button onClick={createUser} disabled={loading} className="w-full">
                     {loading ? 'Creating...' : 'Create User'}
@@ -604,79 +597,13 @@ export default function HRDashboardPage() {
                         </TableCell>
                         <TableCell>{user.query_count || 0}</TableCell>
                         <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setSelectedUser(user)}>
-                                View Details
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>{user.full_name}'s Details</DialogTitle>
-                                <DialogDescription>View and edit user information</DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label>Certifications</Label>
-                                    <Textarea
-                                      defaultValue={JSON.stringify(user.certifications || [], null, 2)}
-                                      onBlur={(e) => {
-                                        try {
-                                          const certs = JSON.parse(e.target.value);
-                                          updateUserDetails(user.id, { certifications: certs });
-                                        } catch (err) {
-                                          alert('Invalid JSON format');
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>CV</Label>
-                                    <Textarea
-                                      defaultValue={user.cv || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { cv: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Portfolio</Label>
-                                    <Textarea
-                                      defaultValue={user.portfolio || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { portfolio: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Job Description</Label>
-                                    <Textarea
-                                      defaultValue={user.job_description || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { job_description: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Contract</Label>
-                                    <Textarea
-                                      defaultValue={user.contract || ''}
-                                      onBlur={(e) => updateUserDetails(user.id, { contract: e.target.value })}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label>Other Details</Label>
-                                    <Textarea
-                                      defaultValue={JSON.stringify(user.other_details || {}, null, 2)}
-                                      onBlur={(e) => {
-                                        try {
-                                          const details = JSON.parse(e.target.value);
-                                          updateUserDetails(user.id, { other_details: details });
-                                        } catch (err) {
-                                          alert('Invalid JSON format');
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => window.open(`/hr/users/${user.id}`, '_blank')}
+                          >
+                            View Details
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -714,12 +641,21 @@ export default function HRDashboardPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="query-text">Query Text</Label>
+                    <Label htmlFor="query-subject">Query Subject</Label>
+                    <Input
+                      id="query-subject"
+                      value={newQuery.subject}
+                      onChange={(e) => setNewQuery({ ...newQuery, subject: e.target.value })}
+                      placeholder="Enter query subject..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="query-description">Query Description</Label>
                     <Textarea
-                      id="query-text"
-                      value={newQuery.query_text}
-                      onChange={(e) => setNewQuery({ ...newQuery, query_text: e.target.value })}
-                      placeholder="Enter your query..."
+                      id="query-description"
+                      value={newQuery.description}
+                      onChange={(e) => setNewQuery({ ...newQuery, description: e.target.value })}
+                      placeholder="Enter query description..."
                     />
                   </div>
                   <Button onClick={sendQuery} disabled={loading} className="w-full">
@@ -773,9 +709,10 @@ export default function HRDashboardPage() {
                                 {new Date(query.created_at).toLocaleDateString()}
                               </span>
                             </div>
-                            <p className="text-sm"><strong>Query:</strong> {query.query_text}</p>
-                            {query.response && (
-                              <p className="text-sm"><strong>Response:</strong> {query.response}</p>
+                            <p className="text-sm"><strong>Subject:</strong> {query.subject}</p>
+                            <p className="text-sm"><strong>Description:</strong> {query.description}</p>
+                            {query.resolution && (
+                              <p className="text-sm"><strong>Resolution:</strong> {query.resolution}</p>
                             )}
                             {query.status === 'pending' && (
                               <div className="space-y-2">
@@ -783,7 +720,7 @@ export default function HRDashboardPage() {
                                   placeholder="Enter response..."
                                   onBlur={(e) => {
                                     if (e.target.value.trim()) {
-                                      updateQueryResponse(query.id, e.target.value.trim(), 'responded');
+                                      updateQueryResolution(query.id, e.target.value.trim(), 'responded');
                                     }
                                   }}
                                 />

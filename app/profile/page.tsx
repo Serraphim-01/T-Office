@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2 } from 'lucide-react';
+import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -44,9 +44,28 @@ interface Profile {
   other_details: any;
 }
 
+interface UserQuery {
+  id: number;
+  user_id: number;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  assigned_to?: number;
+  resolution?: string;
+  resolved_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ProfileWithQueries extends Profile {
+  queries: UserQuery[];
+  max_queries_before_action: number;
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<ProfileWithQueries | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddCertModalOpen, setIsAddCertModalOpen] = useState(false);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
@@ -87,14 +106,30 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/profile', {
+      // Fetch profile data
+      const profileResponse = await fetch('http://localhost:4000/api/profile', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data);
+      
+      // Fetch queries data
+      const queriesResponse = await fetch('http://localhost:4000/api/profile/queries', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (profileResponse.ok && queriesResponse.ok) {
+        const profileData = await profileResponse.json();
+        const queriesData = await queriesResponse.json();
+        
+        // Combine the data
+        setProfile({
+          ...profileData,
+          queries: queriesData.queries,
+          max_queries_before_action: queriesData.max_queries_before_action
+        });
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -472,6 +507,63 @@ export default function ProfilePage() {
                     <span className="text-sm text-foreground">January 2024</span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Queries Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>HR Queries</CardTitle>
+                <CardDescription>Recent queries from HR</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile?.queries && profile.queries.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium">Queries Received</p>
+                        <p className="text-xs text-muted-foreground">Total: {profile.query_count || 0}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">
+                          {profile.max_queries_before_action - (profile.query_count || 0)} more before action
+                        </p>
+                        <p className="text-xs text-muted-foreground">Threshold: {profile.max_queries_before_action}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {profile.queries.slice(0, 3).map((query) => (
+                        <div key={query.id} className="border rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-sm">{query.subject}</h4>
+                            <Badge 
+                              variant={query.status === 'open' ? 'secondary' : 'default'}
+                              className="text-xs"
+                            >
+                              {query.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{query.description}</p>
+                          {query.resolution && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-xs font-medium">HR Response:</p>
+                              <p className="text-xs text-muted-foreground">{query.resolution}</p>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(query.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No queries received yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">You have {profile?.max_queries_before_action || 3} queries remaining before official action is taken</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

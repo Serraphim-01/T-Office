@@ -3,6 +3,33 @@ import { authenticateJWT, requireHR } from "./auth.js";
 
 const router = express.Router();
 
+// Get queries for current user
+router.get("/queries", authenticateJWT, async (req, res) => {
+  try {
+    const result = await req.pool.query(
+      'SELECT id, user_id, subject, description, priority, status, assigned_to, resolution, resolved_at, created_at, updated_at FROM hr_queries WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.user.userId]
+    );
+    
+    // Also get the user's query count
+    const userResult = await req.pool.query(
+      'SELECT query_count FROM user_details WHERE user_id = $1',
+      [req.user.userId]
+    );
+    
+    const queryCount = userResult.rows[0]?.query_count || 0;
+    
+    res.json({
+      queries: result.rows,
+      query_count: queryCount,
+      max_queries_before_action: 3 // Define threshold for action
+    });
+  } catch (err) {
+    console.error('[PROFILE API] Error fetching user queries:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get user profile
 router.get("/", authenticateJWT, async (req, res) => {
   try {

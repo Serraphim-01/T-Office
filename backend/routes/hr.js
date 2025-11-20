@@ -60,6 +60,33 @@ router.get("/users", authenticateJWT, async (req, res) => {
   }
 });
 
+// Get specific user with their details
+router.get("/users/:id", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+  
+  try {
+    const result = await pool.query(`
+      SELECT
+        u.id, u.full_name, u.email, u.department, u.created_at,
+        ud.certifications, ud.cv, ud.portfolio, ud.job_description, ud.contract,
+        ud.query_count, ud.attendance, ud.other_details
+      FROM users u
+      LEFT JOIN user_details ud ON u.id = ud.user_id
+      WHERE u.id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Update user details
 router.put("/users/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
@@ -133,12 +160,12 @@ router.delete("/inductions/:id", authenticateJWT, async (req, res) => {
 // Send query to user
 router.post("/queries", authenticateJWT, async (req, res) => {
   const pool = req.pool;
-  const { user_id, query_text } = req.body;
+  const { user_id, subject, description } = req.body;
 
   try {
     const result = await pool.query(
-      'INSERT INTO hr_queries (user_id, query_text) VALUES ($1, $2) RETURNING *',
-      [user_id, query_text]
+      'INSERT INTO hr_queries (user_id, subject, description) VALUES ($1, $2, $3) RETURNING *',
+      [user_id, subject, description]
     );
 
     // Increment query count
@@ -179,7 +206,7 @@ router.put("/queries/:id", authenticateJWT, async (req, res) => {
 
   try {
     await pool.query(
-      'UPDATE hr_queries SET response = $1, status = $2, updated_at = NOW() WHERE id = $3',
+      'UPDATE hr_queries SET resolution = $1, status = $2, updated_at = NOW() WHERE id = $3',
       [response, status, id]
     );
 
@@ -196,13 +223,86 @@ router.get("/attendance/:userId", authenticateJWT, async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const result = await pool.query(
-      'SELECT * FROM attendance WHERE user_id = $1 ORDER BY date DESC',
-      [userId]
-    );
-    res.json(result.rows);
+    // Get all attendance records for the user ordered by timestamp
+    const result = await pool.query(`
+      SELECT 
+        aa.id,
+        aa.event_type,
+        aa.timestamp,
+        aa.notes
+      FROM auto_attendance aa
+      WHERE aa.user_id = $1
+      ORDER BY aa.timestamp ASC
+    `, [userId]);
+    
+    // Group clock_in and clock_out events into pairs
+    const attendanceRecords = [];
+    let clockInRecord = null;
+    
+    for (const record of result.rows) {
+      if (record.event_type === 'clock_in') {
+        // Store the clock_in record
+        clockInRecord = {
+          id: record.id,
+          clock_in: record.timestamp,
+          clock_out: null,
+          total_hours: null,
+          status: 'present',
+          notes: record.notes,
+          created_at: record.timestamp,
+          updated_at: record.timestamp
+        };
+      } else if (record.event_type === 'clock_out' && clockInRecord) {
+        // Pair with the previous clock_in record
+        clockInRecord.clock_out = record.timestamp;
+        
+        // Calculate total hours if both clock_in and clock_out exist
+        if (clockInRecord.clock_in && clockInRecord.clock_out) {
+          const clockInTime = new Date(clockInRecord.clock_in);
+          const clockOutTime = new Date(clockInRecord.clock_out);
+          const diffInHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+          clockInRecord.total_hours = parseFloat(diffInHours.toFixed(2));
+        }
+        
+        attendanceRecords.push(clockInRecord);
+        clockInRecord = null;
+      }
+    }
+    
+    // If there's an unpaired clock_in record, add it to the results
+    if (clockInRecord) {
+      attendanceRecords.push(clockInRecord);
+    }
+    
+    // Return the records in descending order (most recent first)
+    res.json(attendanceRecords.reverse());
   } catch (err) {
     console.error('Error fetching attendance:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get wiki completions for a user
+router.get("/wiki-completions/:userId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { userId } = req.params;
+
+  try {
+    // Get all wiki topics with completion status for the user
+    const result = await pool.query(`
+      SELECT 
+        wt.id,
+        wt.department,
+        wt.topic,
+        wc.completed_at
+      FROM wiki_topics wt
+      LEFT JOIN wiki_lesson_completions wc ON wt.id = wc.topic_id AND wc.user_id = $1
+      ORDER BY wt.department, wt.topic
+    `, [userId]);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching wiki completions:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -214,7 +314,7 @@ router.post("/attendance", authenticateJWT, async (req, res) => {
 
   try {
     const result = await pool.query(
-      'INSERT INTO attendance (user_id, date, status, notes) VALUES ($1, $2, $3, $4) RETURNING *',
+      'INSERT INTO attendance (user_id, clock_in, status, notes) VALUES ($1, $2, $3, $4) RETURNING *',
       [user_id, date, status, notes]
     );
 

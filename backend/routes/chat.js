@@ -79,13 +79,14 @@ router.get("/messages/:userId", authenticateJWT, async (req, res) => {
   const { timeRange } = req.query;
 
   try {
-    let query = 'SELECT * FROM chat_messages WHERE user_id = $1';
-    let params = [userId];
+    // Modified to fetch all messages for shared chat, not filtered by user_id
+    let query = 'SELECT * FROM chat_messages';
+    let params = [];
 
     if (timeRange) {
       const { startDate, endDate } = getDateRange(timeRange);
-      query += ' AND created_at >= $2 AND created_at <= $3';
-      params = [userId, startDate, endDate];
+      query += ' WHERE created_at >= $1 AND created_at <= $2';
+      params = [startDate, endDate];
     }
 
     query += ' ORDER BY created_at DESC LIMIT 100';
