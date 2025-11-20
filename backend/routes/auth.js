@@ -13,11 +13,14 @@ export const authenticateJWT = async (req, res, next) => {
 
   if (authHeader) {
     const token = authHeader.split(' ')[1]; // Bearer <token>
+    console.log('Auth header present, token:', token);
 
     jwt.verify(token, process.env.JWT_SECRET || 'demo-secret', async (err, user) => {
       if (err) {
+        console.log('JWT verification error:', err);
         return res.sendStatus(403); // Forbidden
       }
+      console.log('JWT verified, user:', user);
       req.user = user; // { userId: ..., department: ... }
 
       // If department is missing from JWT (for backward compatibility), fetch from DB
@@ -36,6 +39,7 @@ export const authenticateJWT = async (req, res, next) => {
       next();
     });
   } else {
+    console.log('No auth header present');
     res.sendStatus(401); // Unauthorized
   }
 };

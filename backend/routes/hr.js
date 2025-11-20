@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateJWT, requireHR, saltRounds } from "./auth.js";
+import { authenticateJWT, saltRounds } from "./auth.js";
 import bcrypt from "bcrypt";
 
 const router = express.Router();
@@ -41,7 +41,7 @@ router.post("/users", authenticateJWT, async (req, res) => {
 });
 
 // Get all users with their details
-router.get("/users", authenticateJWT, requireHR, async (req, res) => {
+router.get("/users", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     const result = await pool.query(`
@@ -61,7 +61,7 @@ router.get("/users", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Update user details
-router.put("/users/:id", authenticateJWT, requireHR, async (req, res) => {
+router.put("/users/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { id } = req.params;
   const { certifications, cv, portfolio, job_description, contract, other_details } = req.body;
@@ -82,7 +82,7 @@ router.put("/users/:id", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Create induction
-router.post("/inductions", authenticateJWT, requireHR, async (req, res) => {
+router.post("/inductions", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { department, induction_time, attendees } = req.body;
 
@@ -100,7 +100,7 @@ router.post("/inductions", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Get all inductions
-router.get("/inductions", authenticateJWT, requireHR, async (req, res) => {
+router.get("/inductions", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     const result = await pool.query('SELECT * FROM inductions ORDER BY induction_time DESC');
@@ -111,8 +111,27 @@ router.get("/inductions", authenticateJWT, requireHR, async (req, res) => {
   }
 });
 
+// Delete induction
+router.delete("/inductions/:id", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM inductions WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Induction not found" });
+    }
+
+    res.json({ message: "Induction deleted successfully" });
+  } catch (err) {
+    console.error('Error deleting induction:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Send query to user
-router.post("/queries", authenticateJWT, requireHR, async (req, res) => {
+router.post("/queries", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { user_id, query_text } = req.body;
 
@@ -136,7 +155,7 @@ router.post("/queries", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Get queries for a user
-router.get("/queries/:userId", authenticateJWT, requireHR, async (req, res) => {
+router.get("/queries/:userId", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { userId } = req.params;
 
@@ -153,7 +172,7 @@ router.get("/queries/:userId", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Update query response
-router.put("/queries/:id", authenticateJWT, requireHR, async (req, res) => {
+router.put("/queries/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { id } = req.params;
   const { response, status } = req.body;
@@ -172,7 +191,7 @@ router.put("/queries/:id", authenticateJWT, requireHR, async (req, res) => {
 });
 
 // Get attendance for a user
-router.get("/attendance/:userId", authenticateJWT, requireHR, async (req, res) => {
+router.get("/attendance/:userId", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { userId } = req.params;
 
@@ -189,7 +208,7 @@ router.get("/attendance/:userId", authenticateJWT, requireHR, async (req, res) =
 });
 
 // Add attendance record
-router.post("/attendance", authenticateJWT, requireHR, async (req, res) => {
+router.post("/attendance", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { user_id, date, status, notes } = req.body;
 

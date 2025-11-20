@@ -7,10 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Users, UserPlus, FileText, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Users, UserPlus, FileText, Clock, CheckCircle, Plus, X, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface User {
   id: number;
@@ -29,18 +31,26 @@ interface Induction {
   created_at: string;
 }
 
+interface DepartmentInduction {
+  department: string;
+  induction_time: string;
+  attendees: string[];
+}
+
 export default function HROnboardingPage() {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [inductions, setInductions] = useState<Induction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+  const [selectedInduction, setSelectedInduction] = useState<Induction | null>(null);
 
   // Form states
   const [newUser, setNewUser] = useState<{ name: string; email: string; department: string }>({ name: '', email: '', department: '' });
-  const [newInduction, setNewInduction] = useState({ department: '', induction_time: '', attendees: [] as string[] });
+  const [newInductions, setNewInductions] = useState<DepartmentInduction[]>([{ department: '', induction_time: '', attendees: [] }]);
 
   useEffect(() => {
-    if (user && (user.department === 'Admin' || user.department === 'HR')) {
+    if (user) {
       fetchUsers();
       fetchInductions();
     }
@@ -109,33 +119,96 @@ export default function HROnboardingPage() {
     setLoading(false);
   };
 
-  const createInduction = async () => {
+  const addDepartmentInduction = () => {
+    setNewInductions([...newInductions, { department: '', induction_time: '', attendees: [] }]);
+  };
+
+  const removeDepartmentInduction = (index: number) => {
+    if (newInductions.length > 1) {
+      const updated = [...newInductions];
+      updated.splice(index, 1);
+      setNewInductions(updated);
+    }
+  };
+
+  const updateDepartmentInduction = (index: number, field: keyof DepartmentInduction, value: string | string[]) => {
+    const updated = [...newInductions];
+    updated[index] = { ...updated[index], [field]: value };
+    setNewInductions(updated);
+  };
+
+  const addAttendeeToInduction = (index: number, attendeeId: string) => {
+    const updated = [...newInductions];
+    if (!updated[index].attendees.includes(attendeeId)) {
+      updated[index].attendees = [...updated[index].attendees, attendeeId];
+      setNewInductions(updated);
+    }
+  };
+
+  const removeAttendeeFromInduction = (index: number, attendeeId: string) => {
+    const updated = [...newInductions];
+    updated[index].attendees = updated[index].attendees.filter(id => id !== attendeeId);
+    setNewInductions(updated);
+  };
+
+  const createInductions = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:4000/api/hr/inductions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(newInduction),
-      });
+      // Create each induction separately
+      const promises = newInductions
+        .filter(induction => induction.department && induction.induction_time)
+        .map(induction => 
+          fetch('http://localhost:4000/api/hr/inductions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: JSON.stringify(induction),
+          })
+        );
 
-      if (response.ok) {
-        alert('Induction created successfully!');
-        setNewInduction({ department: '', induction_time: '', attendees: [] });
+      const responses = await Promise.all(promises);
+      const allSuccessful = responses.every(response => response.ok);
+
+      if (allSuccessful) {
+        alert('All inductions created successfully!');
+        setNewInductions([{ department: '', induction_time: '', attendees: [] }]);
         fetchInductions();
       } else {
-        alert('Failed to create induction');
+        alert('Failed to create some inductions');
       }
     } catch (error) {
-      console.error('Error creating induction:', error);
-      alert('Error creating induction');
+      console.error('Error creating inductions:', error);
+      alert('Error creating inductions');
     }
     setLoading(false);
   };
 
+  const deleteInduction = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this induction?')) {
+      return;
+    }
 
+    try {
+      const response = await fetch(`http://localhost:4000/api/hr/inductions/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('Induction deleted successfully!');
+        fetchInductions(); // Refresh the list
+      } else {
+        alert('Failed to delete induction');
+      }
+    } catch (error) {
+      console.error('Error deleting induction:', error);
+      alert('Error deleting induction');
+    }
+  };
 
   if (!user) {
     return (
@@ -208,89 +281,107 @@ export default function HROnboardingPage() {
             </CardContent>
           </Card>
 
-          {/* Create Induction */}
+          {/* Create Inductions for Multiple Departments */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calendar className="mr-2 h-5 w-5" />
-                Schedule Induction
+                Schedule Inductions
               </CardTitle>
-              <CardDescription>Schedule an induction session for a department</CardDescription>
+              <CardDescription>Schedule induction sessions for multiple departments</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="induction-dept">Department</Label>
-                <Select value={newInduction.department} onValueChange={(value) => setNewInduction({ ...newInduction, department: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Compliance">Compliance</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="Finance">Finance</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="induction-date">Induction Date & Time</Label>
-                <Input
-                  id="induction-date"
-                  type="datetime-local"
-                  value={newInduction.induction_time}
-                  onChange={(e) => setNewInduction({ ...newInduction, induction_time: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Attendees</Label>
-                <Select
-                  value=""
-                  onValueChange={(value) => {
-                    if (!newInduction.attendees.includes(value)) {
-                      setNewInduction({
-                        ...newInduction,
-                        attendees: [...newInduction.attendees, value]
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select attendees" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users
-                      .map((user) => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.full_name} ({user.email})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {newInduction.attendees.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {newInduction.attendees.map((attendeeId) => {
-                      const user = users.find(u => u.id.toString() === attendeeId);
-                      return (
-                        <div key={attendeeId} className="flex items-center gap-2 bg-secondary px-2 py-1 rounded">
-                          <span className="text-sm">{user?.full_name || attendeeId}</span>
-                          <button
-                            onClick={() => setNewInduction({
-                              ...newInduction,
-                              attendees: newInduction.attendees.filter(id => id !== attendeeId)
-                            })}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
+              {newInductions.map((induction, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">Department {index + 1}</h3>
+                    {newInductions.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeDepartmentInduction(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                )}
-              </div>
-              <Button onClick={createInduction} disabled={loading} className="w-full">
-                {loading ? 'Scheduling...' : 'Schedule Induction'}
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor={`department-${index}`}>Department</Label>
+                    <Select 
+                      value={induction.department} 
+                      onValueChange={(value) => updateDepartmentInduction(index, 'department', value)}
+                    >
+                      <SelectTrigger id={`department-${index}`}>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HR">HR</SelectItem>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Compliance">Compliance</SelectItem>
+                        <SelectItem value="IT">IT</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor={`induction-date-${index}`}>Induction Date & Time</Label>
+                    <Input
+                      id={`induction-date-${index}`}
+                      type="datetime-local"
+                      value={induction.induction_time}
+                      onChange={(e) => updateDepartmentInduction(index, 'induction_time', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Attendees</Label>
+                    <Select
+                      value=""
+                      onValueChange={(value) => addAttendeeToInduction(index, value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select attendees" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id.toString()}>
+                            {user.full_name} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {induction.attendees && induction.attendees.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {induction.attendees.map((attendeeId) => {
+                          const user = users.find(u => u.id.toString() === attendeeId);
+                          return (
+                            <div key={attendeeId} className="flex items-center gap-2 bg-secondary px-2 py-1 rounded">
+                              <span className="text-sm">{user?.full_name || attendeeId}</span>
+                              <button
+                                onClick={() => removeAttendeeFromInduction(index, attendeeId)}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              <Button type="button" variant="outline" onClick={addDepartmentInduction} className="w-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Another Department
+              </Button>
+              
+              <Button onClick={createInductions} disabled={loading} className="w-full">
+                {loading ? 'Scheduling...' : 'Schedule All Inductions'}
               </Button>
             </CardContent>
           </Card>
@@ -311,7 +402,7 @@ export default function HROnboardingPage() {
                   <TableHead>Department</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Attendees</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,8 +410,28 @@ export default function HROnboardingPage() {
                   <TableRow key={induction.id}>
                     <TableCell>{induction.department}</TableCell>
                     <TableCell>{new Date(induction.induction_time).toLocaleString()}</TableCell>
-                    <TableCell>{induction.attendees.length} users</TableCell>
-                    <TableCell>{new Date(induction.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-left"
+                        onClick={() => {
+                          setSelectedInduction(induction);
+                          setShowAttendeesModal(true);
+                        }}
+                      >
+                        {(induction.attendees || []).length} users
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteInduction(induction.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -328,6 +439,38 @@ export default function HROnboardingPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Attendees Modal */}
+      <Dialog open={showAttendeesModal} onOpenChange={setShowAttendeesModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Induction Attendees</DialogTitle>
+            <DialogDescription>
+              {selectedInduction?.department} induction on {selectedInduction?.induction_time ? new Date(selectedInduction.induction_time).toLocaleString() : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {selectedInduction?.attendees && selectedInduction.attendees.length > 0 ? (
+              <ul className="space-y-2">
+                {selectedInduction.attendees.map((attendeeId) => {
+                  const user = users.find(u => u.id.toString() === attendeeId);
+                  return (
+                    <li key={attendeeId} className="flex items-center justify-between p-2 bg-secondary rounded">
+                      <div>
+                        <p className="font-medium">{user?.full_name || 'Unknown User'}</p>
+                        <p className="text-sm text-muted-foreground">{user?.email || `ID: ${attendeeId}`}</p>
+                      </div>
+                      <Badge variant="outline">{user?.department || 'Unknown Dept'}</Badge>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-center text-muted-foreground">No attendees assigned</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

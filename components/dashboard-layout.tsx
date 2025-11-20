@@ -120,9 +120,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   ];
 
   const hrItems = [
-    { href: '/hr/onboarding', label: 'Onboarding', icon: UserPlus, feature: 'onboarding' },
-    { href: '/hr/users', label: 'User Management', icon: Users2, feature: 'users' },
-    { href: '/hr/queries', label: 'Queries', icon: MessageSquare, feature: 'queries' },
+    { href: '/hr', label: 'HR Dashboard', icon: UserPlus },
   ];
 
   const handleLogout = async () => {
@@ -247,33 +245,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             )}
 
-            {(user?.department === 'Admin' || user?.department === 'HR') && (
-              <Collapsible open={isHRMenuOpen} onOpenChange={setIsHRMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <Users2 className="mr-3 h-5 w-5" />
-                    HR
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {hrItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === item.href
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
+            {/* Show HR menu to all users, not just HR/Admin */}
+            <Collapsible open={isHRMenuOpen} onOpenChange={setIsHRMenuOpen}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Users2 className="mr-3 h-5 w-5" />
+                  HR
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                {hrItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === item.href
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Resources Section */}
             <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
