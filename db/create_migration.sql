@@ -77,10 +77,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 -- Create chat_settings table for pause functionality
 CREATE TABLE IF NOT EXISTS chat_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     is_paused BOOLEAN NOT NULL DEFAULT false,
     paused_by INTEGER REFERENCES users(id),
     paused_at TIMESTAMP WITH TIME ZONE,
+    theme VARCHAR(20) DEFAULT 'light',
+    notifications_enabled BOOLEAN DEFAULT true,
+    sound_enabled BOOLEAN DEFAULT true,
+    auto_summarize BOOLEAN DEFAULT false,
+    summary_interval INTEGER DEFAULT 50,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -130,42 +135,6 @@ CREATE TABLE IF NOT EXISTS hr_queries (
     resolved_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- ===========================================
--- INVENTORY MANAGEMENT TABLES
--- ===========================================
-
--- Products table
-CREATE TABLE IF NOT EXISTS products (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    serial_number VARCHAR(255) UNIQUE,
-    part_number VARCHAR(255),
-    quantity INTEGER NOT NULL DEFAULT 1,
-    state VARCHAR(50) NOT NULL DEFAULT 'Incoming',
-    container VARCHAR(50),
-    type VARCHAR(50),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Product states history table
-CREATE TABLE IF NOT EXISTS product_states (
-    id SERIAL PRIMARY KEY,
-    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-    state VARCHAR(50) NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    notes TEXT
-);
-
--- Sub-products table for breaking down products with quantity > 1
-CREATE TABLE IF NOT EXISTS sub_products (
-    id SERIAL PRIMARY KEY,
-    parent_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-    child_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(parent_id, child_id)
 );
 
 -- ===========================================
@@ -305,6 +274,75 @@ CREATE TABLE IF NOT EXISTS crawled_sites (
 );
 
 -- ===========================================
+-- INVENTORY TABLES
+-- ===========================================
+
+-- Products table
+CREATE TABLE IF NOT EXISTS products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    part_number VARCHAR(100) UNIQUE NOT NULL,
+    product_type VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ===========================================
+-- INVENTORY INBOUND TABLES
+-- ===========================================
+
+-- Inbound transactions table
+CREATE TABLE IF NOT EXISTS inbound_transactions (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL,
+    provider VARCHAR(255) NOT NULL,
+    expected_arrival_start DATE NOT NULL,
+    expected_arrival_end DATE NOT NULL,
+    arrival_date DATE,
+    status VARCHAR(20) DEFAULT 'Incoming' CHECK (status IN ('Incoming', 'Stored', 'Outbound')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Inbound serial numbers table
+CREATE TABLE IF NOT EXISTS inbound_serial_numbers (
+    id SERIAL PRIMARY KEY,
+    transaction_id INTEGER REFERENCES inbound_transactions(id) ON DELETE CASCADE,
+    serial_number VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(transaction_id, serial_number)
+);
+
+-- ===========================================
+-- INVENTORY OUTBOUND TABLES
+-- ===========================================
+
+-- Outbound transactions table
+CREATE TABLE IF NOT EXISTS outbound_transactions (
+    id SERIAL PRIMARY KEY,
+    inbound_transaction_id INTEGER REFERENCES inbound_transactions(id) ON DELETE CASCADE,
+    quantity INTEGER NOT NULL,
+    receiver_address TEXT NOT NULL,
+    receiver_email VARCHAR(255) NOT NULL,
+    receiver_phone VARCHAR(20) NOT NULL,
+    dispatch_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    delivery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Outgoing' CHECK (status IN ('Outgoing', 'Dispatched', 'Delivered')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Outbound serial numbers table
+CREATE TABLE IF NOT EXISTS outbound_serial_numbers (
+    id SERIAL PRIMARY KEY,
+    outbound_transaction_id INTEGER REFERENCES outbound_transactions(id) ON DELETE CASCADE,
+    serial_number VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(outbound_transaction_id, serial_number)
+);
+
+-- ===========================================
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
 
@@ -322,11 +360,6 @@ CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON attendance(user_id, clock
 CREATE INDEX IF NOT EXISTS idx_hr_queries_status ON hr_queries(status);
 CREATE INDEX IF NOT EXISTS idx_hr_queries_assigned_to ON hr_queries(assigned_to);
 
--- Inventory indexes
-CREATE INDEX IF NOT EXISTS idx_products_state ON products(state);
-CREATE INDEX IF NOT EXISTS idx_products_type ON products(type);
-CREATE INDEX IF NOT EXISTS idx_product_states_product_timestamp ON product_states(product_id, timestamp DESC);
-
 -- Wiki indexes
 CREATE INDEX IF NOT EXISTS idx_wiki_topics_department ON wiki_topics(department);
 CREATE INDEX IF NOT EXISTS idx_wiki_topics_topic ON wiki_topics(topic);
@@ -340,6 +373,20 @@ CREATE INDEX IF NOT EXISTS idx_user_locations_active ON user_locations(user_id, 
 CREATE INDEX IF NOT EXISTS idx_location_events_user_timestamp ON location_events(user_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_location_events_location_timestamp ON location_events(location_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_auto_attendance_user_timestamp ON auto_attendance(user_id, timestamp DESC);
+
+-- Product indexes
+CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
+CREATE INDEX IF NOT EXISTS idx_products_part_number ON products(part_number);
+
+-- Inbound indexes
+CREATE INDEX IF NOT EXISTS idx_inbound_transactions_product_id ON inbound_transactions(product_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_transactions_status ON inbound_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_inbound_serial_numbers_transaction_id ON inbound_serial_numbers(transaction_id);
+
+-- Outbound indexes
+CREATE INDEX IF NOT EXISTS idx_outbound_transactions_inbound_id ON outbound_transactions(inbound_transaction_id);
+CREATE INDEX IF NOT EXISTS idx_outbound_transactions_status ON outbound_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_outbound_serial_numbers_transaction_id ON outbound_serial_numbers(outbound_transaction_id);
 
 -- ===========================================
 -- TRIGGERS FOR UPDATED_AT
@@ -358,17 +405,18 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_details_updated_at BEFORE UPDATE ON user_details FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_departments_updated_at BEFORE UPDATE ON departments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_attendance_updated_at BEFORE UPDATE ON attendance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_inductions_updated_at BEFORE UPDATE ON inductions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_hr_queries_updated_at BEFORE UPDATE ON hr_queries FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_wiki_topics_updated_at BEFORE UPDATE ON wiki_topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_locations_updated_at BEFORE UPDATE ON user_locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_department_configs_updated_at BEFORE UPDATE ON department_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_compliance_documents_updated_at BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_crawled_sites_updated_at BEFORE UPDATE ON crawled_sites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_inbound_transactions_updated_at BEFORE UPDATE ON inbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_outbound_transactions_updated_at BEFORE UPDATE ON outbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ===========================================
 -- INITIAL DATA POPULATION
@@ -390,69 +438,14 @@ INSERT INTO departments (name, description) VALUES
 ('Operations', 'Operations and logistics')
 ON CONFLICT (name) DO NOTHING;
 
-
-
--- Insert default chat settings
-INSERT INTO chat_settings (id, is_paused) VALUES (1, false) ON CONFLICT (id) DO NOTHING;
-
--- Insert sample inventory data
-INSERT INTO products (name, serial_number, part_number, quantity, state, container, type) VALUES
-('Laptop Dell XPS 13', 'DLXPS001', 'DELL-XPS-13-001', 1, 'Stored', 'Individual piece', 'PC'),
-('Server Rack Components', 'SRV001', 'SRV-RACK-001', 5, 'Incoming', 'Carton', 'Rack'),
-('Network Switch Cisco', 'NSW001', 'CISCO-SW-001', 1, 'Arrived', 'Individual piece', 'Server'),
-('Monitor LG 27"', 'MON001', 'LG-27-001', 3, 'Outgoing', 'Carton', 'Monitor'),
-('Keyboard Mechanical', 'KB001', 'MECH-KB-001', 10, 'Stored', 'Carton', 'PC'),
-('Mouse Wireless', 'MS001', 'WIRE-MS-001', 5, 'Dispatched', 'Carton', 'PC'),
-('Printer HP LaserJet', 'PRN001', 'HP-LJ-001', 1, 'Delivered', 'Individual piece', 'PC'),
-('iPad Pro 12.9"', 'IPAD001', 'APPLE-IPAD-PRO-001', 1, 'Stored', 'Individual piece', 'PC'),
-('Wireless Router TP-Link', 'ROUT001', 'TP-LINK-AC1200', 2, 'Arrived', 'Carton', 'Server'),
-('External Hard Drive 2TB', 'HDD001', 'WD-ELEMENTS-2TB', 4, 'Incoming', 'Carton', 'PC'),
-('USB-C Hub Multiport', 'HUB001', 'ANKER-USB-C-HUB', 6, 'Stored', 'Carton', 'PC'),
-('Bluetooth Headphones', 'HEAD001', 'SONY-WH-1000XM4', 1, 'Outgoing', 'Individual piece', 'PC'),
-('Webcam Logitech HD', 'CAM001', 'LOGITECH-C920', 3, 'Dispatched', 'Carton', 'PC'),
-('Graphics Card NVIDIA RTX 3080', 'GPU001', 'NVIDIA-RTX3080', 1, 'Delivered', 'Individual piece', 'PC'),
-('RAM DDR4 16GB Kit', 'RAM001', 'CORSAIR-DDR4-16GB', 1, 'Dispatched', 'Individual piece', 'PC'),
-('Projector Epson', 'PROJ001', 'EPSON-EH-TW7400', 1, 'Delivered', 'Individual piece', 'PC'),
-('Smart TV Samsung 55"', 'TV001', 'SAMSUNG-QN55Q70A', 1, 'Stored', 'Individual piece', 'Monitor'),
-('Soundbar Sony', 'SBAR001', 'SONY-HT-X8500', 1, 'Arrived', 'Individual piece', 'PC'),
-('Gaming Console PlayStation 5', 'PS5001', 'SONY-PS5', 1, 'Incoming', 'Individual piece', 'PC'),
-('VR Headset Oculus Quest 2', 'VR001', 'META-QUEST2', 2, 'Stored', 'Carton', 'PC'),
-('Drone DJI Mini 2', 'DRONE001', 'DJI-MINI2', 1, 'Outgoing', 'Individual piece', 'PC'),
-('Smart Watch Apple Series 8', 'WATCH001', 'APPLE-WATCH-S8', 3, 'Dispatched', 'Carton', 'PC'),
-('E-Reader Kindle Paperwhite', 'KINDLE001', 'AMAZON-KINDLE-PW', 4, 'Delivered', 'Carton', 'PC'),
-('Coffee Machine Nespresso', 'COFFEE001', 'NESPRESSO-VERTUO', 1, 'Stored', 'Individual piece', 'PC'),
-('Air Purifier Dyson', 'PURIFIER001', 'DYSON-PURE-COOL', 1, 'Arrived', 'Individual piece', 'PC'),
-('Robot Vacuum Roomba', 'ROOMBA001', 'IROBOT-ROOMBA-I7', 2, 'Incoming', 'Carton', 'PC'),
-('Smart Thermostat Nest', 'THERM001', 'GOOGLE-NEST-THERMOSTAT', 3, 'Stored', 'Carton', 'PC'),
-('Security Camera Ring', 'CAMRING001', 'RING-SPOTLIGHT-CAM', 5, 'Outgoing', 'Carton', 'PC')
-ON CONFLICT (serial_number) DO NOTHING;
-
--- Insert sample product state history
-INSERT INTO product_states (product_id, state, notes) VALUES
-(1, 'Incoming', 'Initial state'),
-(1, 'Arrived', 'Received at warehouse'),
-(1, 'Stored', 'Placed in storage location A1'),
-(2, 'Incoming', 'Bulk order received'),
-(3, 'Incoming', 'Order placed'),
-(3, 'Arrived', 'Delivered to facility'),
-(4, 'Incoming', 'Customer order'),
-(4, 'Arrived', 'Ready for pickup'),
-(4, 'Outgoing', 'Prepared for shipping'),
-(5, 'Incoming', 'Stock replenishment'),
-(5, 'Arrived', 'Quality checked'),
-(5, 'Stored', 'Added to inventory'),
-(6, 'Incoming', 'New shipment'),
-(6, 'Arrived', 'Unpacked'),
-(6, 'Stored', 'Stored in warehouse'),
-(6, 'Outgoing', 'Customer request'),
-(6, 'Dispatched', 'Shipped via courier'),
-(7, 'Incoming', 'Purchase order'),
-(7, 'Arrived', 'Received'),
-(7, 'Stored', 'Inventory updated'),
-(7, 'Outgoing', 'Office request'),
-(7, 'Dispatched', 'Delivered to office'),
-(7, 'Delivered', 'Confirmed delivery')
-ON CONFLICT DO NOTHING;
+-- Insert sample products
+INSERT INTO products (name, part_number, product_type) VALUES
+('Laptop Computer', 'LAPTOP-001', 'Electronics'),
+('Wireless Mouse', 'MOUSE-001', 'Electronics'),
+('Mechanical Keyboard', 'KEYBOARD-001', 'Electronics'),
+('USB-C Cable', 'CABLE-001', 'Electronics'),
+('External Hard Drive', 'HDD-001', 'Electronics')
+ON CONFLICT (part_number) DO NOTHING;
 
 -- Insert sample wiki topics
 INSERT INTO wiki_topics (department, topic, content, video_url) VALUES

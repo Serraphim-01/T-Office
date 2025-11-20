@@ -1,1 +1,0 @@
-ALTER TABLE wiki_topics ADD COLUMN IF NOT EXISTS video_url TEXT;

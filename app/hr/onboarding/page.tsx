@@ -36,7 +36,7 @@ export default function HROnboardingPage() {
   const [loading, setLoading] = useState(false);
 
   // Form states
-  const [newUser, setNewUser] = useState({ name: '', email: '', department: '', induction_eligible: true });
+  const [newUser, setNewUser] = useState<{ name: string; email: string; department: string }>({ name: '', email: '', department: '' });
   const [newInduction, setNewInduction] = useState({ department: '', induction_time: '', attendees: [] as string[] });
 
   useEffect(() => {
@@ -90,15 +90,14 @@ export default function HROnboardingPage() {
         body: JSON.stringify({
           name: newUser.name,
           email: newUser.email,
-          department: newUser.department,
-          induction_eligible: newUser.induction_eligible
+          department: newUser.department
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         alert(`User created successfully! Default password: ${data.default_password}`);
-        setNewUser({ name: '', email: '', department: '', induction_eligible: true });
+        setNewUser({ name: '', email: '', department: '' });
         fetchUsers();
       } else {
         alert('Failed to create user');
@@ -200,14 +199,7 @@ export default function HROnboardingPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="induction-eligible"
-                  checked={newUser.induction_eligible}
-                  onCheckedChange={(checked) => setNewUser({ ...newUser, induction_eligible: checked })}
-                />
-                <Label htmlFor="induction-eligible">Eligible for Induction</Label>
-              </div>
+
               <Button onClick={createUser} disabled={loading} className="w-full">
                 {loading ? 'Creating...' : 'Create User'}
               </Button>

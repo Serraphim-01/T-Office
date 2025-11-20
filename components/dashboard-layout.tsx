@@ -29,7 +29,6 @@ import {
   TrendingUp,
   ClipboardList,
   ShieldAlert,
-  Package,
   Activity,
   KeyRound,
   Handshake,
@@ -41,7 +40,8 @@ import {
   ArrowUp,
   BookOpen,
   FileText,
-  Plus
+  Plus,
+  Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
@@ -62,7 +62,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
   const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
-  const [isInventoryMenuOpen, setIsInventoryMenuOpen] = useState(pathname.startsWith('/inventory'));
   const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(pathname.startsWith('/resources'));
   const [isWikiMenuOpen, setIsWikiMenuOpen] = useState(pathname.startsWith('/resources/wiki'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
@@ -104,11 +103,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/profile', label: 'Profile', icon: User },
   ];
 
+  // Inventory items
   const inventoryItems = [
-    { href: '/inventory', label: 'Inventory', icon: Package },
-    { href: '/inventory/products', label: 'Products', icon: ClipboardList },
-    { href: '/inventory/inbound', label: 'Inbound', icon: ArrowDown },
-    { href: '/inventory/outbound', label: 'Outbound', icon: ArrowUp },
+    { href: '/inventory/products', label: 'Products', icon: Package },
+    { href: '/inventory/inbound', label: 'Inbound', icon: Package },
+    { href: '/inventory/store', label: 'Store', icon: Package },
+    { href: '/inventory/outbound', label: 'Outbound', icon: Package },
   ];
 
   // Features are loaded from auth context, no need for separate fetch
@@ -191,34 +191,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             ))}
 
-            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <Package className="mr-3 h-5 w-5" />
-                  Inventory
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                {inventoryItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === item.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                    onClick={() => {
-                      setSidebarOpen(false);
-                    }}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
+
             {user?.department === 'Admin' && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
                 <CollapsibleTrigger className="w-full">
@@ -345,6 +318,33 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     </Link>
                   </CollapsibleContent>
                 </Collapsible>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Inventory Section */}
+            <Collapsible open={true} onOpenChange={() => {}}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+                  <Package className="mr-3 h-5 w-5" />
+                  Inventory
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-8 space-y-2">
+                {inventoryItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                      pathname === item.href
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.label}
+                  </Link>
+                ))}
               </CollapsibleContent>
             </Collapsible>
 

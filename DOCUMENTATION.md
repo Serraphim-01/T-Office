@@ -1,47 +1,172 @@
-# Task Office Application Documentation
+# T-Office System Documentation
 
-This document provides a comprehensive overview of the features and functionalities of the Task Office application.
+## Overview
+T-Office is a full-stack internal office management platform designed to streamline administrative, HR, inventory, and collaboration workflows within an organization.
 
-## Table of Contents
+## System Components
 
-1.  [Dashboard](#dashboard)
-2.  [Anonymous Chat](#anonymous-chat)
-3.  [Profile](#profile)
-4.  [Admin](#admin)
-5.  [Activity Bar](#activity-bar)
+### 1. Authentication
+- Login and signup flows
+- JWT-based authentication
+- Role-based access control
 
----
+### 2. Dashboard
+- Central hub for user activities
+- Activity tracking
+- Quick access to all modules
 
-## 1. Dashboard
+### 3. HR Management
+- Employee onboarding
+- User management
+- HR query handling
+- Induction tracking
 
-The **Dashboard** is the main landing page after a user logs in. It provides a high-level overview of the application and key metrics.
+### 4. Admin Panel
+- Approval workflows
+- Database management
+- User administration
 
----
+### 5. Inventory System
+- Product management
+- Inbound transaction tracking
+- Stored inventory management
+- Outbound shipment tracking
+- Serial number tracking
+- CSV import functionality for products and comprehensive data
 
-## 2. Anonymous Chat
+### 6. Wiki & Resources
+- Department-specific documentation
+- Dynamic routing
+- Knowledge base with quizzes
 
-The **Anonymous Chat** is a real-time communication tool that allows users to have open and honest discussions without revealing their identities.
+### 7. Chat Module
+- Internal team communication
+- Message history
+- Moderation features
 
--   **Anonymity:** Users are assigned random anonymous names.
--   **Session-Based:** Messages are stored locally and cleared when the user logs out.
+### 8. Clock & Profile
+- Time tracking
+- Geofencing support
+- Personal profile management
 
----
+### 9. Offline Support
+- PWA-enabled fallback page
+- Service worker implementation
 
-## 3. Profile
+## Database Migration
 
-The **Profile** page allows users to view and manage their personal information.
+The database migration system has been consolidated for better maintainability:
 
----
+### Migration Files
+- `drop_migration.sql`: Drops all existing database objects in the correct order
+- `create_migration.sql`: Creates all tables, indexes, triggers, and populates initial data
 
-## 4. Admin
+### Migration Process
+```bash
+./run_migration.sh
+```
 
-The **Admin** section provides tools for administrators to manage the application.
+### Schema Organization
+All database schema definitions have been consolidated into the main migration files:
+- User management tables
+- Chat system tables
+- HR features tables
+- Wiki system tables
+- Location/geofencing tables
+- Department configuration tables
+- Compliance tables
+- Inventory system tables (products, inbound transactions, outbound transactions)
 
--   **Roles:** Manage user roles and permissions.
--   **Departments:** Manage the company's departments.
+## API Endpoints
 
----
+### Authentication
+- POST `/api/login` - User login
+- POST `/api/signup` - User registration
 
-## 5. Activity Bar
+### Inventory
+- GET `/api/inventory/products` - List all products
+- GET `/api/inventory/products/:id` - Get specific product
+- POST `/api/inventory/products` - Create new product
+- PUT `/api/inventory/products/:id` - Update product
+- DELETE `/api/inventory/products/:id` - Delete product
+- POST `/api/inventory/products/import` - Import products from CSV
+- POST `/api/inventory/comprehensive-import` - Import all inventory data from CSV
+- GET `/api/inventory/inbound` - List inbound transactions
+- GET `/api/inventory/inbound/store` - List stored transactions
+- GET `/api/inventory/outbound` - List outbound transactions
 
-The **Activity Bar** is a right-side panel that displays a real-time feed of the user's most recent activities within the application, providing transparency and a quick overview of recent actions.
+### HR
+- GET `/api/hr/users` - List all users
+- GET `/api/hr/users/:id` - Get specific user
+- PUT `/api/hr/users/:id` - Update user
+- DELETE `/api/hr/users/:id` - Delete user
+- GET `/api/hr/onboarding` - Get onboarding status
+- POST `/api/hr/onboarding` - Update onboarding status
+- GET `/api/hr/queries` - List HR queries
+- POST `/api/hr/queries` - Create HR query
+- PUT `/api/hr/queries/:id` - Update HR query
+
+### Profile
+- GET `/api/profile` - Get user profile
+- PUT `/api/profile` - Update user profile
+- POST `/api/profile/upload-cv` - Upload CV
+- POST `/api/profile/upload-portfolio` - Upload portfolio
+- POST `/api/profile/upload-contract` - Upload contract
+- POST `/api/profile/upload-profile-picture` - Upload profile picture
+
+### Wiki
+- GET `/api/wiki/:department` - List wiki topics for department
+- GET `/api/wiki/:department/:topic` - Get specific wiki topic
+- POST `/api/wiki` - Create wiki topic
+- PUT `/api/wiki/:id` - Update wiki topic
+- DELETE `/api/wiki/:id` - Delete wiki topic
+
+## Technology Stack
+
+### Frontend
+- Next.js 13.5.1 with App Router
+- TypeScript
+- Tailwind CSS
+- Radix UI components
+- React Hook Form + Zod
+
+### Backend
+- Node.js with Express
+- PostgreSQL database
+- JWT authentication
+
+### DevOps
+- Docker containerization
+- Concurrent development server
+- PWA support
+
+## Development Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   cd backend && npm install
+   ```
+
+2. Start development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Access application:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:4000
+
+## Deployment
+
+Build and run production version:
+```bash
+npm run build
+npm start
+```
+
+Or using Docker:
+```bash
+docker build -t toffice .
+docker run -p 3000:3000 toffice
+```

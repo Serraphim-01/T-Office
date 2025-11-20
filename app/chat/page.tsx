@@ -55,14 +55,14 @@ export default function ChatPage() {
 
   // Poll for new messages every 3 seconds
   useEffect(() => {
-    if (!user) return;
+    if (!user || isChatPaused) return;
 
     const interval = setInterval(() => {
       fetchMessages();
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, isChatPaused]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -85,7 +85,12 @@ export default function ChatPage() {
 
   const fetchMessages = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/chat/messages');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/chat/messages/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setMessages(data.map((msg: any) => ({
@@ -102,10 +107,15 @@ export default function ChatPage() {
 
   const fetchChatSettings = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/chat/settings');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/chat/settings/${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
-        setIsChatPaused(data.is_paused);
+        setIsChatPaused(data.is_paused || false);
       }
     } catch (error) {
       console.error('Failed to fetch chat settings:', error);
@@ -114,20 +124,29 @@ export default function ChatPage() {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isCheckingToxicity) return;
+    
+    // Check if chat is paused and user is not a moderator
+    if (isChatPaused && !isModeratorMode) {
+      alert('Chat is currently paused. Only moderators can send messages.');
+      return;
+    }
 
     const text = newMessage.trim();
     setIsCheckingToxicity(true);
     setToxicityWarning(null);
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:4000/api/chat/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
+          user_id: user.id,
           text,
-          isModerator: (user?.department === 'Admin' || user?.department === 'HR') && isModeratorMode
+          is_moderator: (user?.department === 'Admin' || user?.department === 'HR') && isModeratorMode
         }),
       });
 
@@ -182,7 +201,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/chat/clear', {
+      const response = await fetch('http://localhost:4000/api/chat/cleanup', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,17 +221,24 @@ export default function ChatPage() {
   };
 
   const toggleChatPause = async () => {
-    if (!user || (user.department !== 'Admin' && user.department !== 'HR')) return;
+    if (!user) return; // Allow any user to pause now
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/chat/settings/pause', {
+      const response = await fetch(`http://localhost:4000/api/chat/settings/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ is_paused: !isChatPaused }),
+        body: JSON.stringify({ 
+          is_paused: !isChatPaused,
+          theme: 'light',
+          notifications_enabled: true,
+          sound_enabled: true,
+          auto_summarize: false,
+          summary_interval: 50
+        }),
       });
 
       if (response.ok) {
@@ -227,27 +253,28 @@ export default function ChatPage() {
   };
 
   const handleSummarize = async (useDefaultSettings = true) => {
-    if (!user || (user.department !== 'Admin' && user.department !== 'HR')) return;
+    if (!user) return; // Remove department restriction
 
     setIsSummarizing(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/chat/summarize', {
+      const response = await fetch(`http://localhost:4000/api/chat/summaries/${user.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          timeRange: useDefaultSettings ? 'last_7_days' : timeRange,
+          messageCount: useDefaultSettings ? 50 : parseInt(timeRange) || 50,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setSummary(data.summary);
+        setSummary(data.summary_text || 'Summary generated successfully');
       } else {
-        alert('Failed to generate summary');
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to generate summary');
       }
     } catch (error) {
       console.error('Error summarizing chat:', error);
@@ -280,81 +307,77 @@ export default function ChatPage() {
                   </div>
                 </div>
 
-                {/* Summarize Button - Only for Admin/HR */}
-                {(user?.department === 'Admin' || user?.department === 'HR') && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSummarize(true)}
-                      disabled={isSummarizing}
-                      className="flex items-center"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Summarize
+                {/* Summarize Button - Available to all users now */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSummarize(true)}
+                  disabled={isSummarizing}
+                  className="flex items-center"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Summarize
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <div className="p-3 space-y-3">
+                      <div>
+                        <Label htmlFor="timeRange" className="text-sm">Message Count</Label>
+                        <select
+                          id="timeRange"
+                          value={timeRange}
+                          onChange={(e) => setTimeRange(e.target.value)}
+                          className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                        >
+                          <option value="20">Last 20 messages</option>
+                          <option value="50">Last 50 messages</option>
+                          <option value="100">Last 100 messages</option>
+                          <option value="200">Last 200 messages</option>
+                        </select>
+                      </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64">
-                        <div className="p-3 space-y-3">
-                          <div>
-                            <Label htmlFor="timeRange" className="text-sm">Time Range</Label>
-                            <select
-                              id="timeRange"
-                              value={timeRange}
-                              onChange={(e) => setTimeRange(e.target.value)}
-                              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                            >
-                              <option value="today">Today only</option>
-                              <option value="last_7_days">Last 7 days</option>
-                              <option value="last_2_weeks">Last 2 weeks</option>
-                              <option value="last_1_month">Last one month</option>
-                            </select>
-                          </div>
+                      <Button
+                        onClick={() => handleSummarize(false)}
+                        disabled={isSummarizing}
+                        className="w-full"
+                      >
+                        {isSummarizing ? 'Generating...' : 'Generate Summary'}
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                          <Button
-                            onClick={() => handleSummarize(false)}
-                            disabled={isSummarizing}
-                            className="w-full"
-                          >
-                            {isSummarizing ? 'Generating...' : 'Generate Summary'}
-                          </Button>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Dialog open={!!summary} onOpenChange={() => setSummary(null)}>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Chat Summary</DialogTitle>
-                        </DialogHeader>
-                        <div className="mt-4">
-                          {summary ? (
-                            <div className="prose prose-sm max-w-none">
-                              <p className="text-sm text-muted-foreground mb-4">
-                                {summary.split('\n').map((line, index) => {
-                                  if (line.toLowerCase().includes('action') || line.includes('•') || line.includes('-')) {
-                                        return <span key={index} className="font-semibold block">{line}</span>;
-                                      }
-                                      return <span key={index} className="block">{line}</span>;
-                                    })}
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="text-muted-foreground">No summary available.</p>
-                              )}
+                <Dialog open={!!summary} onOpenChange={() => setSummary(null)}>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Chat Summary</DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                      {summary ? (
+                        <div className="prose prose-sm max-w-none">
+                          <p className="text-sm text-muted-foreground mb-4">
+                            {summary.split('\n').map((line, index) => {
+                              if (line.toLowerCase().includes('action') || line.includes('•') || line.includes('-')) {
+                                    return <span key={index} className="font-semibold block">{line}</span>;
+                                  }
+                                  return <span key={index} className="block">{line}</span>;
+                                })}
+                              </p>
                             </div>
-                          </DialogContent>
-                        </Dialog>
-                      </>
-                    )}
+                          ) : (
+                            <p className="text-muted-foreground">No summary available.</p>
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
 
-                    {/* Pause/Resume Chat Button - Only for Admin/HR */}
+                    {/* Pause/Resume Chat Button - Available to all users now */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -553,7 +576,7 @@ export default function ChatPage() {
                 <hr className="border-border" />
                 <div>
                   <h4 className="text-sm font-medium">Chat Moderation</h4>
-                  <p className="text-sm text-muted-foreground">Moderators (Admin/HR) can pause the chat to prevent new messages from regular users.</p>
+                  <p className="text-sm text-muted-foreground">Any user can pause the chat to prevent new messages from all users except moderators.</p>
                 </div>
                 <hr className="border-border" />
                 <div>

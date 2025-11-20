@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useToast } from '@/hooks/use-toast';
-import { Package, MapPin, Calendar, Truck, CheckCircle, Edit, Trash2, Send } from 'lucide-react';
+import { Package, Hash, Calendar, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -21,22 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-
-interface OutboundTransaction {
-  id: number;
-  product_id: number;
-  product_name: string;
-  product_part_number: string;
-  quantity: number;
-  receiver_address: string;
-  receiver_email: string;
-  receiver_phone: string;
-  dispatch_date: string;
-  delivery_date: string;
-  status: 'Outgoing' | 'Dispatched' | 'Delivered';
-  created_at: string;
-  serial_numbers: string[] | null;
-}
+import Link from 'next/link';
 
 interface StoredTransaction {
   id: number;
@@ -46,8 +36,8 @@ interface StoredTransaction {
   quantity: number;
   provider: string;
   arrival_date: string;
-  status: string;
   serial_numbers: string[] | null;
+  status: string;
 }
 
 interface ProductSerialNumbers {
@@ -56,8 +46,7 @@ interface ProductSerialNumbers {
   serial_numbers: string[] | null;
 }
 
-export default function OutboundPage() {
-  const [outboundTransactions, setOutboundTransactions] = useState<OutboundTransaction[]>([]);
+export default function StorePage() {
   const [storedTransactions, setStoredTransactions] = useState<StoredTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,32 +66,10 @@ export default function OutboundPage() {
   
   const { toast } = useToast();
 
-  // Fetch outbound and stored transactions
+  // Fetch stored transactions
   useEffect(() => {
-    Promise.all([fetchOutboundTransactions(), fetchStoredTransactions()]);
+    fetchStoredTransactions();
   }, []);
-
-  const fetchOutboundTransactions = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/outbound', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch outbound transactions');
-      const data = await response.json();
-      setOutboundTransactions(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load outbound transactions',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchStoredTransactions = async () => {
     try {
@@ -121,6 +88,8 @@ export default function OutboundPage() {
         description: 'Failed to load stored transactions',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,7 +113,7 @@ export default function OutboundPage() {
     }
   };
 
-  const handleSetAsOutbound = (transactionId: number, productId: number) => {
+  const handleCreateOutbound = (transactionId: number, productId: number) => {
     setSelectedTransactionId(transactionId);
     setSelectedProductId(productId);
     setIsModalOpen(true);
@@ -239,65 +208,11 @@ export default function OutboundPage() {
       setIsModalOpen(false);
       
       // Refresh transactions
-      Promise.all([fetchOutboundTransactions(), fetchStoredTransactions()]);
+      fetchStoredTransactions();
     } catch (error) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleUpdateStatus = async (id: number, status: 'Dispatched' | 'Delivered') => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error(`Failed to update transaction to ${status}`);
-
-      toast({ title: 'Success', description: `Transaction updated to ${status}` });
-      
-      // Refresh transactions
-      fetchOutboundTransactions();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : `Failed to update transaction to ${status}`,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this outbound transaction?')) {
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to delete transaction');
-
-      toast({ title: 'Success', description: 'Transaction deleted successfully' });
-      
-      // Refresh transactions
-      fetchOutboundTransactions();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete transaction',
         variant: 'destructive',
       });
     }
@@ -311,12 +226,12 @@ export default function OutboundPage() {
     <DashboardLayout>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Outbound Transactions</h1>
+          <h1 className="text-3xl font-bold">Store</h1>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Outbound Transactions</CardTitle>
+            <CardTitle>Stored Transactions</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -328,65 +243,65 @@ export default function OutboundPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
-                    <TableHead>Delivery Address</TableHead>
                     <TableHead>Quantity</TableHead>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Arrival Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {outboundTransactions.map((transaction) => (
+                  {storedTransactions.map((transaction) => (
                     <TableRow key={transaction.id}>
                       <TableCell>
-                        <Link href={`/inventory/outbound/${transaction.id}`} className="font-medium hover:underline">
+                        <Link href={`/inventory/store/${transaction.id}`} className="font-medium hover:underline">
                           {transaction.product_name}
                         </Link>
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
                       <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="flex items-center space-x-2">
+                              <span>{transaction.quantity}</span>
+                              <Hash className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
+                              transaction.serial_numbers.map((serial, index) => (
+                                <DropdownMenuItem key={index}>
+                                  {serial}
+                                </DropdownMenuItem>
+                              ))
+                            ) : (
+                              <DropdownMenuItem>No serial numbers</DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                      <TableCell>{transaction.provider}</TableCell>
+                      <TableCell>
                         <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{transaction.receiver_address}</span>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {transaction.arrival_date ? format(parseISO(transaction.arrival_date), 'MMM d, yyyy') : 'N/A'}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell>{transaction.quantity}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={transaction.status === 'Delivered' ? 'default' : 
-                                 transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
-                        >
-                          {transaction.status === 'Outgoing' && <Truck className="h-3 w-3 mr-1" />}
-                          {transaction.status === 'Dispatched' && <Send className="h-3 w-3 mr-1" />}
-                          {transaction.status === 'Delivered' && <CheckCircle className="h-3 w-3 mr-1" />}
+                        <Badge variant="default">
                           {transaction.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUpdateStatus(transaction.id, 'Dispatched')}
-                            disabled={transaction.status !== 'Outgoing'}
-                          >
-                            Mark as Dispatched
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUpdateStatus(transaction.id, 'Delivered')}
-                            disabled={transaction.status !== 'Dispatched'}
-                          >
-                            Mark as Delivered
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDelete(transaction.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleCreateOutbound(transaction.id, transaction.product_id)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Outbound
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
