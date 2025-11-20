@@ -1,5 +1,6 @@
 -- Create Migration: Create all database tables with schemas and populate with initial data
 -- This script creates a complete database schema for the office management system
+-- Includes chat columns and induction schema updates
 
 -- ===========================================
 -- USER MANAGEMENT TABLES
@@ -75,6 +76,10 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add missing columns to chat_messages table
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT false;
+
 -- Create chat_settings table for pause functionality
 CREATE TABLE IF NOT EXISTS chat_settings (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -88,6 +93,15 @@ CREATE TABLE IF NOT EXISTS chat_settings (
     summary_interval INTEGER DEFAULT 50,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create chat_summaries table
+CREATE TABLE IF NOT EXISTS chat_summaries (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    summary_text TEXT NOT NULL,
+    message_count INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ===========================================
@@ -110,14 +124,9 @@ CREATE TABLE IF NOT EXISTS attendance (
 -- Inductions table
 CREATE TABLE IF NOT EXISTS inductions (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    scheduled_date TIMESTAMP WITH TIME ZONE,
-    completed_date TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(20) DEFAULT 'scheduled',
-    assigned_by INTEGER REFERENCES users(id),
-    notes TEXT,
+    department VARCHAR(100),
+    induction_time TIMESTAMP WITH TIME ZONE,
+    attendees JSONB DEFAULT '[]',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -354,11 +363,14 @@ CREATE INDEX IF NOT EXISTS idx_user_details_user_id ON user_details(user_id);
 
 -- Chat indexes
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_summaries_user_created ON chat_summaries(user_id, created_at DESC);
 
 -- HR indexes
 CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON attendance(user_id, clock_in DESC);
 CREATE INDEX IF NOT EXISTS idx_hr_queries_status ON hr_queries(status);
 CREATE INDEX IF NOT EXISTS idx_hr_queries_assigned_to ON hr_queries(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_inductions_department ON inductions(department);
+CREATE INDEX IF NOT EXISTS idx_inductions_time ON inductions(induction_time);
 
 -- Wiki indexes
 CREATE INDEX IF NOT EXISTS idx_wiki_topics_department ON wiki_topics(department);

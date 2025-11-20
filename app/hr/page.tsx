@@ -600,7 +600,7 @@ export default function HRDashboardPage() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => window.open(`/hr/users/${user.id}`, '_blank')}
+                            onClick={() => router.push(`/hr/users/${user.id}`)}
                           >
                             View Details
                           </Button>

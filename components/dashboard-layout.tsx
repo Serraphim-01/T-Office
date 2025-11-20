@@ -64,6 +64,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
   const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(pathname.startsWith('/resources'));
   const [isWikiMenuOpen, setIsWikiMenuOpen] = useState(pathname.startsWith('/resources/wiki'));
+  const [isInventoryMenuOpen, setIsInventoryMenuOpen] = useState(pathname.startsWith('/inventory'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
 
@@ -319,7 +320,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </Collapsible>
 
             {/* Inventory Section */}
-            <Collapsible open={true} onOpenChange={() => {}}>
+            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
               <CollapsibleTrigger className="w-full">
                 <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
                   <Package className="mr-3 h-5 w-5" />

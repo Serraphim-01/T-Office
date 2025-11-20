@@ -4,6 +4,7 @@ import csv from 'csv-parser';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { Parser } from 'json2csv';
 
 // Configure multer for file uploads
 const upload = multer({ dest: 'uploads/' });
@@ -514,6 +515,128 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
     }
     console.error('Error importing comprehensive CSV:', error);
     res.status(500).json({ error: 'Internal server error during comprehensive CSV import' });
+  }
+});
+
+// Export inventory data
+router.get('/export/:type', authenticateJWT, async (req, res) => {
+  const { type } = req.params;
+  const { format = 'csv' } = req.query;
+
+  try {
+    let data = [];
+    let filename = '';
+
+    switch (type) {
+      case 'products':
+        const productsResult = await req.pool.query(
+          'SELECT id, name, part_number, product_type, created_at, updated_at FROM products ORDER BY name'
+        );
+        data = productsResult.rows;
+        filename = 'products_export.csv';
+        break;
+
+      case 'inbound':
+        const inboundResult = await req.pool.query(`
+          SELECT 
+            i.id,
+            p.name as product_name,
+            p.part_number as product_part_number,
+            i.quantity,
+            i.provider,
+            i.expected_arrival_start,
+            i.expected_arrival_end,
+            i.status,
+            i.created_at,
+            ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), ', ') as serial_numbers
+          FROM inbound_transactions i
+          JOIN products p ON i.product_id = p.id
+          LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+          WHERE i.status = 'Incoming'
+          GROUP BY i.id, p.name, p.part_number
+          ORDER BY i.created_at DESC
+        `);
+        data = inboundResult.rows;
+        filename = 'inbound_transactions_export.csv';
+        break;
+
+      case 'stored':
+        const storedResult = await req.pool.query(`
+          SELECT 
+            i.id,
+            p.name as product_name,
+            p.part_number as product_part_number,
+            i.quantity,
+            i.provider,
+            i.arrival_date,
+            i.status,
+            i.created_at,
+            ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), ', ') as serial_numbers
+          FROM inbound_transactions i
+          JOIN products p ON i.product_id = p.id
+          LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+          WHERE i.status = 'Stored'
+          GROUP BY i.id, p.name, p.part_number
+          ORDER BY i.arrival_date DESC
+        `);
+        data = storedResult.rows;
+        filename = 'stored_transactions_export.csv';
+        break;
+
+      case 'outbound':
+        const outboundResult = await req.pool.query(`
+          SELECT 
+            o.id,
+            p.name as product_name,
+            p.part_number as product_part_number,
+            o.quantity,
+            o.receiver_address,
+            o.receiver_email,
+            o.receiver_phone,
+            o.dispatch_datetime,
+            o.delivery_datetime,
+            o.status,
+            o.created_at,
+            ARRAY_TO_STRING(ARRAY_AGG(osn.serial_number), ', ') as serial_numbers
+          FROM outbound_transactions o
+          JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
+          JOIN products p ON i.product_id = p.id
+          LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
+          GROUP BY o.id, p.name, p.part_number
+          ORDER BY o.created_at DESC
+        `);
+        data = outboundResult.rows;
+        filename = 'outbound_transactions_export.csv';
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Invalid export type. Supported types: products, inbound, stored, outbound' });
+    }
+
+    if (format === 'csv') {
+      // Convert to CSV
+      if (data.length === 0) {
+        // Handle empty data case
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send('');
+      }
+
+      const json2csvParser = new Parser();
+      const csvData = json2csvParser.parse(data);
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.status(200).send(csvData);
+    } else {
+      // Default to JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename.replace('.csv', '.json')}"`);
+      res.status(200).json(data);
+    }
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    res.status(500).json({ error: 'Internal server error during export' });
   }
 });
 
