@@ -125,6 +125,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const adminItems = [
     { href: '/admin/db', label: 'Database', icon: Database },
+    { href: '/admin/features', label: 'Features', icon: ClipboardList },
   ];
 
   const hrItems = [
@@ -197,6 +198,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             ))}
 
+            {/* Approvals - Moved to main navigation */}
+            <Link
+              href="/admin/approvals"
+              className={cn(
+                "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                pathname === "/admin/approvals"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              )}
+            >
+              <ShieldCheck className="mr-3 h-5 w-5" />
+              Approvals
+            </Link>
 
             {user?.department === 'Admin' && (
               <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
@@ -222,35 +236,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       {item.label}
                     </Link>
                   ))}
-                  <Link
-                    href="/admin/approvals"
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === "/admin/approvals"
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <ShieldCheck className="mr-3 h-5 w-5" />
-                    Approvals
-                  </Link>
                 </CollapsibleContent>
               </Collapsible>
-            )}
-
-            {user?.department !== 'Admin' && (
-              <Link
-                href="/admin/approvals"
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === "/admin/approvals"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                )}
-              >
-                <ShieldCheck className="mr-3 h-5 w-5" />
-                Approvals
-              </Link>
             )}
 
             {/* Show HR menu to all users, not just HR/Admin */}
