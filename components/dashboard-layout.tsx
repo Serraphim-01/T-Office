@@ -47,7 +47,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { LucideIcon } from 'lucide-react';
 
+interface SidebarItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -102,6 +108,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
     { href: '/clock', label: 'Clock In/Out', icon: Clock },
     { href: '/profile', label: 'Profile', icon: User },
+    { href: '/settings', label: 'Settings', icon: Shield },
   ];
 
   // Inventory items
