@@ -16,6 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Calendar, UserPlus, Users, FileText, MessageSquare, Clock, Plus, XCircle, Trash2, X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/lib/auth-context';
+import { fetchDepartments } from '@/lib/departments';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: number;
@@ -61,6 +63,7 @@ interface Query {
 export default function HRDashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [inductions, setInductions] = useState<Induction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +71,7 @@ export default function HRDashboardPage() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [selectedInduction, setSelectedInduction] = useState<Induction | null>(null);
+  const [departments, setDepartments] = useState<string[]>([]);
 
   // Form states
   const [newUser, setNewUser] = useState({ name: '', email: '', department: '', induction_eligible: true });
@@ -78,8 +82,23 @@ export default function HRDashboardPage() {
     if (user) {
       fetchUsers();
       fetchInductions();
+      loadDepartments();
     }
   }, [user]);
+
+  const loadDepartments = async () => {
+    try {
+      const deptList = await fetchDepartments();
+      setDepartments(deptList);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load departments",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -396,11 +415,11 @@ export default function HRDashboardPage() {
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="HR">HR</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="Compliance">Compliance</SelectItem>
-                        <SelectItem value="IT">IT</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -446,11 +465,11 @@ export default function HRDashboardPage() {
                             <SelectValue placeholder="Select department" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="HR">HR</SelectItem>
-                            <SelectItem value="Admin">Admin</SelectItem>
-                            <SelectItem value="Compliance">Compliance</SelectItem>
-                            <SelectItem value="IT">IT</SelectItem>
-                            <SelectItem value="Finance">Finance</SelectItem>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept} value={dept}>
+                                {dept}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

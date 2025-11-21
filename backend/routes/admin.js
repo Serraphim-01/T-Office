@@ -155,13 +155,95 @@ router.post("/departments", authenticateJWT, async (req, res) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO departments (name) VALUES ($1) RETURNING id',
+      'INSERT INTO departments (name) VALUES ($1) RETURNING id, name',
       [name]
     );
 
-    res.status(201).json({ id: result.rows[0].id, name });
+    res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error adding department:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Rename department
+router.put("/departments/:id", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+  const { name } = req.body;
+
+  try {
+    // Check if department exists
+    const existing = await pool.query(
+      'SELECT id FROM departments WHERE id = $1',
+      [id]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // Check if another department with the same name already exists
+    const nameCheck = await pool.query(
+      'SELECT id FROM departments WHERE name = $1 AND id != $2',
+      [name, id]
+    );
+
+    if (nameCheck.rows.length > 0) {
+      return res.status(400).json({ error: "A department with this name already exists" });
+    }
+
+    const result = await pool.query(
+      'UPDATE departments SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name',
+      [name, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error renaming department:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete department
+router.delete("/departments/:id", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+
+  try {
+    // Check if department exists
+    const existing = await pool.query(
+      'SELECT id, name FROM departments WHERE id = $1',
+      [id]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // According to requirements, departments should not be deletable
+    // We'll return a specific error message indicating this
+    return res.status(400).json({ error: "Departments cannot be deleted. You can only rename them." });
+    
+    // If we wanted to allow deletion, we would use the following code:
+    /*
+    const result = await pool.query(
+      'DELETE FROM departments WHERE id = $1 RETURNING id, name',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    res.json({ message: "Department deleted successfully", department: result.rows[0] });
+    */
+  } catch (err) {
+    console.error('Error deleting department:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

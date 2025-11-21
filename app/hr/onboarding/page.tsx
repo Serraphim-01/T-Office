@@ -13,6 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/lib/auth-context';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { fetchDepartments } from '@/lib/departments';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: number;
@@ -39,11 +41,13 @@ interface DepartmentInduction {
 
 export default function HROnboardingPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [inductions, setInductions] = useState<Induction[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [selectedInduction, setSelectedInduction] = useState<Induction | null>(null);
+  const [departments, setDepartments] = useState<string[]>([]);
 
   // Form states
   const [newUser, setNewUser] = useState<{ name: string; email: string; department: string }>({ name: '', email: '', department: '' });
@@ -53,8 +57,23 @@ export default function HROnboardingPage() {
     if (user) {
       fetchUsers();
       fetchInductions();
+      loadDepartments();
     }
   }, [user]);
+
+  const loadDepartments = async () => {
+    try {
+      const deptList = await fetchDepartments();
+      setDepartments(deptList);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load departments",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -266,11 +285,11 @@ export default function HROnboardingPage() {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Compliance">Compliance</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="Finance">Finance</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -317,11 +336,11 @@ export default function HROnboardingPage() {
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="HR">HR</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="Compliance">Compliance</SelectItem>
-                        <SelectItem value="IT">IT</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

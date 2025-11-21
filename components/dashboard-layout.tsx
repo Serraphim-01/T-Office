@@ -126,6 +126,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const adminItems = [
     { href: '/admin/db', label: 'Database', icon: Database },
     { href: '/admin/features', label: 'Features', icon: ClipboardList },
+    { href: '/admin/departments', label: 'Departments', icon: Users2 },
   ];
 
   const hrItems = [

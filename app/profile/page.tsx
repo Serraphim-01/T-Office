@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect } from 'react';
+import { fetchDepartments } from '@/lib/departments';
+import { useToast } from '@/hooks/use-toast';
 
 interface Certification {
   id: string;
@@ -65,6 +67,7 @@ interface ProfileWithQueries extends Profile {
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<ProfileWithQueries | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddCertModalOpen, setIsAddCertModalOpen] = useState(false);
@@ -81,10 +84,12 @@ export default function ProfilePage() {
     has_expiry: false
   });
   const [dragActive, setDragActive] = useState(false);
+  const [departments, setDepartments] = useState<string[]>([]);
 
   // Fetch profile data
   useEffect(() => {
     fetchProfile();
+    loadDepartments();
 
     // Add event listener for window focus to refetch profile
     const handleFocus = () => {
@@ -103,6 +108,20 @@ export default function ProfilePage() {
       clearInterval(interval);
     };
   }, []);
+
+  const loadDepartments = async () => {
+    try {
+      const deptList = await fetchDepartments();
+      setDepartments(deptList);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load departments",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -198,79 +217,127 @@ export default function ProfilePage() {
       });
 
       if (response.ok) {
-        const addedCert = await response.json();
-        setProfile(prev => prev ? {
-          ...prev,
-          certifications: [...prev.certifications, addedCert]
-        } : null);
+        toast({
+          title: "Success",
+          description: "Certification submitted for approval!",
+        });
         setIsAddCertModalOpen(false);
-        setIsApprovalModalOpen(true);
-        setNewCert({ title: '', issuer: '', file_data: '', file_name: '', file_type: '', expiry_date: '', has_expiry: false });
+        setNewCert({
+          title: '',
+          issuer: '',
+          file_data: '',
+          file_name: '',
+          file_type: '',
+          expiry_date: '',
+          has_expiry: false
+        });
+        fetchProfile();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to submit certification.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Failed to add certification:', error);
+      console.error('Error adding certification:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
   };
-
-
 
   const openCertification = (cert: Certification) => {
-    console.log('Opening certification:', {
-      id: cert.id,
-      title: cert.title,
-      hasFileData: !!cert.file_data,
-      fileType: cert.file_type,
-      hasFileUrl: !!cert.file_url,
-      fileDataLength: cert.file_data?.length
-    });
-
-    setSelectedCert(cert);
-    setIsImageModalOpen(true);
+    if (cert.file_data) {
+      // Create a data URL from the base64 data
+      const dataUrl = `data:${cert.file_type};base64,${cert.file_data}`;
+      window.open(dataUrl, '_blank');
+    } else if (cert.file_url) {
+      window.open(cert.file_url, '_blank');
+    }
   };
 
-  const handleDeleteCertification = async (certId: string) => {
-    if (!confirm('Are you sure you want to delete this certificate? This action cannot be undone.')) {
-      return;
-    }
-
-    // Optimistic update - remove from UI immediately
-    setProfile(prev => prev ? {
-      ...prev,
-      certifications: prev.certifications.filter(cert => cert.id !== certId)
-    } : null);
-
+  const deleteCertification = async (certId: string) => {
     try {
       const response = await fetch(`http://localhost:4000/api/profile/certifications/${certId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
 
-      if (!response.ok) {
-        // Revert optimistic update on failure - need to refetch
-        await fetchProfile();
-        console.error('Failed to delete certification');
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Certification deleted successfully!",
+        });
+        fetchProfile();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to delete certification.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      // Revert optimistic update on error - need to refetch
-      await fetchProfile();
-      console.error('Failed to delete certification:', error);
+      console.error('Error deleting certification:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
   };
 
+  const submitQuery = async (subject: string, description: string) => {
+    try {
+      const response = await fetch('http://localhost:4000/api/profile/queries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ subject, description })
+      });
 
-  const departments = [
-    'Engineering',
-    'Marketing',
-    'Operations',
-    'Finance',
-    'Customer Support',
-    'Design',
-    'Legal',
-    'Executive'
-  ];
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Query submitted successfully!",
+        });
+        setIsApprovalModalOpen(false);
+        fetchProfile();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to submit query.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting query:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -283,6 +350,14 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {profile?.queries && profile.queries.length >= profile.max_queries_before_action && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You have reached the maximum number of queries. Please resolve some queries before submitting new ones.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -472,8 +547,7 @@ export default function ProfilePage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteCertification(cert.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => deleteCertification(cert.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -482,150 +556,135 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No certifications added yet.</p>
+                  <div className="text-center py-8">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 font-medium">No certifications</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Get started by adding your first certification.
+                    </p>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Account Status - Single Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Account Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Account Type</span>
-                    <Badge variant="default">Active User</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Last Login</span>
-                    <span className="text-sm text-foreground">Today, 9:30 AM</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Member Since</span>
-                    <span className="text-sm text-foreground">January 2024</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
             {/* Queries Section */}
             <Card>
-              <CardHeader>
-                <CardTitle>HR Queries</CardTitle>
-                <CardDescription>Recent queries from HR</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>My Queries</CardTitle>
+                  <CardDescription>View and manage your submitted queries</CardDescription>
+                </div>
+                <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      size="sm"
+                      disabled={profile?.queries && profile.queries.length >= (profile?.max_queries_before_action || 5)}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Submit Query
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Submit a Query</DialogTitle>
+                      <DialogDescription>
+                        Describe your issue or question and it will be sent to HR for review.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <QueryForm onSubmit={submitQuery} />
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {profile?.queries && profile.queries.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium">Queries Received</p>
-                        <p className="text-xs text-muted-foreground">Total: {profile.query_count || 0}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">
-                          {profile.max_queries_before_action - (profile.query_count || 0)} more before action
-                        </p>
-                        <p className="text-xs text-muted-foreground">Threshold: {profile.max_queries_before_action}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {profile.queries.slice(0, 3).map((query) => (
-                        <div key={query.id} className="border rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium text-sm">{query.subject}</h4>
-                            <Badge 
-                              variant={query.status === 'open' ? 'secondary' : 'default'}
+                  <div className="space-y-3">
+                    {profile.queries.map((query) => (
+                      <div key={query.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Badge
+                              variant={query.status === 'open' ? 'secondary' : query.status === 'resolved' ? 'default' : 'outline'}
                               className="text-xs"
                             >
-                              {query.status}
+                              {query.status.charAt(0).toUpperCase() + query.status.slice(1)}
                             </Badge>
+                            <span className="text-sm font-medium">{query.subject}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">{query.description}</p>
-                          {query.resolution && (
-                            <div className="mt-2 pt-2 border-t">
-                              <p className="text-xs font-medium">HR Response:</p>
-                              <p className="text-xs text-muted-foreground">{query.resolution}</p>
-                            </div>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
+                          <span className="text-xs text-muted-foreground">
                             {new Date(query.created_at).toLocaleDateString()}
-                          </p>
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        <p className="text-sm text-muted-foreground mt-2">{query.description}</p>
+                        {query.resolution && (
+                          <div className="mt-2 p-2 bg-muted rounded">
+                            <p className="text-sm">
+                              <span className="font-medium">Resolution:</span> {query.resolution}
+                            </p>
+                            {query.resolved_at && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Resolved on {new Date(query.resolved_at).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className="text-center py-4">
-                    <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No queries received yet</p>
-                    <p className="text-xs text-muted-foreground mt-1">You have {profile?.max_queries_before_action || 3} queries remaining before official action is taken</p>
+                  <div className="text-center py-8">
+                    <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 font-medium">No queries submitted</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Submit your first query to get help from HR.
+                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Approval Request Sent</DialogTitle>
-                  <DialogDescription>
-                    Your certification has been submitted for approval. You will be notified once it's reviewed.
-                  </DialogDescription>
-                </DialogHeader>
-                <Button onClick={() => setIsApprovalModalOpen(false)}>Close</Button>
-              </DialogContent>
-            </Dialog>
           </div>
         )}
-
-        {/* Image Modal */}
-        <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-            <DialogHeader>
-              <DialogTitle>{selectedCert?.title}</DialogTitle>
-              <DialogDescription>
-                Issued by {selectedCert?.issuer}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-center">
-              {selectedCert?.file_data && selectedCert?.file_type ? (
-                <img
-                  src={`data:${selectedCert.file_type};base64,${selectedCert.file_data}`}
-                  alt={selectedCert.title}
-                  className="max-w-full max-h-[60vh] object-contain"
-                  onError={(e) => {
-                    console.error('Image failed to load:', e);
-                    e.currentTarget.style.display = 'none';
-                    const errorMsg = document.createElement('p');
-                    errorMsg.textContent = 'Failed to load image';
-                    errorMsg.className = 'text-red-500 text-center';
-                    e.currentTarget.parentNode?.appendChild(errorMsg);
-                  }}
-                />
-              ) : selectedCert?.file_url ? (
-                <img
-                  src={selectedCert.file_url}
-                  alt={selectedCert.title}
-                  className="max-w-full max-h-[60vh] object-contain"
-                  onError={(e) => {
-                    console.error('Image failed to load from URL:', e);
-                    e.currentTarget.style.display = 'none';
-                    const errorMsg = document.createElement('p');
-                    errorMsg.textContent = 'Failed to load image from URL';
-                    errorMsg.className = 'text-red-500 text-center';
-                    e.currentTarget.parentNode?.appendChild(errorMsg);
-                  }}
-                />
-              ) : (
-                <p className="text-muted-foreground">No image available</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+function QueryForm({ onSubmit }: { onSubmit: (subject: string, description: string) => void }) {
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(subject, description);
+    setSubject('');
+    setDescription('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="query-subject">Subject</Label>
+        <Input
+          id="query-subject"
+          placeholder="Briefly describe your issue"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="query-description">Description</Label>
+        <textarea
+          id="query-description"
+          placeholder="Provide detailed information about your issue"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          required
+        />
+      </div>
+      <Button type="submit" className="w-full">
+        Submit Query
+      </Button>
+    </form>
   );
 }
