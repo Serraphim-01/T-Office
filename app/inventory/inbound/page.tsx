@@ -328,7 +328,36 @@ export default function InboundPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Inbound Transactions</h1>
           <div className="flex space-x-2">
-            <Button onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/inbound'}>
+            <Button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('token');
+                  const response = await fetch('http://localhost:4000/api/inventory/export/inbound', {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
+
+                  if (!response.ok) throw new Error('Failed to export inbound transactions');
+
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'inbound_transactions_export.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to export inbound transactions',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+            >
               Export CSV
             </Button>
             <Button onClick={() => setIsAdding(!isAdding)}>

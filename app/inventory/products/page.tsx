@@ -281,7 +281,34 @@ export default function ProductsPage() {
               </Button>
               
               <Button
-                onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/products'}
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('http://localhost:4000/api/inventory/export/products', {
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
+
+                    if (!response.ok) throw new Error('Failed to export products');
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'products_export.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (error) {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to export products',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
               >
                 Export CSV
               </Button>

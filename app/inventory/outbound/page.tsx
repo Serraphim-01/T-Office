@@ -312,7 +312,36 @@ export default function OutboundPage() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Outbound Transactions</h1>
-          <Button onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/outbound'}>
+          <Button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+
+                if (!response.ok) throw new Error('Failed to export outbound transactions');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'outbound_transactions_export.csv';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+              } catch (error) {
+                toast({
+                  title: 'Error',
+                  description: 'Failed to export outbound transactions',
+                  variant: 'destructive',
+                });
+              }
+            }}
+          >
             Export CSV
           </Button>
         </div>
