@@ -327,10 +327,15 @@ export default function InboundPage() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Inbound Transactions</h1>
-          <Button onClick={() => setIsAdding(!isAdding)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Inbound Transaction
-          </Button>
+          <div className="flex space-x-2">
+            <Button onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/inbound'}>
+              Export CSV
+            </Button>
+            <Button onClick={() => setIsAdding(!isAdding)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Inbound Transaction
+            </Button>
+          </div>
         </div>
 
         {isAdding && (

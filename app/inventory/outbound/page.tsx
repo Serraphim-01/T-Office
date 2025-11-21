@@ -312,6 +312,9 @@ export default function OutboundPage() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Outbound Transactions</h1>
+          <Button onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/outbound'}>
+            Export CSV
+          </Button>
         </div>
 
         <Card>

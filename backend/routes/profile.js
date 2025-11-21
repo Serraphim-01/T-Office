@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateJWT, requireHR } from "./auth.js";
+import { authenticateJWT } from "./auth.js";
 
 const router = express.Router();
 
@@ -206,8 +206,9 @@ router.delete("/certifications/:certId", authenticateJWT, async (req, res) => {
   }
 });
 
-// Update certification status (Admin/HR only)
-router.put("/certifications/:certId", authenticateJWT, requireHR, async (req, res) => {
+// Update certification status (Now available to all users)
+// Removed requireHR middleware to allow all users access
+router.put("/certifications/:certId", authenticateJWT, async (req, res) => {
   const { certId } = req.params;
   const { status } = req.body; // 'approved' or 'rejected'
 

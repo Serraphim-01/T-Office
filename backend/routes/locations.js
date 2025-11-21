@@ -1,10 +1,10 @@
 import express from "express";
-import { authenticateJWT, requireAdmin, requireHR } from "./auth.js";
+import { authenticateJWT } from "./auth.js";
 
 const router = express.Router();
 
 // Setup location schema
-router.post("/admin/setup-locations", authenticateJWT, requireAdmin, async (req, res) => {
+router.post("/admin/setup-locations", authenticateJWT, async (req, res) => {
   try {
     const fs = await import('fs');
     const schema = fs.readFileSync('./location_schema.sql', 'utf8');
@@ -136,8 +136,9 @@ router.get("/locations", authenticateJWT, async (req, res) => {
   }
 });
 
-// Create new location (Admin/HR only)
-router.post("/locations", authenticateJWT, requireHR, async (req, res) => {
+// Create new location (Now available to all users)
+// Removed requireHR middleware to allow all users access
+router.post("/locations", authenticateJWT, async (req, res) => {
   const { name, latitude, longitude, radius_meters, address } = req.body;
 
   if (!name || !latitude || !longitude) {
@@ -157,8 +158,9 @@ router.post("/locations", authenticateJWT, requireHR, async (req, res) => {
   }
 });
 
-// Update location (Admin/HR only)
-router.put("/locations/:id", authenticateJWT, requireHR, async (req, res) => {
+// Update location (Now available to all users)
+// Removed requireHR middleware to allow all users access
+router.put("/locations/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
   const { name, latitude, longitude, radius_meters, address, is_active } = req.body;
 
@@ -179,8 +181,9 @@ router.put("/locations/:id", authenticateJWT, requireHR, async (req, res) => {
   }
 });
 
-// Delete location (Admin only)
-router.delete("/locations/:id", authenticateJWT, requireAdmin, async (req, res) => {
+// Delete location (Now available to all users)
+// Removed requireAdmin middleware to allow all users access
+router.delete("/locations/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
 
   try {

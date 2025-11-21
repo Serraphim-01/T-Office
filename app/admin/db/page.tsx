@@ -31,12 +31,6 @@ export default function DatabasePage() {
   const [deletingUser, setDeletingUser] = useState<number | null>(null);
 
   useEffect(() => {
-    if (user && user.department !== 'Admin') {
-      setError('Access denied. Admin privileges required.');
-      setLoading(false);
-      return;
-    }
-
     fetchTables();
   }, [user]);
 

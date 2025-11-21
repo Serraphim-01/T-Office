@@ -265,7 +265,7 @@ export default function WikiPage() {
               <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
               <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to the Wiki</h1>
               <p className="text-muted-foreground mb-6">
-                Select a department from the sidebar to browse available topics, or create new content if you're an admin.
+                Select a department from the sidebar to browse available topics, or create new content.
               </p>
               <Button asChild>
                 <Link href="/resources/wiki/create">

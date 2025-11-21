@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,7 @@ interface Query {
 
 export default function HRDashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [inductions, setInductions] = useState<Induction[]>([]);
   const [loading, setLoading] = useState(false);

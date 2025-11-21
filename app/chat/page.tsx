@@ -197,7 +197,7 @@ export default function ChatPage() {
   };
 
   const clearChat = async () => {
-    if (!user || (user.department !== 'Admin')) return;
+    if (!user) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -391,12 +391,12 @@ export default function ChatPage() {
                       {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
                     </Button>
 
-                    {/* Clear Chat Button - Only for Admin */}
-                    {user?.department === 'Admin' && (
+                    {/* Clear Chat Button - Now available to all users */}
+                    {/* {user?.department === 'Admin' && ( */}
                       <Button variant="outline" size="sm" onClick={clearChat}>
                         Clear Chat
                       </Button>
-                    )}
+                    {/* )} */}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -499,8 +499,8 @@ export default function ChatPage() {
                 )}
 
                 <div className="flex space-x-2">
-                  {/* Moderator Mode Toggle - Only for Admin/HR */}
-                  {(user?.department === 'Admin' || user?.department === 'HR') && (
+                  {/* Moderator Mode Toggle - Now available to all users */}
+                  {/* {(user?.department === 'Admin' || user?.department === 'HR') && ( */}
                     <div className="flex items-center space-x-2 pr-4 border-r border-border">
                       <input
                         type="checkbox"
@@ -513,7 +513,7 @@ export default function ChatPage() {
                         Moderator Mode
                       </Label>
                     </div>
-                  )}
+                  {/* )} */}
 
                   <Input
                     placeholder={

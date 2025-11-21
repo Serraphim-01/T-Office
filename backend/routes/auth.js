@@ -44,29 +44,5 @@ export const authenticateJWT = async (req, res, next) => {
   }
 };
 
-// Middleware to check if user is admin
-export const requireAdmin = (req, res, next) => {
-  console.log('Admin check - req.user:', req.user);
-  if (req.user && req.user.department === 'Admin') {
-    console.log('Admin access granted');
-    next();
-  } else {
-    console.log('Admin access denied - user department:', req.user?.department);
-    res.status(403).json({ error: "Access denied. Admin privileges required." });
-  }
-};
-
-// Middleware to check if user is admin or HR
-export const requireHR = (req, res, next) => {
-  console.log('HR check - req.user:', req.user);
-  if (req.user && (req.user.department === 'Admin' || req.user.department === 'HR')) {
-    console.log('HR/Admin access granted');
-    next();
-  } else {
-    console.log('HR/Admin access denied - user department:', req.user?.department);
-    res.status(403).json({ error: "Access denied. HR/Admin privileges required." });
-  }
-};
-
 // Export saltRounds for use in other files
 export { saltRounds };

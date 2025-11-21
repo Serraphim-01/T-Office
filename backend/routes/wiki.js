@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateJWT, requireAdmin } from "./auth.js";
+import { authenticateJWT } from "./auth.js";
 
 const router = express.Router();
 
@@ -74,8 +74,9 @@ router.get("/:department/:topic", async (req, res) => {
   }
 });
 
-// Create or update topic content (Admin only)
-router.put("/:department/:topic", authenticateJWT, requireAdmin, async (req, res) => {
+// Create or update topic content (Now available to all users)
+// Removed requireAdmin middleware to allow all users access
+router.put("/:department/:topic", authenticateJWT, async (req, res) => {
   const { department, topic } = req.params;
   const { content, questions } = req.body;
 
@@ -134,8 +135,9 @@ router.put("/:department/:topic", authenticateJWT, requireAdmin, async (req, res
   }
 });
 
-// Delete topic (Admin only)
-router.delete("/:department/:topic", authenticateJWT, requireAdmin, async (req, res) => {
+// Delete topic (Now available to all users)
+// Removed requireAdmin middleware to allow all users access
+router.delete("/:department/:topic", authenticateJWT, async (req, res) => {
   const { department, topic } = req.params;
 
   try {

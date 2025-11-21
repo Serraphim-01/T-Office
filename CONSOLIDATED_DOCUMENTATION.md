@@ -59,15 +59,15 @@ T-Office is a full-stack internal office management platform designed to streaml
 
 ## Database Migration
 
-The database migration system has been consolidated for better maintainability:
+The database migration system has been consolidated for better maintainability and no longer requires PostgreSQL command-line tools:
 
 ### Migration Files
 - `drop_migration.sql`: Drops all existing database objects in the correct order
 - `create_migration.sql`: Creates all tables, indexes, triggers, and populates initial data
 
 ### Migration Process
-```bash
-./run_migration.sh
+```
+./db/run_migration.sh
 ```
 
 ### Schema Organization
@@ -80,6 +80,8 @@ All database schema definitions have been consolidated into the main migration f
 - Department configuration tables
 - Compliance tables
 - Inventory system tables (products, inbound transactions, outbound transactions)
+
+For detailed information about the migration process, see [DB_MIGRATION_GUIDE.md](DB_MIGRATION_GUIDE.md).
 
 ## API Endpoints
 

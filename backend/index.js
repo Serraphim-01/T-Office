@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import axios from "axios";
-import { authenticateJWT, requireAdmin, requireHR, saltRounds } from "./routes/auth.js";
+import { authenticateJWT, saltRounds } from "./routes/auth.js";
 import { checkToxicity, summarizeChat, cleanupOldMessages } from "./utils/helpers.js";
 import { logActivity } from "./activity.js";
 
@@ -160,7 +160,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// Middleware to attach pool to requests
+// Middleware to attach pool to requests (must be before inventory routes)
 app.use((req, res, next) => {
   req.pool = pool;
   next();

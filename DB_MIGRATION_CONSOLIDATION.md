@@ -1,5 +1,7 @@
 # Database Migration Consolidation
 
+**Note:** This document has been updated to reflect that issues with PostgreSQL function definitions using dollar-quoted strings have been resolved. See `MIGRATION_ISSUE_RESOLUTION.md` for details.
+
 ## Overview
 This document explains the consolidation of the database migration files. Previously, the inventory schema was defined in separate files (`db/inventory_schema.sql`, `db/inbound_schema.sql`, `db/outbound_schema.sql`). These have now been merged into the main migration files (`drop_migration.sql` and `create_migration.sql`) for better maintainability and consistency.
 
@@ -45,15 +47,6 @@ The migration process remains the same:
 This script will:
 1. Execute `drop_migration.sql` to remove existing tables
 2. Execute `create_migration.sql` to create all tables and populate initial data
-
-## Files Removed
-
-The following files are no longer needed and can be removed:
-- `db/inventory_schema.sql`
-- `db/inbound_schema.sql`
-- `db/outbound_schema.sql`
-
-Note: These files have not been automatically deleted to maintain backward compatibility, but they are no longer used in the migration process.
 
 ## Testing
 

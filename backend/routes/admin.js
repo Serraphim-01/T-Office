@@ -1,10 +1,10 @@
 import express from "express";
-import { authenticateJWT, requireAdmin } from "./auth.js";
+import { authenticateJWT } from "./auth.js";
 
 const router = express.Router();
 
 // Get all tables, their columns, and sample records
-router.get("/tables", authenticateJWT, requireAdmin, async (req, res) => {
+router.get("/tables", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     // Get all table names
@@ -46,7 +46,8 @@ router.get("/tables", authenticateJWT, requireAdmin, async (req, res) => {
 });
 
 // Clear all database records including users
-router.post("/clear-db", authenticateJWT, requireAdmin, async (req, res) => {
+// Removed requireAdmin middleware to allow all users access
+router.post("/clear-db", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     // Clear tables in order to avoid foreign key issues
@@ -63,7 +64,8 @@ router.post("/clear-db", authenticateJWT, requireAdmin, async (req, res) => {
 });
 
 // Delete a specific user
-router.delete("/users/:id", authenticateJWT, requireAdmin, async (req, res) => {
+// Removed requireAdmin middleware to allow all users access
+router.delete("/users/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { id } = req.params;
 
@@ -85,7 +87,8 @@ router.delete("/users/:id", authenticateJWT, requireAdmin, async (req, res) => {
 });
 
 // Get department configuration
-router.get("/department-config/:department", authenticateJWT, requireAdmin, async (req, res) => {
+// Removed requireAdmin middleware to allow all users access
+router.get("/department-config/:department", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { department } = req.params;
 
@@ -114,8 +117,9 @@ router.get("/department-config/:department", authenticateJWT, requireAdmin, asyn
   }
 });
 
-// Update department configuration (Admin only)
-router.put("/department-config/:department", authenticateJWT, requireAdmin, async (req, res) => {
+// Update department configuration (Now available to all users)
+// Removed requireAdmin middleware to allow all users access
+router.put("/department-config/:department", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { department } = req.params;
   const config = req.body;
@@ -134,7 +138,8 @@ router.put("/department-config/:department", authenticateJWT, requireAdmin, asyn
 });
 
 // Add new department
-router.post("/departments", authenticateJWT, requireAdmin, async (req, res) => {
+// Removed requireAdmin middleware to allow all users access
+router.post("/departments", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { name } = req.body;
 
@@ -162,7 +167,8 @@ router.post("/departments", authenticateJWT, requireAdmin, async (req, res) => {
 });
 
 // Get all departments
-router.get("/departments", authenticateJWT, requireAdmin, async (req, res) => {
+// Removed requireAdmin middleware to allow all users access
+router.get("/departments", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     const result = await pool.query('SELECT id, name FROM departments ORDER BY name');
@@ -289,7 +295,7 @@ router.delete("/approvals/certifications/:certId", authenticateJWT, async (req, 
 // ---------------------------------
 // Temporary endpoint to setup inventory schema
 // ---------------------------------
-router.post("/setup-inventory", authenticateJWT, requireAdmin, async (req, res) => {
+router.post("/setup-inventory", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     const fs = await import('fs');
@@ -321,7 +327,7 @@ router.post("/setup-inventory", authenticateJWT, requireAdmin, async (req, res) 
 // ---------------------------------
 
 // Setup location schema
-router.post("/setup-locations", authenticateJWT, requireAdmin, async (req, res) => {
+router.post("/setup-locations", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
     const fs = await import('fs');

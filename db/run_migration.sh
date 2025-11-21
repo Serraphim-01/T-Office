@@ -1,34 +1,52 @@
 #!/bin/bash
 
 # Database migration script for T-Office
-# This script drops existing tables and recreates the schema
+# This script drops existing tables and recreates the schema using Node.js
 
 echo "Starting database migration..."
 
-# Check if we're in the right directory
-if [ ! -f "drop_migration.sql" ] || [ ! -f "create_migration.sql" ]; then
-  echo "Error: Required migration files not found!"
+# Store the original directory
+ORIGINAL_DIR=$(pwd)
+
+# Check if we're in the right directory by looking for key files
+if [ ! -f "db/drop_migration.sql" ] || [ ! -f "db/create_migration.sql" ] || [ ! -d "backend" ]; then
+  echo "Error: Required project files not found!"
   echo "Please run this script from the project root directory."
+  echo "Current directory: $(pwd)"
+  echo "Looking for db/drop_migration.sql, db/create_migration.sql, and backend/ directory."
   exit 1
 fi
 
-# Check if psql is available
-if ! command -v psql &> /dev/null; then
-  echo "Error: psql command not found!"
-  echo "Please ensure PostgreSQL client tools are installed and in your PATH."
-  echo "Alternatively, you can run migrations through the application:"
-  echo "1. Make sure the backend server is running"
-  echo "2. Use the database initialization endpoints if available"
-  echo "3. Or manually verify database connectivity through the application"
+# Check if Node.js is available
+if ! command -v node &> /dev/null; then
+  echo "Error: Node.js command not found!"
+  echo "Please ensure Node.js is installed and in your PATH."
+  echo "Download Node.js from: https://nodejs.org/"
   exit 1
 fi
 
-# Drop existing schema
+# Run migrations directly from the current directory (project root)
+echo "Running migrations from project root directory..."
+
 echo "Dropping existing schema..."
-psql "$DATABASE_URL" -f drop_migration.sql
+node db/run_sql.js db/drop_migration.sql
 
-# Create new schema
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to drop existing schema"
+  exit 1
+fi
+
 echo "Creating new schema..."
-psql "$DATABASE_URL" -f create_migration.sql
+node db/run_sql.js db/create_migration.sql
+
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to create new schema"
+  exit 1
+fi
 
 echo "Database migration completed successfully!"
+echo ""
+echo "To verify the migration worked correctly:"
+echo "1. Make sure your PostgreSQL database is running"
+echo "2. Start the backend server with: cd backend && npm run dev"
+echo "3. Test the connection with: curl http://localhost:4000/api/db-test"

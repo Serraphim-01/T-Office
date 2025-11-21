@@ -1,4 +1,0 @@
-- [ ] Remove HR/Admin access requirement in app/hr/onboarding/page.tsx
-- [ ] Remove induction_eligible filter in attendees selection in app/hr/onboarding/page.tsx
-- [ ] Remove requireHR middleware from POST /users in backend/routes/hr.js
-- [ ] Remove induction_eligible logic in user creation in backend/routes/hr.js

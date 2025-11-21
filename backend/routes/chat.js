@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateJWT, requireAdmin, requireHR } from "./auth.js";
+import { authenticateJWT } from "./auth.js";
 import { checkToxicity, summarizeChat, cleanupOldMessages } from "../utils/helpers.js";
 import axios from "axios";
 
@@ -262,7 +262,8 @@ router.delete("/messages/:id", authenticateJWT, async (req, res) => {
   }
 });
 
-// Clear all chat messages (admin endpoint)
+// Clear all chat messages (Now available to all users)
+// Removed requireAdmin middleware to allow all users access
 router.post("/cleanup", authenticateJWT, async (req, res) => {
   const pool = req.pool;
 

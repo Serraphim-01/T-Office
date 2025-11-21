@@ -280,6 +280,12 @@ export default function ProductsPage() {
                 {isComprehensiveImporting ? 'Importing...' : 'Import All Data'}
               </Button>
               
+              <Button
+                onClick={() => window.location.href = 'http://localhost:4000/api/inventory/export/products'}
+              >
+                Export CSV
+              </Button>
+              
               <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) resetForm();
