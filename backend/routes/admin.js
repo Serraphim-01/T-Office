@@ -86,57 +86,6 @@ router.delete("/users/:id", authenticateJWT, async (req, res) => {
   }
 });
 
-// Get department configuration
-// Removed requireAdmin middleware to allow all users access
-router.get("/department-config/:department", authenticateJWT, async (req, res) => {
-  const pool = req.pool;
-  const { department } = req.params;
-
-  try {
-    const result = await pool.query(
-      'SELECT features FROM department_configs WHERE department = $1',
-      [department]
-    );
-
-    if (result.rows.length === 0) {
-      // Return default config if department not found
-      const defaultConfig = {
-        department,
-        features: {}
-      };
-      return res.json(defaultConfig);
-    }
-
-    res.json({
-      department,
-      features: result.rows[0].features
-    });
-  } catch (err) {
-    console.error('Error fetching department config:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Update department configuration (Now available to all users)
-// Removed requireAdmin middleware to allow all users access
-router.put("/department-config/:department", authenticateJWT, async (req, res) => {
-  const pool = req.pool;
-  const { department } = req.params;
-  const config = req.body;
-
-  try {
-    await pool.query(
-      'INSERT INTO department_configs (department, features) VALUES ($1, $2) ON CONFLICT (department) DO UPDATE SET features = $2',
-      [department, JSON.stringify(config)]
-    );
-
-    res.json({ message: "Department configuration updated successfully" });
-  } catch (err) {
-    console.error('Error updating department config:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // Add new department
 // Removed requireAdmin middleware to allow all users access
 router.post("/departments", authenticateJWT, async (req, res) => {

@@ -219,14 +219,7 @@ CREATE TABLE IF NOT EXISTS user_locations (
 -- DEPARTMENT CONFIGURATION TABLES
 -- ===========================================
 
--- Department configurations table
-CREATE TABLE IF NOT EXISTS department_configs (
-    id SERIAL PRIMARY KEY,
-    department VARCHAR(100) UNIQUE NOT NULL,
-    features JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+b
 
 -- Location events table
 CREATE TABLE IF NOT EXISTS location_events (
@@ -423,7 +416,6 @@ CREATE TRIGGER update_hr_queries_updated_at BEFORE UPDATE ON hr_queries FOR EACH
 CREATE TRIGGER update_wiki_topics_updated_at BEFORE UPDATE ON wiki_topics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_locations_updated_at BEFORE UPDATE ON user_locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_department_configs_updated_at BEFORE UPDATE ON department_configs FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_compliance_documents_updated_at BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_crawled_sites_updated_at BEFORE UPDATE ON crawled_sites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
