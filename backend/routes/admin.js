@@ -324,6 +324,142 @@ router.delete("/approvals/certifications/:certId", authenticateJWT, async (req, 
 });
 
 // ---------------------------------
+// Feature Access Control APIs
+// ---------------------------------
+
+// Get all available pages (based on app directory structure)
+router.get("/feature-access/pages", authenticateJWT, async (req, res) => {
+  try {
+    // Define all available pages in the application
+    const pages = [
+      { name: 'dashboard', title: 'Dashboard' },
+      { name: 'profile', title: 'Profile' },
+      { name: 'chat', title: 'Chat' },
+      { name: 'clock', title: 'Clock' },
+      { name: 'settings', title: 'Settings' },
+      { name: 'admin/db', title: 'Admin Database' },
+      { name: 'admin/departments', title: 'Admin Departments' },
+      { name: 'admin/features', title: 'Admin Features' },
+      { name: 'hr', title: 'HR Dashboard' },
+      { name: 'hr/onboarding', title: 'HR Onboarding' },
+      { name: 'hr/queries', title: 'HR Queries' },
+      { name: 'hr/users', title: 'HR Users' },
+      { name: 'inventory/inbound', title: 'Inventory Inbound' },
+      { name: 'inventory/outbound', title: 'Inventory Outbound' },
+      { name: 'inventory/products', title: 'Inventory Products' },
+      { name: 'inventory/store', title: 'Inventory Store' },
+      { name: 'resources/wiki', title: 'Resources Wiki' },
+      { name: 'resources/wiki/create', title: 'Create Wiki Page' }
+    ];
+
+    res.json(pages);
+  } catch (err) {
+    console.error('Error fetching pages:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get pages assigned to a department
+router.get("/feature-access/:departmentId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { departmentId } = req.params;
+
+  try {
+    // Validate department exists
+    const deptResult = await pool.query(
+      'SELECT id FROM departments WHERE id = $1',
+      [departmentId]
+    );
+
+    if (deptResult.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // Get pages assigned to this department
+    const result = await pool.query(
+      'SELECT page_name FROM department_page_access WHERE department_id = $1',
+      [departmentId]
+    );
+
+    const pages = result.rows.map(row => row.page_name);
+    res.json(pages);
+  } catch (err) {
+    console.error('Error fetching department page access:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update pages assigned to a department
+router.post("/feature-access/:departmentId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { departmentId } = req.params;
+  const { pages } = req.body; // Array of page names
+
+  try {
+    // Validate department exists
+    const deptResult = await pool.query(
+      'SELECT id FROM departments WHERE id = $1',
+      [departmentId]
+    );
+
+    if (deptResult.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // Begin transaction
+    await pool.query('BEGIN');
+
+    // Delete existing page assignments for this department
+    await pool.query(
+      'DELETE FROM department_page_access WHERE department_id = $1',
+      [departmentId]
+    );
+
+    // Insert new page assignments
+    if (pages && pages.length > 0) {
+      for (const page of pages) {
+        await pool.query(
+          'INSERT INTO department_page_access (department_id, page_name) VALUES ($1, $2)',
+          [departmentId, page]
+        );
+      }
+    }
+
+    // Commit transaction
+    await pool.query('COMMIT');
+
+    res.json({ message: "Feature access updated successfully" });
+  } catch (err) {
+    // Rollback transaction on error
+    await pool.query('ROLLBACK');
+    console.error('Error updating department page access:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all departments with their page access counts
+router.get("/feature-access/departments", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        d.id,
+        d.name,
+        COUNT(dpa.page_name) as page_count
+      FROM departments d
+      LEFT JOIN department_page_access dpa ON d.id = dpa.department_id
+      GROUP BY d.id, d.name
+      ORDER BY d.name
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching departments with page access:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------
 // Temporary endpoint to setup inventory schema
 // ---------------------------------
 router.post("/setup-inventory", authenticateJWT, async (req, res) => {

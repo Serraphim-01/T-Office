@@ -10,10 +10,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Pencil, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/auth-context';
 
 interface Department {
   id: number;
   name: string;
+  page_count?: number;
 }
 
 export default function DepartmentsPage() {
@@ -22,7 +24,9 @@ export default function DepartmentsPage() {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [editName, setEditName] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // New state for saving indicator
   const { toast } = useToast();
+  const { refreshToken: authRefreshToken } = useAuth();
 
   useEffect(() => {
     fetchDepartments();
@@ -30,19 +34,71 @@ export default function DepartmentsPage() {
 
   const fetchDepartments = async () => {
     try {
+      const token = localStorage.getItem('token');
+      console.log('Fetching departments with token:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "No authentication token found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await fetch('http://localhost:4000/api/admin/departments', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
       
+      console.log('Departments API response status:', response.status);
+      
+      // Handle token expiration
+      if (response.status === 403) {
+        console.log('Token expired, attempting to refresh...');
+        const refreshed = await authRefreshToken();
+        if (refreshed) {
+          // Retry the request
+          const retryResponse = await fetch('http://localhost:4000/api/admin/departments', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+          });
+          if (retryResponse.ok) {
+            const data = await retryResponse.json();
+            console.log('Retried departments data:', data);
+            // The /api/admin/departments endpoint returns {id, name} objects
+            // We need to map them to include page_count for consistency
+            const departmentsWithPageCount = data.map((dept: any) => ({
+              ...dept,
+              page_count: 0 // We'll need another API call to get actual page counts
+            }));
+            setDepartments(departmentsWithPageCount);
+            return;
+          } else {
+            const errorText = await retryResponse.text();
+            console.error('Retry failed:', retryResponse.status, errorText);
+          }
+        }
+      }
+      
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data);
+        console.log('Departments data:', data);
+        // The /api/admin/departments endpoint returns {id, name} objects
+        // We need to map them to include page_count for consistency
+        const departmentsWithPageCount = data.map((dept: any) => ({
+          ...dept,
+          page_count: 0 // We'll need another API call to get actual page counts
+        }));
+        setDepartments(departmentsWithPageCount);
       } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch departments:', response.status, errorText);
         toast({
           title: "Error",
-          description: "Failed to fetch departments",
+          description: `Failed to fetch departments: ${response.status} ${errorText}`,
           variant: "destructive",
         });
       }
@@ -50,7 +106,7 @@ export default function DepartmentsPage() {
       console.error('Error fetching departments:', error);
       toast({
         title: "Error",
-        description: "Failed to connect to server",
+        description: "Failed to connect to server. Please check your connection.",
         variant: "destructive",
       });
     }
@@ -67,6 +123,7 @@ export default function DepartmentsPage() {
     }
 
     try {
+      setIsSaving(true); // Set saving state to true
       const response = await fetch('http://localhost:4000/api/admin/departments', {
         method: 'POST',
         headers: {
@@ -78,13 +135,15 @@ export default function DepartmentsPage() {
 
       if (response.ok) {
         const newDepartment = await response.json();
-        setDepartments([...departments, newDepartment]);
+        setDepartments([...departments, { ...newDepartment, page_count: 0 }]);
         setNewDepartmentName('');
         setIsAddDialogOpen(false);
         toast({
           title: "Success",
           description: "Department added successfully",
         });
+        // Refresh the departments list
+        fetchDepartments();
       } else {
         const error = await response.json();
         toast({
@@ -100,6 +159,8 @@ export default function DepartmentsPage() {
         description: "Failed to connect to server",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false); // Reset saving state
     }
   };
 
@@ -114,6 +175,7 @@ export default function DepartmentsPage() {
     }
 
     try {
+      setIsSaving(true); // Set saving state to true
       const response = await fetch(`http://localhost:4000/api/admin/departments/${editingDepartment.id}`, {
         method: 'PUT',
         headers: {
@@ -126,7 +188,7 @@ export default function DepartmentsPage() {
       if (response.ok) {
         const updatedDepartment = await response.json();
         setDepartments(departments.map(dept => 
-          dept.id === updatedDepartment.id ? updatedDepartment : dept
+          dept.id === updatedDepartment.id ? { ...updatedDepartment, page_count: editingDepartment.page_count } : dept
         ));
         setEditingDepartment(null);
         setEditName('');
@@ -134,6 +196,8 @@ export default function DepartmentsPage() {
           title: "Success",
           description: "Department renamed successfully",
         });
+        // Refresh the departments list
+        fetchDepartments();
       } else {
         const error = await response.json();
         toast({
@@ -149,6 +213,8 @@ export default function DepartmentsPage() {
         description: "Failed to connect to server",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false); // Reset saving state
     }
   };
 
@@ -169,7 +235,7 @@ export default function DepartmentsPage() {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={isSaving}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Department
               </Button>
@@ -189,14 +255,15 @@ export default function DepartmentsPage() {
                     value={newDepartmentName}
                     onChange={(e) => setNewDepartmentName(e.target.value)}
                     placeholder="Enter department name"
+                    disabled={isSaving}
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddDepartment}>
-                    Add Department
+                  <Button onClick={handleAddDepartment} disabled={isSaving}>
+                    {isSaving ? 'Adding...' : 'Add Department'}
                   </Button>
                 </div>
               </div>
@@ -224,12 +291,18 @@ export default function DepartmentsPage() {
                       key={department.id} 
                       className="flex items-center justify-between p-4 border rounded-lg"
                     >
-                      <span className="font-medium">{department.name}</span>
+                      <div>
+                        <span className="font-medium">{department.name}</span>
+                        <p className="text-sm text-muted-foreground">
+                          {department.page_count !== undefined ? `${department.page_count} pages assigned` : 'Loading...'}
+                        </p>
+                      </div>
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openEditDialog(department)}
+                          disabled={isSaving}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -259,14 +332,15 @@ export default function DepartmentsPage() {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Enter new department name"
+                  disabled={isSaving}
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setEditingDepartment(null)}>
+                <Button variant="outline" onClick={() => setEditingDepartment(null)} disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button onClick={handleRenameDepartment}>
-                  Rename Department
+                <Button onClick={handleRenameDepartment} disabled={isSaving}>
+                  {isSaving ? 'Renaming...' : 'Rename Department'}
                 </Button>
               </div>
             </div>

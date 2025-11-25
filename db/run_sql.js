@@ -58,169 +58,39 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
 });
 
-// Function to split SQL into statements while preserving function definitions
-function splitSQLStatements(sql) {
-  const statements = [];
-  let currentStatement = '';
-  let i = 0;
-  
-  while (i < sql.length) {
-    const char = sql[i];
-    const nextChar = sql[i + 1] || '';
-    
-    // Handle dollar-quoted strings (PostgreSQL specific)
-    if (char === '$') {
-      // Check if this is a dollar quote tag
-      let tagEnd = -1;
-      for (let j = i + 1; j < sql.length; j++) {
-        if (sql[j] === '$') {
-          tagEnd = j;
-          break;
-        }
-        // Dollar quote tags can contain letters, digits, and underscores
-        if (!/[a-zA-Z0-9_]/.test(sql[j])) {
-          break;
-        }
-      }
-      
-      if (tagEnd !== -1) {
-        const tag = sql.substring(i, tagEnd + 1);
-        // Look for the closing tag
-        const closingTagIndex = sql.indexOf(tag, tagEnd + 1);
-        if (closingTagIndex !== -1) {
-          // Include everything from current position to closing tag + tag length
-          const quotedContent = sql.substring(i, closingTagIndex + tag.length);
-          currentStatement += quotedContent;
-          i = closingTagIndex + tag.length;
-          continue;
-        }
-      }
-    }
-    
-    // Handle single quotes
-    if (char === "'") {
-      currentStatement += char;
-      i++;
-      // Skip until closing quote, handling escaped quotes
-      while (i < sql.length) {
-        const ch = sql[i];
-        currentStatement += ch;
-        i++;
-        if (ch === "'") {
-          // Check for escaped quote
-          if (i < sql.length && sql[i] === "'") {
-            currentStatement += sql[i];
-            i++;
-            continue;
-          }
-          break;
-        }
-      }
-      continue;
-    }
-    
-    // Handle double quotes
-    if (char === '"') {
-      currentStatement += char;
-      i++;
-      // Skip until closing quote
-      while (i < sql.length) {
-        const ch = sql[i];
-        currentStatement += ch;
-        i++;
-        if (ch === '"') {
-          break;
-        }
-      }
-      continue;
-    }
-    
-    // Handle line comments
-    if (char === '-' && nextChar === '-') {
-      // Add everything until end of line
-      while (i < sql.length && sql[i] !== '\n') {
-        currentStatement += sql[i];
-        i++;
-      }
-      if (i < sql.length) {
-        currentStatement += sql[i]; // Add the newline
-        i++;
-      }
-      continue;
-    }
-    
-    // Handle block comments
-    if (char === '/' && nextChar === '*') {
-      // Add everything until closing */
-      currentStatement += char + nextChar;
-      i += 2;
-      while (i < sql.length) {
-        const ch = sql[i];
-        currentStatement += ch;
-        i++;
-        if (ch === '*' && i < sql.length && sql[i] === '/') {
-          currentStatement += sql[i];
-          i++;
-          break;
-        }
-      }
-      continue;
-    }
-    
-    // Add character to current statement
-    currentStatement += char;
-    i++;
-    
-    // Check for statement terminator
-    if (char === ';') {
-      const trimmedStatement = currentStatement.trim();
-      if (trimmedStatement.length > 0) {
-        statements.push(trimmedStatement);
-      }
-      currentStatement = '';
-    }
-  }
-  
-  // Add any remaining content as a statement
-  const trimmedStatement = currentStatement.trim();
-  if (trimmedStatement.length > 0) {
-    statements.push(trimmedStatement);
-  }
-  
-  return statements;
-}
-
-async function runSQL(filePath) {
+async function runSQL(sqlFilePath) {
   try {
-    // Resolve the file path
-    const resolvedPath = resolve(filePath);
-    console.log(`Reading SQL file: ${resolvedPath}`);
+    // Read the SQL file
+    const sql = readFileSync(sqlFilePath, 'utf8');
+    console.log(`Reading SQL file: ${sqlFilePath}`);
     
-    const sql = readFileSync(resolvedPath, 'utf8');
-    
-    // Split the SQL into individual statements, preserving function definitions
-    const statements = splitSQLStatements(sql);
-    
-    console.log(`Executing ${statements.length} SQL statements from ${filePath}...`);
+    // Split the SQL into individual statements
+    const statements = sql.split(';').filter(stmt => stmt.trim().length > 0);
+    console.log(`Executing ${statements.length} SQL statements from ${sqlFilePath}...`);
     
     // Execute each statement
     for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      if (statement.trim().length > 0) {
+      const statement = statements[i].trim();
+      if (statement) {
         try {
-          await pool.query(statement);
+          const result = await pool.query(statement);
           console.log(`✓ Statement ${i + 1} executed successfully`);
-        } catch (stmtErr) {
-          console.error(`✗ Error executing statement ${i + 1}:`, stmtErr.message);
-          console.error('Statement:', statement.substring(0, 100) + (statement.length > 100 ? '...' : ''));
-          throw stmtErr;
+          
+          // If the statement returns rows, display them
+          if (result.rows && result.rows.length > 0) {
+            console.log(`  Rows returned: ${result.rows.length}`);
+            console.table(result.rows);
+          }
+        } catch (err) {
+          console.error(`✗ Error executing statement ${i + 1}:`, err.message);
+          throw err;
         }
       }
     }
     
     console.log('All SQL statements executed successfully');
   } catch (err) {
-    console.error('Error executing SQL:', err);
+    console.error('Error executing SQL:', err.message);
     throw err;
   }
 }

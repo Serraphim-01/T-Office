@@ -7,53 +7,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUI } from '@/lib/ui-context';
 import { usePathname } from 'next/navigation';
+import { AccessControlledNav } from '@/components/access-controlled-nav';
 import {
-  LayoutDashboard,
-  MessageSquare,
-  User,
+  Building2,
   LogOut,
   Menu,
   X,
-  Building2,
-  Shield,
-  Briefcase,
-  Users2,
-  Database,
-  Clock,
-  AreaChart,
-  Contact,
-  KanbanSquare,
-  Bot,
-  Folder,
-  Target,
-  TrendingUp,
-  ClipboardList,
-  ShieldAlert,
-  Activity,
-  KeyRound,
-  Handshake,
   PanelRightClose,
   PanelRightOpen,
-  ShieldCheck,
-  UserPlus,
-  ArrowDown,
-  ArrowUp,
-  BookOpen,
-  FileText,
-  Plus,
-  Package
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback,} from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { LucideIcon } from 'lucide-react';
-
-interface SidebarItem {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-}
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -61,19 +27,11 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, loading, setUser } = useAuth();
-
-
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(pathname.startsWith('/admin'));
-  const [isHRMenuOpen, setIsHRMenuOpen] = useState(pathname.startsWith('/hr'));
-  const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(pathname.startsWith('/resources'));
-  const [isWikiMenuOpen, setIsWikiMenuOpen] = useState(pathname.startsWith('/resources/wiki'));
-  const [isInventoryMenuOpen, setIsInventoryMenuOpen] = useState(pathname.startsWith('/inventory'));
   const { isActivityBarOpen, toggleActivityBar } = useUI();
   const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
-
 
   useEffect(() => {
     if (!loading && !user) {
@@ -91,8 +49,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [isActivityBarOpen]);
 
-  // Features are already loaded from auth context, no need to fetch separately
-
   if (loading || !user) {
     return (
         <div className="flex items-center justify-center h-screen">
@@ -102,36 +58,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
     );
   }
-
-  const sidebarItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/chat', label: 'Anonymous Chat', icon: MessageSquare },
-    { href: '/clock', label: 'Clock In/Out', icon: Clock },
-    { href: '/profile', label: 'Profile', icon: User },
-    { href: '/settings', label: 'Settings', icon: Shield },
-  ];
-
-  // Inventory items
-  const inventoryItems = [
-    { href: '/inventory/products', label: 'Products', icon: Package },
-    { href: '/inventory/inbound', label: 'Inbound', icon: Package },
-    { href: '/inventory/store', label: 'Store', icon: Package },
-    { href: '/inventory/outbound', label: 'Outbound', icon: Package },
-  ];
-
-  // Features are loaded from auth context, no need for separate fetch
-
-  // Features are managed by auth context
-
-  const adminItems = [
-    { href: '/admin/db', label: 'Database', icon: Database },
-    { href: '/admin/features', label: 'Features', icon: ClipboardList },
-    { href: '/admin/departments', label: 'Departments', icon: Users2 },
-  ];
-
-  const hrItems = [
-    { href: '/hr', label: 'HR Dashboard', icon: UserPlus },
-  ];
 
   const handleLogout = async () => {
     setUser(null);
@@ -179,168 +105,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-2">
-            {sidebarItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === item.href
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                )}
-                onClick={() => {
-                  setSidebarOpen(false);
-                }}
-              >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.label}
-              </Link>
-            ))}
-
-            {/* Approvals - Moved to main navigation */}
-            <Link
-              href="/admin/approvals"
-              className={cn(
-                "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                pathname === "/admin/approvals"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              )}
-            >
-              <ShieldCheck className="mr-3 h-5 w-5" />
-              Approvals
-            </Link>
-
-            {user?.department === 'Admin' && (
-              <Collapsible open={isAdminMenuOpen} onOpenChange={setIsAdminMenuOpen}>
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                    <Shield className="mr-3 h-5 w-5" />
-                    Admin
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pl-8 space-y-2">
-                  {adminItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === item.href
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-
-            {/* Show HR menu to all users, not just HR/Admin */}
-            <Collapsible open={isHRMenuOpen} onOpenChange={setIsHRMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <Users2 className="mr-3 h-5 w-5" />
-                  HR
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                {hrItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === item.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Resources Section */}
-            <Collapsible open={isResourcesMenuOpen} onOpenChange={setIsResourcesMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <BookOpen className="mr-3 h-5 w-5" />
-                  Resources
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                <Collapsible open={isWikiMenuOpen} onOpenChange={setIsWikiMenuOpen}>
-                  <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                      <FileText className="mr-3 h-5 w-5" />
-                      Wiki
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-8 space-y-2">
-                    <Link
-                      href="/resources/wiki"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/resources/wiki"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Wiki Overview
-                    </Link>
-                    <Link
-                      href="/resources/wiki/create"
-                      className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        pathname === "/resources/wiki/create"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                      )}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Wiki
-                    </Link>
-                  </CollapsibleContent>
-                </Collapsible>
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Inventory Section */}
-            <Collapsible open={isInventoryMenuOpen} onOpenChange={setIsInventoryMenuOpen}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary/50">
-                  <Package className="mr-3 h-5 w-5" />
-                  Inventory
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-8 space-y-2">
-                {inventoryItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                      pathname === item.href
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    )}
-                  >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.label}
-                  </Link>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-
+          <nav className="flex-1 px-4 py-4">
+            <AccessControlledNav />
           </nav>
 
           {/* User info and logout */}
@@ -387,7 +153,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <Menu className="h-6 w-6" />
             </Button>
             <h1 className="text-lg font-semibold text-foreground">
-              {sidebarItems.find(item => item.href === pathname)?.label || 'Task Office'}
+              Task Office
             </h1>
             <Button
               variant="ghost"

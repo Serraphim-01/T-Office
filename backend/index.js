@@ -160,6 +160,24 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// Refresh token route
+app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
+  try {
+    // Get user info from the authenticated request
+    const { userId, department } = req.user;
+
+    // Generate a new token with extended expiration
+    const newToken = jwt.sign({ userId, department }, process.env.JWT_SECRET || 'demo-secret', {
+      expiresIn: "1h",
+    });
+
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error('Token refresh error:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Middleware to attach pool to requests (must be before inventory routes)
 app.use((req, res, next) => {
   req.pool = pool;
