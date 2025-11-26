@@ -101,7 +101,7 @@ Note:
 - Clock features (manage-locations, delete-locations) are dependent on the main clock page access.
 - HR features are dependent on their respective HR page access (onboarding, queries, users).
 - Wiki features (create-topic) are dependent on the main wiki page access.
-- Inventory features are dependent on their respective inventory page access (inbound, store, outbound).
+- Inventory features are dependent on their respective inventory page access (inbound, store, outbound, products).
 
 ## Adding New Pages or Features to Access Control
 
@@ -169,19 +169,29 @@ Important: Clock features are dependent on the main clock page access. When the 
 
 ### HR Features
 The following HR features can be controlled per department:
+
+#### HR Onboarding Features
 - **hr/onboarding/create-user** - Allows users to create new users in the onboarding section
 - **hr/onboarding/schedule-inductions** - Allows users to schedule inductions in the onboarding section
+
+Important: HR Onboarding features are dependent on the main HR Onboarding page access. When the main HR Onboarding page (`hr/onboarding`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Onboarding page is enabled, individual HR Onboarding features can be selectively enabled or disabled.
+
+#### HR Queries Features
 - **hr/queries/send-query** - Allows users to send queries in the queries section
+
+Important: HR Queries features are dependent on the main HR Queries page access. When the main HR Queries page (`hr/queries`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Queries page is enabled, individual HR Queries features can be selectively enabled or disabled.
+
+#### HR Users Features
 - **hr/users/view-details** - Allows users to view user details in the users management section
 
-Important: HR features are dependent on their respective HR page access. When the main HR pages (`hr/onboarding`, `hr/queries`, `hr/users`) are disabled for a department, all related sub-features are automatically inaccessible. When the main HR pages are enabled, individual HR features can be selectively enabled or disabled.
+Important: HR Users features are dependent on the main HR Users page access. When the main HR Users page (`hr/users`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Users page is enabled, individual HR Users features can be selectively enabled or disabled.
 
 ### Wiki Features
 The following wiki features can be controlled per department:
 - **resources/wiki/create** - Allows users to access the create wiki page
 - **resources/wiki/create-topic** - Allows users to create new topics in the wiki
 
-Important: Wiki features are dependent on the main wiki page access. When the main wiki page (`resources/wiki`) is disabled for a department, all wiki sub-features are automatically inaccessible. When the main wiki page is enabled, individual wiki features can be selectively enabled or disabled.
+Important: Wiki features are dependent on the main wiki page access. When the main wiki page (`resources/wiki`) is disabled for a department, all wiki sub-features are automatically inaccessible. When the main wiki page is enabled, individual wiki features can be selectively enabled or disabled. Additionally, the "Create Topic" feature (`resources/wiki/create-topic`) is dependent on the "Create Wiki" page access (`resources/wiki/create`).
 
 ### Inventory Features
 The following inventory features can be controlled per department:
@@ -193,9 +203,13 @@ The following inventory features can be controlled per department:
 - **inventory/inbound/delete-transaction** - Allows users to delete inbound transactions
 - **inventory/inbound/mark-as-stored** - Allows users to mark inbound transactions as stored
 
+Important: Inventory Inbound features are dependent on the main Inbound page access. When the main Inbound page (`inventory/inbound`) is disabled for a department, all related sub-features are automatically inaccessible. When the main Inbound page is enabled, individual Inbound features can be selectively enabled or disabled.
+
 #### Store Features
 - **inventory/store/export-csv** - Allows users to export stored transactions to CSV
 - **inventory/store/create-outbound** - Allows users to create outbound transactions from stored items
+
+Important: Inventory Store features are dependent on the main Store page access. When the main Store page (`inventory/store`) is disabled for a department, all related sub-features are automatically inaccessible. When the main Store page is enabled, individual Store features can be selectively enabled or disabled.
 
 #### Outbound Features
 - **inventory/outbound/export-csv** - Allows users to export outbound transactions to CSV
@@ -203,6 +217,17 @@ The following inventory features can be controlled per department:
 - **inventory/outbound/mark-as-delivered** - Allows users to mark outbound transactions as delivered
 - **inventory/outbound/delete-transaction** - Allows users to delete outbound transactions
 
-Important: Inventory features are dependent on their respective inventory page access. When the main inventory pages (`inventory/inbound`, `inventory/store`, `inventory/outbound`) are disabled for a department, all related sub-features are automatically inaccessible. When the main inventory pages are enabled, individual inventory features can be selectively enabled or disabled.
+Important: Inventory Outbound features are dependent on the main Outbound page access. When the main Outbound page (`inventory/outbound`) is disabled for a department, all related sub-features are automatically inaccessible. When the main Outbound page is enabled, individual Outbound features can be selectively enabled or disabled.
+
+#### Products Features
+- **inventory/products/import-csv** - Allows users to import products from CSV files
+- **inventory/products/import-all-data** - Allows users to import comprehensive data including products and their states
+- **inventory/products/export-csv** - Allows users to export all products to CSV
+- **inventory/products/add-product** - Allows users to add new products
+- **inventory/products/view-details** - Allows users to view product details
+- **inventory/products/edit-product** - Allows users to edit existing products
+- **inventory/products/delete-product** - Allows users to delete products
+
+Important: Inventory Products features are dependent on the main Products page access. When the main Products page (`inventory/products`) is disabled for a department, all related sub-features are automatically inaccessible. When the main Products page is enabled, individual Products features can be selectively enabled or disabled.
 
 When a department does not have access to a feature, the corresponding UI elements are hidden from the interface.

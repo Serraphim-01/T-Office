@@ -69,3 +69,46 @@ SELECT dpa.department_id, 'inventory/outbound/delete-transaction'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/outbound'
 ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Add inventory products page access for all departments that already have products access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/import-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/import-all-data'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/export-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/add-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/view-details'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/edit-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/delete-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;

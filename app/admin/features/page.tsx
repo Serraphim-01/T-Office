@@ -371,6 +371,8 @@ function FeaturesContent() {
       category = 'hr';
     } else if (page.name.startsWith('resources/')) {
       category = 'resources';
+    } else if (page.name.startsWith('inventory/')) {
+      category = 'inventory';
     } else {
       category = page.name.split('/')[0] || 'general';
     }
@@ -386,7 +388,15 @@ function FeaturesContent() {
   const isChatPageEnabled = selectedPages.includes('chat');
   const isClockPageEnabled = selectedPages.includes('clock');
   const isHRPageEnabled = selectedPages.includes('hr') || selectedPages.includes('hr/onboarding') || selectedPages.includes('hr/queries') || selectedPages.includes('hr/users');
+  const isHRonboardingPageEnabled = selectedPages.includes('hr/onboarding');
+  const isHRqueriesPageEnabled = selectedPages.includes('hr/queries');
+  const isHRusersPageEnabled = selectedPages.includes('hr/users');
   const isWikiPageEnabled = selectedPages.includes('resources/wiki');
+  const isCreateWikiPageEnabled = selectedPages.includes('resources/wiki/create');
+  const isInboundPageEnabled = selectedPages.includes('inventory/inbound');
+  const isOutboundPageEnabled = selectedPages.includes('inventory/outbound');
+  const isStorePageEnabled = selectedPages.includes('inventory/store');
+  const isProductsPageEnabled = selectedPages.includes('inventory/products');
 
   return (
     <DashboardLayout>
@@ -451,7 +461,7 @@ function FeaturesContent() {
                   {Object.entries(groupedPages).map(([category, categoryPages]) => (
                     <div key={category} className="space-y-3">
                       <h3 className="text-lg font-medium capitalize">
-                        {category === 'chat' ? 'Chat Features' : `${category} Pages`}
+                        {category === 'chat' ? 'Chat Features' : category === 'hr' ? 'HR Pages' : category === 'inventory' ? 'Inventory Pages' : `${category} Pages`}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categoryPages.map((page) => (
@@ -463,8 +473,14 @@ function FeaturesContent() {
                               disabled={
                                 (page.name.startsWith('chat/') && !isChatPageEnabled) ||
                                 (page.name.startsWith('clock/') && !isClockPageEnabled) ||
-                                (page.name.startsWith('hr/') && !isHRPageEnabled) ||
-                                (page.name.startsWith('resources/wiki/') && !isWikiPageEnabled)
+                                (page.name.startsWith('hr/onboarding/') && !isHRonboardingPageEnabled) ||
+                                (page.name.startsWith('hr/queries/') && !isHRqueriesPageEnabled) ||
+                                (page.name.startsWith('hr/users/') && !isHRusersPageEnabled) ||
+                                (page.name.startsWith('resources/wiki/create-topic') && !isCreateWikiPageEnabled) ||
+                                (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
+                                (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
+                                (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
                               }
                             />
                             <label
@@ -472,8 +488,14 @@ function FeaturesContent() {
                               className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
                                 (page.name.startsWith('chat/') && !isChatPageEnabled) ||
                                 (page.name.startsWith('clock/') && !isClockPageEnabled) ||
-                                (page.name.startsWith('hr/') && !isHRPageEnabled) ||
-                                (page.name.startsWith('resources/wiki/') && !isWikiPageEnabled)
+                                (page.name.startsWith('hr/onboarding/') && !isHRonboardingPageEnabled) ||
+                                (page.name.startsWith('hr/queries/') && !isHRqueriesPageEnabled) ||
+                                (page.name.startsWith('hr/users/') && !isHRusersPageEnabled) ||
+                                (page.name.startsWith('resources/wiki/create-topic') && !isCreateWikiPageEnabled) ||
+                                (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
+                                (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
+                                (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
                                   ? 'text-muted-foreground opacity-50' 
                                   : ''
                               }`}
@@ -489,14 +511,44 @@ function FeaturesContent() {
                                   Requires main Clock page access
                                 </span>
                               )}
-                              {page.name.startsWith('hr/') && !isHRPageEnabled && (
+                              {page.name.startsWith('hr/onboarding/') && !isHRonboardingPageEnabled && (
                                 <span className="text-xs text-muted-foreground block">
-                                  Requires HR page access
+                                  Requires HR Onboarding page access
                                 </span>
                               )}
-                              {page.name.startsWith('resources/wiki/') && !isWikiPageEnabled && (
+                              {page.name.startsWith('hr/queries/') && !isHRqueriesPageEnabled && (
                                 <span className="text-xs text-muted-foreground block">
-                                  Requires Wiki page access
+                                  Requires HR Queries page access
+                                </span>
+                              )}
+                              {page.name.startsWith('hr/users/') && !isHRusersPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires HR Users page access
+                                </span>
+                              )}
+                              {page.name.startsWith('resources/wiki/create-topic') && !isCreateWikiPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Create Wiki page access
+                                </span>
+                              )}
+                              {page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Inbound page access
+                                </span>
+                              )}
+                              {page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Outbound page access
+                                </span>
+                              )}
+                              {page.name.startsWith('inventory/store/') && !isStorePageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Store page access
+                                </span>
+                              )}
+                              {page.name.startsWith('inventory/products/') && !isProductsPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Products page access
                                 </span>
                               )}
                             </label>

@@ -17,6 +17,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Product {
   id: number;
@@ -26,6 +29,14 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  return (
+    <AccessControlWrapper pagePath="inventory/products">
+      <ProductsContent />
+    </AccessControlWrapper>
+  );
+}
+
+function ProductsContent() {
   const [products, setProducts]= useState<Product[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -35,9 +46,63 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [isComprehensiveImporting, setIsComprehensiveImporting] = useState(false);
+  
+  // Feature access states
+  const [canImportCSV, setCanImportCSV] = useState(false);
+  const [canImportAllData, setCanImportAllData] = useState(false);
+  const [canExportCSV, setCanExportCSV] = useState(false);
+  const [canAddProduct, setCanAddProduct] = useState(false);
+  const [canViewDetails, setCanViewDetails] = useState(false);
+  const [canEditProduct, setCanEditProduct] = useState(false);
+  const [canDeleteProduct, setCanDeleteProduct] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to inventory products page
+    const productsAccess = await hasPageAccess(user, 'inventory/products');
+    
+    if (!productsAccess) {
+      // If no access to inventory products page, disable all features
+      setCanImportCSV(false);
+      setCanImportAllData(false);
+      setCanExportCSV(false);
+      setCanAddProduct(false);
+      setCanViewDetails(false);
+      setCanEditProduct(false);
+      setCanDeleteProduct(false);
+      return;
+    }
+    
+    // Check access to specific inventory products features
+    const importCSVAccess = await hasPageAccess(user, 'inventory/products/import-csv');
+    const importAllDataAccess = await hasPageAccess(user, 'inventory/products/import-all-data');
+    const exportCSVAccess = await hasPageAccess(user, 'inventory/products/export-csv');
+    const addProductAccess = await hasPageAccess(user, 'inventory/products/add-product');
+    const viewDetailsAccess = await hasPageAccess(user, 'inventory/products/view-details');
+    const editProductAccess = await hasPageAccess(user, 'inventory/products/edit-product');
+    const deleteProductAccess = await hasPageAccess(user, 'inventory/products/delete-product');
+    
+    setCanImportCSV(importCSVAccess);
+    setCanImportAllData(importAllDataAccess);
+    setCanExportCSV(exportCSVAccess);
+    setCanAddProduct(addProductAccess);
+    setCanViewDetails(viewDetailsAccess);
+    setCanEditProduct(editProductAccess);
+    setCanDeleteProduct(deleteProductAccess);
+  };
 
   // Fetch products
   useEffect(() => {
@@ -67,6 +132,16 @@ export default function ProductsPage() {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow import if user has permission
+    if (!canImportCSV) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to import products via CSV',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -113,6 +188,16 @@ export default function ProductsPage() {
   };
 
   const handleComprehensiveFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow import if user has permission
+    if (!canImportAllData) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to import comprehensive data',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -205,6 +290,16 @@ export default function ProductsPage() {
   };
 
   const handleEdit = (product: Product) => {
+    // Only allow edit if user has permission
+    if (!canEditProduct) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to edit products',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setEditingProduct(product);
     setName(product.name);
     setPartNumber(product.part_number);
@@ -213,6 +308,16 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: number) => {
+    // Only allow delete if user has permission
+    if (!canDeleteProduct) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to delete products',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:4000/api/inventory/products/${id}`, {
@@ -250,125 +355,137 @@ export default function ProductsPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl font-bold">Inventory Products</CardTitle>
             <div className="flex space-x-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".csv,text/csv"
-                className="hidden"
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isImporting}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {isImporting ? 'Importing...' : 'Import CSV'}
-              </Button>
-              
-              <input
-                type="file"
-                ref={csvFileInputRef}
-                onChange={handleComprehensiveFileUpload}
-                accept=".csv,text/csv"
-                className="hidden"
-              />
-              <Button
-                onClick={() => csvFileInputRef.current?.click()}
-                disabled={isComprehensiveImporting}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {isComprehensiveImporting ? 'Importing...' : 'Import All Data'}
-              </Button>
-              
-              <Button
-                onClick={async () => {
-                  try {
-                    const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:4000/api/inventory/export/products', {
-                      headers: {
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
-
-                    if (!response.ok) throw new Error('Failed to export products');
-
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'products_export.csv';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                  } catch (error) {
-                    toast({
-                      title: 'Error',
-                      description: 'Failed to export products',
-                      variant: 'destructive',
-                    });
-                  }
-                }}
-              >
-                Export CSV
-              </Button>
-              
-              <Dialog open={isDialogOpen} onOpenChange={(open) => {
-                setIsDialogOpen(open);
-                if (!open) resetForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setIsDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Product
+              {canImportCSV && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".csv,text/csv"
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImporting}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isImporting ? 'Importing...' : 'Import CSV'}
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Product Name</Label>
-                      <Input
-                        id="name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter product name"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="partNumber">Part Number</Label>
-                      <Input
-                        id="partNumber"
-                        value={partNumber}
-                        onChange={(e) => setPartNumber(e.target.value)}
-                        placeholder="Enter part number"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="productType">Product Type</Label>
-                      <Input
-                        id="productType"
-                        value={productType}
-                        onChange={(e) => setProductType(e.target.value)}
-                        placeholder="Enter product type"
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={resetForm}>
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        {editingProduct ? 'Update Product' : 'Add Product'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                </>
+              )}
+              
+              {canImportAllData && (
+                <>
+                  <input
+                    type="file"
+                    ref={csvFileInputRef}
+                    onChange={handleComprehensiveFileUpload}
+                    accept=".csv,text/csv"
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => csvFileInputRef.current?.click()}
+                    disabled={isComprehensiveImporting}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isComprehensiveImporting ? 'Importing...' : 'Import All Data'}
+                  </Button>
+                </>
+              )}
+              
+              {canExportCSV && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('token');
+                      const response = await fetch('http://localhost:4000/api/inventory/export/products', {
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        }
+                      });
+
+                      if (!response.ok) throw new Error('Failed to export products');
+
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'products_export.csv';
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to export products',
+                        variant: 'destructive',
+                      });
+                    }
+                  }}
+                >
+                  Export CSV
+                </Button>
+              )}
+              
+              {canAddProduct && (
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                  setIsDialogOpen(open);
+                  if (!open) resetForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setIsDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Product
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Product Name</Label>
+                        <Input
+                          id="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Enter product name"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="partNumber">Part Number</Label>
+                        <Input
+                          id="partNumber"
+                          value={partNumber}
+                          onChange={(e) => setPartNumber(e.target.value)}
+                          placeholder="Enter part number"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="productType">Product Type</Label>
+                        <Input
+                          id="productType"
+                          value={productType}
+                          onChange={(e) => setProductType(e.target.value)}
+                          placeholder="Enter product type"
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <Button type="button" variant="outline" onClick={resetForm}>
+                          Cancel
+                        </Button>
+                        <Button type="submit">
+                          {editingProduct ? 'Update Product' : 'Add Product'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -399,19 +516,25 @@ export default function ProductsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/inventory/products/${product.id}`}>
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(product)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(product.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canViewDetails && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/inventory/products/${product.id}`}>
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {canEditProduct && (
+                              <DropdownMenuItem onClick={() => handleEdit(product)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDeleteProduct && (
+                              <DropdownMenuItem onClick={() => handleDelete(product.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
