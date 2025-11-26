@@ -156,3 +156,88 @@ SELECT id, 'hr/users/view-details'
 FROM departments
 WHERE name = 'HR'
 ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure Admin department has access to Inventory pages and features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/add-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/edit-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/delete-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/mark-as-stored'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store/create-outbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/mark-as-dispatched'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/mark-as-delivered'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/delete-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;

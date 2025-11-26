@@ -19,6 +19,9 @@ import {
 import { Plus, Package, Calendar, Truck, CheckCircle, Edit, Trash2, Hash } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Product {
   id: number;
@@ -41,12 +44,27 @@ interface InboundTransaction {
 }
 
 export default function InboundPage() {
+  return (
+    <AccessControlWrapper pagePath="inventory/inbound">
+      <InboundContent />
+    </AccessControlWrapper>
+  );
+}
+
+function InboundContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [inboundTransactions, setInboundTransactions] = useState<InboundTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<number | null>(null);
+  
+  // Feature access states
+  const [canExportCSV, setCanExportCSV] = useState(false);
+  const [canAddTransaction, setCanAddTransaction] = useState(false);
+  const [canEditTransaction, setCanEditTransaction] = useState(false);
+  const [canDeleteTransaction, setCanDeleteTransaction] = useState(false);
+  const [canMarkAsStored, setCanMarkAsStored] = useState(false);
   
   // Form state
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -57,6 +75,44 @@ export default function InboundPage() {
   const [expectedArrivalEnd, setExpectedArrivalEnd] = useState('');
   
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to inventory inbound page
+    const inboundAccess = await hasPageAccess(user, 'inventory/inbound');
+    
+    if (!inboundAccess) {
+      // If no access to inventory inbound page, disable all features
+      setCanExportCSV(false);
+      setCanAddTransaction(false);
+      setCanEditTransaction(false);
+      setCanDeleteTransaction(false);
+      setCanMarkAsStored(false);
+      return;
+    }
+    
+    // Check access to specific inventory inbound features
+    const exportCSVAccess = await hasPageAccess(user, 'inventory/inbound/export-csv');
+    const addTransactionAccess = await hasPageAccess(user, 'inventory/inbound/add-transaction');
+    const editTransactionAccess = await hasPageAccess(user, 'inventory/inbound/edit-transaction');
+    const deleteTransactionAccess = await hasPageAccess(user, 'inventory/inbound/delete-transaction');
+    const markAsStoredAccess = await hasPageAccess(user, 'inventory/inbound/mark-as-stored');
+    
+    setCanExportCSV(exportCSVAccess);
+    setCanAddTransaction(addTransactionAccess);
+    setCanEditTransaction(editTransactionAccess);
+    setCanDeleteTransaction(deleteTransactionAccess);
+    setCanMarkAsStored(markAsStoredAccess);
+  };
 
     // Fetch products and inbound transactions
   useEffect(() => {
@@ -79,7 +135,7 @@ export default function InboundPage() {
       return data;
     } catch (error) {
       throw error;
-    }
+      }
   };
 
   const fetchProducts = async () => {
@@ -125,6 +181,16 @@ export default function InboundPage() {
   };
 
   const handleEdit = async (transaction: InboundTransaction) => {
+    // Only allow edit if user has edit permission
+    if (!canEditTransaction) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to edit inbound transactions',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     // Fetch serial numbers for this transaction
     try {
       const token = localStorage.getItem('token');
@@ -159,6 +225,16 @@ export default function InboundPage() {
   };
 
   const handleDelete = async (id: number) => {
+    // Only allow delete if user has delete permission
+    if (!canDeleteTransaction) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to delete inbound transactions',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this inbound transaction?')) {
       return;
     }
@@ -286,6 +362,16 @@ export default function InboundPage() {
   };
 
   const handleMarkAsStored = async (id: number) => {
+    // Only allow mark as stored if user has permission
+    if (!canMarkAsStored) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to mark inbound transactions as stored',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}/store`, {
@@ -328,46 +414,50 @@ export default function InboundPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Inbound Transactions</h1>
           <div className="flex space-x-2">
-            <Button
-              onClick={async () => {
-                try {
-                  const token = localStorage.getItem('token');
-                  const response = await fetch('http://localhost:4000/api/inventory/export/inbound', {
-                    headers: {
-                      'Authorization': `Bearer ${token}`
-                    }
-                  });
+            {canExportCSV && (
+              <Button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('http://localhost:4000/api/inventory/export/inbound', {
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
 
-                  if (!response.ok) throw new Error('Failed to export inbound transactions');
+                    if (!response.ok) throw new Error('Failed to export inbound transactions');
 
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'inbound_transactions_export.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                } catch (error) {
-                  toast({
-                    title: 'Error',
-                    description: 'Failed to export inbound transactions',
-                    variant: 'destructive',
-                  });
-                }
-              }}
-            >
-              Export CSV
-            </Button>
-            <Button onClick={() => setIsAdding(!isAdding)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Inbound Transaction
-            </Button>
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'inbound_transactions_export.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (error) {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to export inbound transactions',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                Export CSV
+              </Button>
+            )}
+            {canAddTransaction && (
+              <Button onClick={() => setIsAdding(!isAdding)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Inbound Transaction
+              </Button>
+            )}
           </div>
         </div>
 
-        {isAdding && (
+        {isAdding && canAddTransaction && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>{isEditing ? 'Edit Inbound Transaction' : 'Add New Inbound Transaction'}</CardTitle>
@@ -547,26 +637,32 @@ export default function InboundPage() {
                         <div className="flex space-x-2">
                           {transaction.status === 'Incoming' && (
                             <>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleEdit(transaction)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => handleDelete(transaction.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleMarkAsStored(transaction.id)}
-                              >
-                                Mark as Stored
-                              </Button>
+                              {canEditTransaction && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleEdit(transaction)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {canDeleteTransaction && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleDelete(transaction.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {canMarkAsStored && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleMarkAsStored(transaction.id)}
+                                >
+                                  Mark as Stored
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>

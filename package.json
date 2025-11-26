@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate:admin-access": "node db/run_admin_access_migration.js"
+    "migrate:admin-access": "node db/run_admin_access_migration.js",
+    "migrate:inventory-features": "node db/run_inventory_features_migration.js"
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",

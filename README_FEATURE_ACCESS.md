@@ -101,6 +101,7 @@ Note:
 - Clock features (manage-locations, delete-locations) are dependent on the main clock page access.
 - HR features are dependent on their respective HR page access (onboarding, queries, users).
 - Wiki features (create-topic) are dependent on the main wiki page access.
+- Inventory features are dependent on their respective inventory page access (inbound, store, outbound).
 
 ## Adding New Pages or Features to Access Control
 
@@ -181,5 +182,27 @@ The following wiki features can be controlled per department:
 - **resources/wiki/create-topic** - Allows users to create new topics in the wiki
 
 Important: Wiki features are dependent on the main wiki page access. When the main wiki page (`resources/wiki`) is disabled for a department, all wiki sub-features are automatically inaccessible. When the main wiki page is enabled, individual wiki features can be selectively enabled or disabled.
+
+### Inventory Features
+The following inventory features can be controlled per department:
+
+#### Inbound Features
+- **inventory/inbound/export-csv** - Allows users to export inbound transactions to CSV
+- **inventory/inbound/add-transaction** - Allows users to add new inbound transactions
+- **inventory/inbound/edit-transaction** - Allows users to edit existing inbound transactions
+- **inventory/inbound/delete-transaction** - Allows users to delete inbound transactions
+- **inventory/inbound/mark-as-stored** - Allows users to mark inbound transactions as stored
+
+#### Store Features
+- **inventory/store/export-csv** - Allows users to export stored transactions to CSV
+- **inventory/store/create-outbound** - Allows users to create outbound transactions from stored items
+
+#### Outbound Features
+- **inventory/outbound/export-csv** - Allows users to export outbound transactions to CSV
+- **inventory/outbound/mark-as-dispatched** - Allows users to mark outbound transactions as dispatched
+- **inventory/outbound/mark-as-delivered** - Allows users to mark outbound transactions as delivered
+- **inventory/outbound/delete-transaction** - Allows users to delete outbound transactions
+
+Important: Inventory features are dependent on their respective inventory page access. When the main inventory pages (`inventory/inbound`, `inventory/store`, `inventory/outbound`) are disabled for a department, all related sub-features are automatically inaccessible. When the main inventory pages are enabled, individual inventory features can be selectively enabled or disabled.
 
 When a department does not have access to a feature, the corresponding UI elements are hidden from the interface.

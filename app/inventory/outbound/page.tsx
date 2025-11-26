@@ -21,6 +21,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface OutboundTransaction {
   id: number;
@@ -57,6 +60,14 @@ interface ProductSerialNumbers {
 }
 
 export default function OutboundPage() {
+  return (
+    <AccessControlWrapper pagePath="inventory/outbound">
+      <OutboundContent />
+    </AccessControlWrapper>
+  );
+}
+
+function OutboundContent() {
   const [outboundTransactions, setOutboundTransactions] = useState<OutboundTransaction[]>([]);
   const [storedTransactions, setStoredTransactions] = useState<StoredTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +75,12 @@ export default function OutboundPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productSerialNumbers, setProductSerialNumbers] = useState<ProductSerialNumbers[]>([]);
+  
+  // Feature access states
+  const [canExportCSV, setCanExportCSV] = useState(false);
+  const [canMarkAsDispatched, setCanMarkAsDispatched] = useState(false);
+  const [canMarkAsDelivered, setCanMarkAsDelivered] = useState(false);
+  const [canDeleteTransaction, setCanDeleteTransaction] = useState(false);
   
   // Form state
   const [receiverAddress, setReceiverAddress] = useState('');
@@ -76,6 +93,41 @@ export default function OutboundPage() {
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState<string[]>([]);
   
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to inventory outbound page
+    const outboundAccess = await hasPageAccess(user, 'inventory/outbound');
+    
+    if (!outboundAccess) {
+      // If no access to inventory outbound page, disable all features
+      setCanExportCSV(false);
+      setCanMarkAsDispatched(false);
+      setCanMarkAsDelivered(false);
+      setCanDeleteTransaction(false);
+      return;
+    }
+    
+    // Check access to specific inventory outbound features
+    const exportCSVAccess = await hasPageAccess(user, 'inventory/outbound/export-csv');
+    const markAsDispatchedAccess = await hasPageAccess(user, 'inventory/outbound/mark-as-dispatched');
+    const markAsDeliveredAccess = await hasPageAccess(user, 'inventory/outbound/mark-as-delivered');
+    const deleteTransactionAccess = await hasPageAccess(user, 'inventory/outbound/delete-transaction');
+    
+    setCanExportCSV(exportCSVAccess);
+    setCanMarkAsDispatched(markAsDispatchedAccess);
+    setCanMarkAsDelivered(markAsDeliveredAccess);
+    setCanDeleteTransaction(deleteTransactionAccess);
+  };
 
   // Fetch outbound and stored transactions
   useEffect(() => {
@@ -250,6 +302,17 @@ export default function OutboundPage() {
   };
 
   const handleUpdateStatus = async (id: number, status: 'Dispatched' | 'Delivered') => {
+    // Check permission based on status
+    if ((status === 'Dispatched' && !canMarkAsDispatched) || 
+        (status === 'Delivered' && !canMarkAsDelivered)) {
+      toast({
+        title: 'Access Denied',
+        description: `You do not have permission to mark transactions as ${status.toLowerCase()}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
@@ -275,6 +338,16 @@ export default function OutboundPage() {
   };
 
   const handleDelete = async (id: number) => {
+    // Only allow delete if user has delete permission
+    if (!canDeleteTransaction) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to delete outbound transactions',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this outbound transaction?')) {
       return;
     }
@@ -312,38 +385,40 @@ export default function OutboundPage() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Outbound Transactions</h1>
-          <Button
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                });
+          {canExportCSV && (
+            <Button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('token');
+                  const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
 
-                if (!response.ok) throw new Error('Failed to export outbound transactions');
+                  if (!response.ok) throw new Error('Failed to export outbound transactions');
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'outbound_transactions_export.csv';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-              } catch (error) {
-                toast({
-                  title: 'Error',
-                  description: 'Failed to export outbound transactions',
-                  variant: 'destructive',
-                });
-              }
-            }}
-          >
-            Export CSV
-          </Button>
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'outbound_transactions_export.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to export outbound transactions',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+            >
+              Export CSV
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -395,29 +470,35 @@ export default function OutboundPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUpdateStatus(transaction.id, 'Dispatched')}
-                            disabled={transaction.status !== 'Outgoing'}
-                          >
-                            Mark as Dispatched
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUpdateStatus(transaction.id, 'Delivered')}
-                            disabled={transaction.status !== 'Dispatched'}
-                          >
-                            Mark as Delivered
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDelete(transaction.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canMarkAsDispatched && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(transaction.id, 'Dispatched')}
+                              disabled={transaction.status !== 'Outgoing'}
+                            >
+                              Mark as Dispatched
+                            </Button>
+                          )}
+                          {canMarkAsDelivered && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUpdateStatus(transaction.id, 'Delivered')}
+                              disabled={transaction.status !== 'Dispatched'}
+                            >
+                              Mark as Delivered
+                            </Button>
+                          )}
+                          {canDeleteTransaction && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDelete(transaction.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

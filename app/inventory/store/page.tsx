@@ -27,6 +27,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface StoredTransaction {
   id: number;
@@ -47,12 +50,24 @@ interface ProductSerialNumbers {
 }
 
 export default function StorePage() {
+  return (
+    <AccessControlWrapper pagePath="inventory/store">
+      <StoreContent />
+    </AccessControlWrapper>
+  );
+}
+
+function StoreContent() {
   const [storedTransactions, setStoredTransactions] = useState<StoredTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productSerialNumbers, setProductSerialNumbers] = useState<ProductSerialNumbers[]>([]);
+  
+  // Feature access states
+  const [canExportCSV, setCanExportCSV] = useState(false);
+  const [canCreateOutbound, setCanCreateOutbound] = useState(false);
   
   // Form state
   const [receiverAddress, setReceiverAddress] = useState('');
@@ -65,6 +80,35 @@ export default function StorePage() {
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState<string[]>([]);
   
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to inventory store page
+    const storeAccess = await hasPageAccess(user, 'inventory/store');
+    
+    if (!storeAccess) {
+      // If no access to inventory store page, disable all features
+      setCanExportCSV(false);
+      setCanCreateOutbound(false);
+      return;
+    }
+    
+    // Check access to specific inventory store features
+    const exportCSVAccess = await hasPageAccess(user, 'inventory/store/export-csv');
+    const createOutboundAccess = await hasPageAccess(user, 'inventory/store/create-outbound');
+    
+    setCanExportCSV(exportCSVAccess);
+    setCanCreateOutbound(createOutboundAccess);
+  };
 
   // Fetch stored transactions
   useEffect(() => {
@@ -114,6 +158,16 @@ export default function StorePage() {
   };
 
   const handleCreateOutbound = (transactionId: number, productId: number) => {
+    // Only allow create outbound if user has permission
+    if (!canCreateOutbound) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to create outbound transactions',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setSelectedTransactionId(transactionId);
     setSelectedProductId(productId);
     setIsModalOpen(true);
@@ -227,38 +281,40 @@ export default function StorePage() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Store</h1>
-          <Button
-            onClick={async () => {
-              try {
-                const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:4000/api/inventory/export/stored', {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                });
+          {canExportCSV && (
+            <Button
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('token');
+                  const response = await fetch('http://localhost:4000/api/inventory/export/stored', {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
 
-                if (!response.ok) throw new Error('Failed to export stored transactions');
+                  if (!response.ok) throw new Error('Failed to export stored transactions');
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'stored_transactions_export.csv';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-              } catch (error) {
-                toast({
-                  title: 'Error',
-                  description: 'Failed to export stored transactions',
-                  variant: 'destructive',
-                });
-              }
-            }}
-          >
-            Export CSV
-          </Button>
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'stored_transactions_export.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                } catch (error) {
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to export stored transactions',
+                    variant: 'destructive',
+                  });
+                }
+              }}
+            >
+              Export CSV
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -327,13 +383,15 @@ export default function StorePage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleCreateOutbound(transaction.id, transaction.product_id)}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Outbound
-                        </Button>
+                        {canCreateOutbound && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleCreateOutbound(transaction.id, transaction.product_id)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Outbound
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
