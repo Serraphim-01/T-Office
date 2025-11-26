@@ -1,98 +1,76 @@
 # Database Migration Consolidation
 
+This document explains the consolidation of database migrations in the T-Office application.
+
 ## Overview
 
-This document explains the consolidation of database migration files to simplify the database setup process for the T-Office application.
+Previously, the database migrations were split across multiple files:
+- Main migrations: [create_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/create_migration.sql) and [drop_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/drop_migration.sql)
+- Roles migrations: roles_feature_access_migration.sql and drop_roles_migration.sql
+- Migration runners: run_roles_migration.js, run_drop_roles_migration.js
 
-## Changes Made
+This structure has been consolidated to centralize all database migrations in the main migration files for simplicity and maintainability.
 
-### 1. Consolidated SQL Files
+## Consolidated Structure
 
-All separate SQL migration files have been consolidated into the main `create_migration.sql` file:
+### Main Migration Files
 
-- `ensure_admin_access.sql`
-- `feature_access_migration.sql`
-- `migrate_inventory_features.sql`
-- `update_admin_access.sql`
-- `ensure_approvals_access.sql`
-- `check_admin_access.sql`
-- `check_feature_access.sql`
-- `show_feature_access.sql`
-- `remove_admin_hr_approvals_access.sql`
+1. **[db/create_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/create_migration.sql)** - Contains all table creation, indexes, triggers, and initial data population including:
+   - All existing tables and relationships
+   - Roles and role_page_access tables
+   - Role_id column in users table
+   - All necessary indexes for roles
+   - Initial data population for roles
+   - Migration of existing users to default roles
 
-These files have been moved to the `db/backup` directory for historical reference.
+2. **[db/drop_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/drop_migration.sql)** - Contains all table drops in the correct order including:
+   - All existing table drops in reverse order
+   - Role-related table drops
+   - Role-related index drops
+   - Role_id column removal from users table
 
-### 2. Fixed Dollar-Quoting Issue
+### Removed Files
 
-The `run_sql.js` script was updated to properly handle PostgreSQL dollar-quoted strings (used in function definitions). This fixes the "unterminated dollar-quoted string" error that occurred when executing the migration scripts.
+The following files have been removed as they are now redundant:
+- `db/roles_feature_access_migration.sql`
+- `db/drop_roles_migration.sql`
+- `db/run_roles_migration.js`
+- `db/run_drop_roles_migration.js`
+- `db/roles_migration.sql`
 
-### 3. Updated Drop Migration
+## Benefits of Consolidation
 
-The `drop_migration.sql` file was updated to include dropping the `department_page_access` table which was missing from the original version.
+1. **Simplified Migration Process**: Single command to run all migrations
+2. **Reduced Complexity**: No need to manage multiple migration files
+3. **Better Maintainability**: All schema changes in one place
+4. **Consistent Execution**: All database objects created in a single, predictable order
+5. **Easier Troubleshooting**: Issues can be traced in a single file
 
-### 4. Updated JavaScript Migration Scripts
+## Migration Execution
 
-The JavaScript migration scripts (`run_admin_access_migration.js` and `run_inventory_features_migration.js`) were updated to inform users that their functionality is now included in the main `create_migration.sql` file.
-
-### 5. Added Module Type Declaration
-
-Added `"type": "module"` to the `package.json` file to eliminate Node.js warnings when using ES6 import syntax.
-
-### 6. Created Documentation
-
-- Added a `README.md` file in the `db` directory to explain the consolidated approach
-- This document to summarize the changes
-
-## Benefits
-
-1. **Simplified Migration Process**: Users now only need to run one create and one drop script
-2. **Reduced Complexity**: Eliminates the need to run multiple migration scripts in a specific order
-3. **Easier Maintenance**: All schema definitions are in one place
-4. **Clearer Documentation**: Users can see the complete schema in one file
-
-## How to Use
-
-### Complete Database Reset and Recreation
-
-From the project root directory:
+To run the consolidated database migration:
 
 ```bash
 ./db/run_migration.sh
 ```
 
-Or manually:
+This script will:
+1. Drop all existing tables using [drop_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/drop_migration.sql)
+2. Create all tables and relationships using [create_migration.sql](file:///Users/serraphim/Desktop/T-Office/db/create_migration.sql)
 
-```bash
-node db/run_sql.js db/drop_migration.sql
-node db/run_sql.js db/create_migration.sql
-```
+## Backward Compatibility
 
-### Running Individual SQL Files
+The consolidation maintains full backward compatibility:
+- All existing functionality continues to work
+- No changes to the application code were required
+- Existing data migration logic is preserved
+- Role-based access control continues to function as expected
 
-The `run_sql.js` script can still be used to run individual SQL files:
+## Testing
 
-```bash
-node db/run_sql.js <path_to_sql_file>
-```
-
-## Backup Files
-
-All original SQL files have been preserved in the `db/backup` directory for reference. These files are no longer used in the active migration process but can be consulted for historical purposes.
-
-## Verification
-
-To verify that the consolidation was successful:
-
-1. Check that all tables are created correctly
-2. Verify that all department page access entries are present
-3. Confirm that all indexes and triggers are in place
-4. Test that the application functions as expected with the new schema
-
-## Future Updates
-
-When adding new features that require database changes:
-
-1. Add the necessary CREATE TABLE, ALTER TABLE, INSERT, etc. statements to `create_migration.sql`
-2. Update `drop_migration.sql` if new tables are added
-3. Ensure the drop order maintains referential integrity
-4. Test the changes thoroughly
+The consolidation has been tested to ensure:
+- All tables are created correctly
+- All relationships are maintained
+- All indexes and triggers are properly set up
+- Role-based access control works as expected
+- Existing data migration works correctly

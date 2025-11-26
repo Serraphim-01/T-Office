@@ -21,17 +21,21 @@ export const authenticateJWT = async (req, res, next) => {
         return res.sendStatus(403); // Forbidden
       }
       console.log('JWT verified, user:', user);
-      req.user = user; // { userId: ..., department: ... }
+      req.user = user; // { userId: ..., department: ..., role: ... }
 
-      // If department is missing from JWT (for backward compatibility), fetch from DB
-      if (!req.user.department) {
+      // If department or role is missing from JWT (for backward compatibility), fetch from DB
+      if (!req.user.department || !req.user.role) {
         try {
-          const userResult = await req.pool.query('SELECT department FROM users WHERE id = $1', [req.user.userId]);
+          const userResult = await req.pool.query(
+            'SELECT u.department, r.name as role FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = $1', 
+            [req.user.userId]
+          );
           if (userResult.rows.length > 0) {
             req.user.department = userResult.rows[0].department;
+            req.user.role = userResult.rows[0].role;
           }
         } catch (dbErr) {
-          console.error('Error fetching user department:', dbErr);
+          console.error('Error fetching user department/role:', dbErr);
           return res.sendStatus(500);
         }
       }

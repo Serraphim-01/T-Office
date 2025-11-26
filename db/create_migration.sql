@@ -1178,3 +1178,75 @@ SELECT dpa.department_id, 'inventory/products/delete-product'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- ===========================================
+-- ROLES AND ROLE-BASED ACCESS CONTROL TABLES
+-- ===========================================
+
+-- Roles table
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(department_id, name)
+);
+
+-- Role page access table
+CREATE TABLE IF NOT EXISTS role_page_access (
+    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+    page_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (role_id, page_name)
+);
+
+-- Add role_id column to users table
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL;
+
+-- ===========================================
+-- INDEXES FOR ROLES
+-- ===========================================
+
+-- Role-related indexes
+CREATE INDEX IF NOT EXISTS idx_roles_department_id ON roles(department_id);
+CREATE INDEX IF NOT EXISTS idx_role_page_access_role_id ON role_page_access(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+
+-- ===========================================
+-- TRIGGERS FOR ROLES
+-- ===========================================
+
+-- Apply triggers to roles table
+CREATE TRIGGER update_roles_updated_at BEFORE UPDATE ON roles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ===========================================
+-- INITIAL DATA POPULATION FOR ROLES
+-- ===========================================
+
+-- Insert default roles for all departments
+INSERT INTO roles (department_id, name, is_default)
+SELECT id, 'default', true
+FROM departments
+ON CONFLICT (department_id, name) DO NOTHING;
+
+-- Update existing users to have the default role of their department
+UPDATE users 
+SET role_id = (
+    SELECT r.id 
+    FROM roles r 
+    JOIN departments d ON r.department_id = d.id 
+    WHERE d.name = users.department AND r.is_default = true
+)
+WHERE role_id IS NULL;
+
+-- MIGRATE EXISTING DEPARTMENT ACCESS TO DEFAULT ROLES
+-- Copy existing department page access to default roles
+INSERT INTO role_page_access (role_id, page_name)
+SELECT r.id, dpa.page_name
+FROM department_page_access dpa
+JOIN roles r ON dpa.department_id = r.department_id
+WHERE r.is_default = true
+ON CONFLICT (role_id, page_name) DO NOTHING;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,18 +12,27 @@ import { useAuth } from '@/lib/auth-context';
 import { fetchDepartments } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
 
+interface Role {
+  id: number;
+  name: string;
+  is_default: boolean;
+}
+
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, setUser } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [department, setDepartment] = useState('');
+  const [role, setRole] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState<string[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -37,10 +46,34 @@ export default function SignupPage() {
     loadDepartments();
   }, []);
 
+  // Load roles when department changes
+  useEffect(() => {
+    if (department) {
+      loadRoles(department);
+    } else {
+      setRoles([]);
+      setRole('');
+    }
+  }, [department]);
+
   const loadDepartments = async () => {
     try {
-      const deptList = await fetchDepartments();
-      setDepartments(deptList);
+      // Use public endpoint for departments during signup
+      const deptResponse = await fetch('http://localhost:4000/api/public/departments');
+      
+      if (!deptResponse.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+      
+      const departmentsData = await deptResponse.json();
+      const deptNames = departmentsData.map((d: any) => d.name);
+      setDepartments(deptNames);
+      
+      // If department is in URL params, set it
+      const deptParam = searchParams.get('department');
+      if (deptParam && deptNames.includes(deptParam)) {
+        setDepartment(deptParam);
+      }
     } catch (error) {
       console.error('Error loading departments:', error);
       toast({
@@ -51,12 +84,61 @@ export default function SignupPage() {
     }
   };
 
+  const loadRoles = async (deptName: string) => {
+    try {
+      // First get department ID (using public endpoint)
+      const deptResponse = await fetch('http://localhost:4000/api/public/departments');
+      
+      if (!deptResponse.ok) {
+        throw new Error('Failed to fetch departments');
+      }
+      
+      const departmentsData = await deptResponse.json();
+      const departmentData = departmentsData.find((d: any) => d.name === deptName);
+      
+      if (!departmentData) {
+        throw new Error('Department not found');
+      }
+      
+      // Now get roles for this department using the new public endpoint
+      const rolesResponse = await fetch(`http://localhost:4000/api/public/roles/${departmentData.id}`);
+      
+      if (!rolesResponse.ok) {
+        throw new Error('Failed to fetch roles');
+      }
+      
+      const rolesData = await rolesResponse.json();
+      setRoles(rolesData);
+      
+      // If role is in URL params, set it
+      const roleParam = searchParams.get('role');
+      if (roleParam) {
+        const roleData = rolesData.find((r: any) => r.name === roleParam);
+        if (roleData) {
+          setRole(roleData.name);
+        }
+      } else if (rolesData.length > 0) {
+        // Set default role
+        const defaultRole = rolesData.find((r: any) => r.is_default);
+        if (defaultRole) {
+          setRole(defaultRole.name);
+        } else {
+          setRole(rolesData[0].name);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      setRoles([]);
+      setRole('');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    console.log('Signup attempt:', { name, email, password, department });
+    console.log('Signup attempt:', { name, email, password, department, role });
 
     try {
       console.log('Step 1: Sending signup request to backend');
@@ -65,7 +147,7 @@ export default function SignupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password, department }),
+        body: JSON.stringify({ name, email, password, department, role }),
       });
 
       console.log('Step 2: Received response from backend');
@@ -188,6 +270,24 @@ export default function SignupPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {roles.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.name}>
+                        {r.name} {r.is_default ? '(Default)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Creating Account...' : 'Sign Up'}

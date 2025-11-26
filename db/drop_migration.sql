@@ -19,6 +19,12 @@ DROP TRIGGER IF EXISTS update_crawled_sites_updated_at ON crawled_sites;
 DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 DROP TRIGGER IF EXISTS update_inbound_transactions_updated_at ON inbound_transactions;
 DROP TRIGGER IF EXISTS update_outbound_transactions_updated_at ON outbound_transactions;
+DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
+
+-- Drop role-related indexes
+DROP INDEX IF EXISTS idx_roles_department_id;
+DROP INDEX IF EXISTS idx_role_page_access_role_id;
+DROP INDEX IF EXISTS idx_users_role_id;
 
 -- Drop tables in reverse order of creation (due to foreign key constraints)
 DROP TABLE IF EXISTS wiki_lesson_completions CASCADE;
@@ -38,6 +44,8 @@ DROP TABLE IF EXISTS location_events CASCADE;
 DROP TABLE IF EXISTS auto_attendance CASCADE;
 DROP TABLE IF EXISTS compliance_documents CASCADE;
 DROP TABLE IF EXISTS crawled_sites CASCADE;
+DROP TABLE IF EXISTS role_page_access CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
 DROP TABLE IF EXISTS department_page_access CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
 DROP TABLE IF EXISTS outbound_serial_numbers CASCADE;
@@ -49,6 +57,10 @@ DROP TABLE IF EXISTS users CASCADE;
 
 -- Drop functions
 DROP FUNCTION IF EXISTS update_updated_at_column();
+
+-- Remove role_id column from users table
+ALTER TABLE users 
+DROP COLUMN IF EXISTS role_id;
 
 -- Re-enable triggers
 SET session_replication_role = DEFAULT;

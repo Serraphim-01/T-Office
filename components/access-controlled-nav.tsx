@@ -164,7 +164,7 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
     
     for (const item of menuItems) {
       // Check if user has access to the main item
-      const hasAccess = await hasPageAccess(user, item.pagePath);
+      const hasAccess = await hasPageAccess(user.id, item.pagePath);
       
       if (hasAccess) {
         accessiblePaths.push(item.pagePath); // Log accessible path
@@ -173,7 +173,7 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
         if (item.children) {
           const accessibleChildren = [];
           for (const child of item.children) {
-            const childHasAccess = await hasPageAccess(user, child.pagePath);
+            const childHasAccess = await hasPageAccess(user.id, child.pagePath);
             if (childHasAccess) {
               accessibleChildren.push(child);
               accessiblePaths.push(child.pagePath); // Log accessible child path
@@ -195,7 +195,7 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
     }
     
     // Console log the accessible pages for debugging
-    console.log(`Department "${user.department}" has access to pages:`, accessiblePaths);
+    console.log(`User "${user.full_name}" with role "${user.role || 'default'}" in department "${user.department}" has access to pages:`, accessiblePaths);
     
     setAccessibleItems(accessible);
   } catch (error) {

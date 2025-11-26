@@ -199,6 +199,226 @@ router.get("/departments", authenticateJWT, async (req, res) => {
   }
 });
 
+// New endpoint to get roles for a department
+router.get("/departments/:departmentId/roles", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { departmentId } = req.params;
+
+  try {
+    // Validate department exists
+    const deptResult = await pool.query(
+      'SELECT id FROM departments WHERE id = $1',
+      [departmentId]
+    );
+
+    if (deptResult.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // Get roles for this department with page counts
+    const result = await pool.query(`
+      SELECT 
+        r.id,
+        r.name,
+        r.is_default,
+        COUNT(rpa.page_name) as page_count
+      FROM roles r
+      LEFT JOIN role_page_access rpa ON r.id = rpa.role_id
+      WHERE r.department_id = $1
+      GROUP BY r.id, r.name, r.is_default
+      ORDER BY r.is_default DESC, r.name
+    `, [departmentId]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching department roles:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New endpoint to create a role for a department
+router.post("/departments/:departmentId/roles", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { departmentId } = req.params;
+  const { name } = req.body;
+
+  try {
+    // Validate department exists
+    const deptResult = await pool.query(
+      'SELECT id FROM departments WHERE id = $1',
+      [departmentId]
+    );
+
+    if (deptResult.rows.length === 0) {
+      return res.status(404).json({ error: "Department not found" });
+    }
+
+    // Check if role already exists
+    const existingRole = await pool.query(
+      'SELECT id FROM roles WHERE department_id = $1 AND name = $2',
+      [departmentId, name]
+    );
+
+    if (existingRole.rows.length > 0) {
+      return res.status(400).json({ error: "Role already exists in this department" });
+    }
+
+    // Create the new role
+    const result = await pool.query(
+      'INSERT INTO roles (department_id, name) VALUES ($1, $2) RETURNING id, name, is_default',
+      [departmentId, name]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error creating role:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New endpoint to update a role name
+router.put("/roles/:roleId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { roleId } = req.params;
+  const { name } = req.body;
+
+  try {
+    // Validate role exists
+    const roleResult = await pool.query(
+      'SELECT id, department_id, is_default FROM roles WHERE id = $1',
+      [roleId]
+    );
+
+    if (roleResult.rows.length === 0) {
+      return res.status(404).json({ error: "Role not found" });
+    }
+
+    const role = roleResult.rows[0];
+
+    // Check if another role with the same name already exists in this department
+    const nameCheck = await pool.query(
+      'SELECT id FROM roles WHERE department_id = $1 AND name = $2 AND id != $3',
+      [role.department_id, name, roleId]
+    );
+
+    if (nameCheck.rows.length > 0) {
+      return res.status(400).json({ error: "A role with this name already exists in this department" });
+    }
+
+    // Determine if the role should still be marked as default
+    // A role is default if its name is "default" (case insensitive)
+    const shouldBeDefault = name.toLowerCase() === 'default';
+
+    // Update the role name and is_default flag
+    const result = await pool.query(
+      'UPDATE roles SET name = $1, is_default = $2, updated_at = NOW() WHERE id = $3 RETURNING id, name, is_default',
+      [name, shouldBeDefault, roleId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Role not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating role:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New endpoint to get pages assigned to a role
+router.get("/roles/:roleId/pages", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { roleId } = req.params;
+
+  try {
+    let roleQuery, queryParams;
+    
+    // Check if roleId is numeric (ID) or a string (name)
+    if (isNaN(roleId)) {
+      // It's a role name, we need to find the role by name and department
+      const userDept = req.user.department;
+      roleQuery = `SELECT r.id FROM roles r 
+                   JOIN departments d ON r.department_id = d.id 
+                   WHERE r.name = $1 AND d.name = $2`;
+      queryParams = [roleId, userDept];
+    } else {
+      // It's a role ID
+      roleQuery = 'SELECT id FROM roles WHERE id = $1';
+      queryParams = [roleId];
+    }
+
+    // Validate role exists
+    const roleResult = await pool.query(roleQuery, queryParams);
+
+    if (roleResult.rows.length === 0) {
+      return res.status(404).json({ error: "Role not found" });
+    }
+
+    const actualRoleId = roleResult.rows[0].id;
+
+    // Get pages assigned to this role
+    const result = await pool.query(
+      'SELECT page_name FROM role_page_access WHERE role_id = $1',
+      [actualRoleId]
+    );
+
+    const pages = result.rows.map(row => row.page_name);
+    res.json(pages);
+  } catch (err) {
+    console.error('Error fetching role page access:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New endpoint to update pages assigned to a role
+router.post("/roles/:roleId/pages", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { roleId } = req.params;
+  const { pages } = req.body; // Array of page names
+
+  try {
+    // Validate role exists
+    const roleResult = await pool.query(
+      'SELECT id FROM roles WHERE id = $1',
+      [roleId]
+    );
+
+    if (roleResult.rows.length === 0) {
+      return res.status(404).json({ error: "Role not found" });
+    }
+
+    // Begin transaction
+    await pool.query('BEGIN');
+
+    // Delete existing page assignments for this role
+    await pool.query(
+      'DELETE FROM role_page_access WHERE role_id = $1',
+      [roleId]
+    );
+
+    // Insert new page assignments
+    if (pages && pages.length > 0) {
+      for (const page of pages) {
+        await pool.query(
+          'INSERT INTO role_page_access (role_id, page_name) VALUES ($1, $2)',
+          [roleId, page]
+        );
+      }
+    }
+
+    // Commit transaction
+    await pool.query('COMMIT');
+
+    res.json({ message: "Role feature access updated successfully" });
+  } catch (err) {
+    // Rollback transaction on error
+    await pool.query('ROLLBACK');
+    console.error('Error updating role page access:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Get pending certificate approvals
 router.get("/approvals/certifications", authenticateJWT, async (req, res) => {
   const pool = req.pool;

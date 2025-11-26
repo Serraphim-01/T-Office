@@ -13,6 +13,7 @@ T-Office is a full-stack internal office management platform designed to streaml
 - **Chat Module**: Internal team communication
 - **Clock & Profile**: Time tracking and personal profile settings
 - **Offline Support**: PWA-enabled fallback page
+- **Role-Based Access Control**: Fine-grained permission system with roles and departments
 
 ## Technology Stack
 

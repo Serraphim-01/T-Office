@@ -391,7 +391,7 @@ export default function ProfilePage() {
                   <div className="flex items-center space-x-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Role</span>
-                    <span className="text-sm font-medium text-foreground">{profile?.department || 'No Role'}</span>
+                    <span className="text-sm font-medium text-foreground">{profile?.role || 'No Role'}</span>
                   </div>
                 </div>
               </CardContent>

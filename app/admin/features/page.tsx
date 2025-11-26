@@ -24,6 +24,13 @@ interface Department {
   page_count: number;
 }
 
+interface Role {
+  id: number;
+  name: string;
+  is_default: boolean;
+  page_count?: number;
+}
+
 export default function FeaturesPage() {
   return (
     <AccessControlWrapper pagePath="admin/features">
@@ -35,14 +42,65 @@ export default function FeaturesPage() {
 function FeaturesContent() {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
   const [departmentPages, setDepartmentPages] = useState<string[]>([]);
+  const [rolePages, setRolePages] = useState<string[]>([]);
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // New state for saving indicator
   const { toast } = useToast();
   const { refreshToken: authRefreshToken, user } = useAuth();
+
+  // Check for roleId in URL parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const roleId = urlParams.get('roleId');
+    if (roleId) {
+      loadRoleById(parseInt(roleId));
+    }
+  }, []);
+
+  const loadRoleById = async (roleId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "No authentication token found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get role details
+      const response = await fetch('http://localhost:4000/api/admin/departments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const departmentsData = await response.json();
+        setDepartments(departmentsData);
+        
+        // Find the department for this role
+        // In a real implementation, you would have an endpoint to get role details
+        // For now, we'll just load the first department's roles as an example
+        if (departmentsData.length > 0) {
+          const dept = departmentsData[0];
+          setSelectedDepartment(dept.name);
+          setSelectedDepartmentId(dept.id);
+          await loadRoles(dept.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading role:', error);
+    }
+  };
 
   useEffect(() => {
     loadDepartments();
@@ -118,6 +176,41 @@ function FeaturesContent() {
       toast({
         title: "Error",
         description: "Failed to load departments. Please check your connection.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadRoles = async (departmentId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "No authentication token found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/roles`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRoles(data);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to load roles: ${response.status} ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error loading roles:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load roles. Please check your connection.",
         variant: "destructive",
       });
     }
@@ -235,18 +328,102 @@ function FeaturesContent() {
     }
   };
 
+  const loadRolePages = async (roleId: number) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "No authentication token found. Please log in again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`http://localhost:4000/api/admin/roles/${roleId}/pages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRolePages(data);
+        setSelectedPages(data);
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to load role pages: ${response.status} ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error loading role pages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load role pages. Please check your connection.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDepartmentChange = (value: string) => {
     setSelectedDepartment(value);
     const department = departments.find(dept => dept.name === value);
     if (department) {
       setSelectedDepartmentId(department.id);
-      loadDepartmentPages(department.id);
     } else {
       setSelectedDepartmentId(null);
-      setDepartmentPages([]);
-      setSelectedPages([]);
     }
   };
+
+  // Load roles and department pages when department ID changes
+  useEffect(() => {
+    if (selectedDepartmentId) {
+      // Reset selections
+      setSelectedRole('');
+      setSelectedRoleId(null);
+      setRoles([]);
+      setDepartmentPages([]);
+      setRolePages([]);
+      setSelectedPages([]);
+      
+      // Load roles for this department and department pages after render
+      setTimeout(() => {
+        loadRoles(selectedDepartmentId);
+        loadDepartmentPages(selectedDepartmentId);
+      }, 0);
+    } else {
+      // Clear all selections
+      setSelectedRole('');
+      setSelectedRoleId(null);
+      setRoles([]);
+      setDepartmentPages([]);
+      setRolePages([]);
+      setSelectedPages([]);
+    }
+  }, [selectedDepartmentId]);
+
+  const handleRoleChange = (value: string) => {
+    setSelectedRole(value);
+    const role = roles.find(r => r.name === value);
+    if (role) {
+      setSelectedRoleId(role.id);
+    } else {
+      setSelectedRoleId(null);
+    }
+  };
+
+  // Load role pages when role ID changes
+  useEffect(() => {
+    if (selectedRoleId) {
+      setTimeout(() => {
+        loadRolePages(selectedRoleId);
+      }, 0);
+    }
+    // Don't load department pages when no role is selected
+    // This ensures features are only shown when a role is selected
+  }, [selectedRoleId]);
 
   const handlePageToggle = (pageName: string) => {
     if (selectedPages.includes(pageName)) {
@@ -257,7 +434,7 @@ function FeaturesContent() {
   };
 
   const handleSave = async () => {
-    if (!selectedDepartmentId) return;
+    if (!selectedRoleId && !selectedDepartmentId) return;
     
     try {
       setIsSaving(true); // Set saving state to true
@@ -271,31 +448,60 @@ function FeaturesContent() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ pages: selectedPages }),
-      });
+      let response;
+      if (selectedRoleId) {
+        // Save role-specific feature access
+        response = await fetch(`http://localhost:4000/api/admin/roles/${selectedRoleId}/pages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ pages: selectedPages }),
+        });
+      } else if (selectedDepartmentId) {
+        // Save department-level feature access (backward compatibility)
+        response = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ pages: selectedPages }),
+        });
+      }
       
       // Handle token expiration
-      if (response.status === 403) {
+      if (response && response.status === 403) {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-            body: JSON.stringify({ pages: selectedPages }),
-          });
-          if (retryResponse.ok) {
+          let retryResponse;
+          if (selectedRoleId) {
+            retryResponse = await fetch(`http://localhost:4000/api/admin/roles/${selectedRoleId}/pages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+              body: JSON.stringify({ pages: selectedPages }),
+            });
+          } else if (selectedDepartmentId) {
+            retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+              body: JSON.stringify({ pages: selectedPages }),
+            });
+          }
+          
+          if (retryResponse && retryResponse.ok) {
             // Update the departments list to reflect the new page count
-            updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+            if (selectedDepartmentId) {
+              updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+            }
             
             // Clear cache and show success message
             clearPageAccessCache();
@@ -319,9 +525,11 @@ function FeaturesContent() {
         }
       }
       
-      if (response.ok) {
+      if (response && response.ok) {
         // Update the departments list to reflect the new page count
-        updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+        if (selectedDepartmentId) {
+          updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+        }
         
         // Clear cache to force refresh of navigation
         clearPageAccessCache();
@@ -335,8 +543,8 @@ function FeaturesContent() {
           description: "Feature access updated successfully",
         });
       } else {
-        const errorText = await response.text();
-        throw new Error(`Failed to update feature access: ${response.status} ${errorText}`);
+        const errorText = response ? await response.text() : "Unknown error";
+        throw new Error(`Failed to update feature access: ${response?.status} ${errorText}`);
       }
     } catch (error) {
       console.error('Error updating feature access:', error);
@@ -384,7 +592,7 @@ function FeaturesContent() {
     return acc;
   }, {} as Record<string, Page[]>);
 
-  // Check if main pages are enabled for current department
+  // Check if main pages are enabled for current department/role
   const isChatPageEnabled = selectedPages.includes('chat');
   const isClockPageEnabled = selectedPages.includes('clock');
   const isHRPageEnabled = selectedPages.includes('hr') || selectedPages.includes('hr/onboarding') || selectedPages.includes('hr/queries') || selectedPages.includes('hr/users');
@@ -404,15 +612,15 @@ function FeaturesContent() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Feature Access Control</h1>
           <p className="text-muted-foreground mt-1">
-            Manage which pages and features each department can access
+            Manage which pages and features each department or role can access
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Department Selection</CardTitle>
+            <CardTitle>Department/Role Selection</CardTitle>
             <CardDescription>
-              Choose a department to manage its feature access
+              Choose a department and a role to manage its feature access
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -426,18 +634,38 @@ function FeaturesContent() {
                   <SelectContent>
                     {departments.map((dept) => (
                       <SelectItem key={dept.id} value={dept.name}>
-                        {dept.name} {dept.page_count !== undefined ? `(${dept.page_count} features assigned)` : ''}
+                        {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               
-              {selectedDepartment && (
+              {selectedDepartmentId && roles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={selectedRole} onValueChange={handleRoleChange}>
+                    <SelectTrigger id="role">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.name}>
+                          {role.name} {role.is_default ? '(Default)' : ''} {role.page_count !== undefined ? `(${role.page_count} features assigned)` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {selectedDepartment && selectedRole && (
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-lg font-medium">Selected Department: {selectedDepartment}</p>
+                  <p className="text-lg font-medium">
+                    Selected: {selectedDepartment} / {selectedRole}
+                  </p>
                   <p className="text-muted-foreground mt-2">
-                    Configure which pages and features this department can access.
+                    Configure which pages and features this role can access.
                   </p>
                 </div>
               )}
@@ -445,12 +673,12 @@ function FeaturesContent() {
           </CardContent>
         </Card>
 
-        {selectedDepartmentId && (
+        {selectedRoleId && ( // Only show features when a role is selected
           <Card>
             <CardHeader>
               <CardTitle>Page and Feature Access</CardTitle>
               <CardDescription>
-                Select which pages and features this department can access
+                Select which pages and features this role can access
               </CardDescription>
             </CardHeader>
             <CardContent>

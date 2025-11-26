@@ -1,117 +1,131 @@
-// Utility functions for checking page access based on user department
+// Utility functions for checking page access based on user role
 
-import { Profile } from '@/lib/auth-context';
+// Cache for page access to avoid repeated database queries
+const pageAccessCache = new Map<string, Set<string>>();
 
-// Cache for department page access to reduce API calls
-let departmentPageAccessCache: Record<number, string[]> = {};
-let lastCacheUpdate: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Clear the page access cache
+export function clearPageAccessCache() {
+  pageAccessCache.clear();
+}
 
-/**
- * Check if a user has access to a specific page or feature
- * @param user - The user profile
- * @param pagePath - The page path or feature name to check (e.g., 'admin/features' or 'chat/moderator')
- * @returns Promise<boolean> - Whether the user has access to the page or feature
- */
-export async function hasPageAccess(user: Profile | null, pagePath: string): Promise<boolean> {
-  // If no user, deny access
-  if (!user || !user.department) {
-    return false;
-  }
-
+// Check if a user has access to a specific page
+export async function hasPageAccess(userId: string, pagePath: string): Promise<boolean> {
   try {
-    // Get department ID from department name
-    const token = localStorage.getItem('token');
+    // Get user info including department and role
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
       return false;
     }
 
-    // Fetch departments to get the ID for the user's department
-    const deptResponse = await fetch('http://localhost:4000/api/admin/departments', {
+    const response = await fetch('http://localhost:4000/api/profile', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     });
 
-    if (!deptResponse.ok) {
-      console.log('Failed to fetch departments:', deptResponse.status);
+    if (!response.ok) {
       return false;
     }
 
-    const departments = await deptResponse.json();
-    const userDept = departments.find((dept: any) => dept.name === user.department);
+    const userData = await response.json();
+    const { department, role } = userData;
     
-    if (!userDept) {
-      console.log(`Department ${user.department} not found`);
-      return false;
-    }
-
-    const departmentId = userDept.id;
-    console.log(`Checking access for department ${user.department} (ID: ${departmentId}) to page/feature ${pagePath}`);
-
-    // Special case: Admin department has access to all admin pages
-    if (user.department === 'Admin' && pagePath.startsWith('admin/')) {
-      return true;
-    }
-
+    // Create cache key
+    const cacheKey = `${department}-${role || 'default'}`;
+    
     // Check cache first
-    const now = Date.now();
-    if (departmentPageAccessCache[departmentId] && (now - lastCacheUpdate) < CACHE_DURATION) {
-      console.log('Using cached page access data');
-      const hasAccess = departmentPageAccessCache[departmentId].includes(pagePath);
-      console.log(`${hasAccess ? 'ACCESS GRANTED' : 'ACCESS DENIED'} for page/feature ${pagePath} to department ${user.department} (cached)`);
-      return hasAccess;
+    if (pageAccessCache.has(cacheKey)) {
+      return pageAccessCache.get(cacheKey)!.has(pagePath);
     }
-
-    // Fetch page access for this department
-    const accessResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!accessResponse.ok) {
-      console.log('Failed to fetch page access:', accessResponse.status);
-      return false;
-    }
-
-    const accessiblePages = await accessResponse.json();
-    console.log(`Department ${user.department} has access to pages/features:`, accessiblePages);
     
-    // Update cache
-    departmentPageAccessCache[departmentId] = accessiblePages;
-    lastCacheUpdate = now;
-
-    const hasAccess = accessiblePages.includes(pagePath);
-    console.log(`${hasAccess ? 'ACCESS GRANTED' : 'ACCESS DENIED'} for page/feature ${pagePath} to department ${user.department}`);
-    return hasAccess;
+    // If not in cache, fetch from backend
+    let pages: string[] = [];
+    
+    if (role) {
+      // Fetch role-specific pages using the role name
+      const roleResponse = await fetch(`http://localhost:4000/api/admin/roles/${role}/pages`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (roleResponse.ok) {
+        pages = await roleResponse.json();
+      }
+      
+      // If role has no specific pages, fall back to department access
+      if (pages.length === 0) {
+        // Fetch department ID first
+        const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (deptIdResponse.ok) {
+          const departments = await deptIdResponse.json();
+          const departmentData = departments.find((d: any) => d.name === department);
+          
+          if (departmentData) {
+            // Fetch department-specific pages using the department ID
+            const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (deptResponse.ok) {
+              pages = await deptResponse.json();
+            }
+          }
+        }
+      }
+    } else {
+      // Fetch department ID first
+      const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (deptIdResponse.ok) {
+        const departments = await deptIdResponse.json();
+        const departmentData = departments.find((d: any) => d.name === department);
+        
+        if (departmentData) {
+          // Fetch department-specific pages using the department ID
+          const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (deptResponse.ok) {
+            pages = await deptResponse.json();
+          }
+        }
+      }
+    }
+    
+    // Cache the result
+    pageAccessCache.set(cacheKey, new Set(pages));
+    
+    return pages.includes(pagePath);
   } catch (error) {
     console.error('Error checking page access:', error);
-    // Remove invalid token
-    localStorage.removeItem('token');
     return false;
   }
 }
 
-/**
- * Clear the page access cache
- */
-export function clearPageAccessCache() {
-  departmentPageAccessCache = {};
-  lastCacheUpdate = 0;
+// Check if a user has access to a specific feature within a page
+export async function hasFeatureAccess(userId: string, featurePath: string): Promise<boolean> {
+  // For now, we'll use the same logic as page access
+  // In the future, we might want to differentiate between pages and features
+  return hasPageAccess(userId, featurePath);
 }
 
-/**
- * Check if user has access to current page and redirect if not
- * @param user - The user profile
- * @param currentPagePath - The current page path
- * @returns Promise<boolean> - Whether the user has access to the current page
- */
-export async function checkCurrentPageAccess(user: Profile | null, currentPagePath: string): Promise<boolean> {
-  // Special case: Always allow access to dashboard for all users
-  if (currentPagePath === 'dashboard') {
-    return true;
-  }
-  
-  return hasPageAccess(user, currentPagePath);
-}
+export default {
+  hasPageAccess,
+  hasFeatureAccess,
+  clearPageAccessCache
+};

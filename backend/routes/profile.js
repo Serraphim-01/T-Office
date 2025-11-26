@@ -3,239 +3,190 @@ import { authenticateJWT } from "./auth.js";
 
 const router = express.Router();
 
-// Get queries for current user
-router.get("/queries", authenticateJWT, async (req, res) => {
-  try {
-    const result = await req.pool.query(
-      'SELECT id, user_id, subject, description, priority, status, assigned_to, resolution, resolved_at, created_at, updated_at FROM hr_queries WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user.userId]
-    );
-    
-    // Also get the user's query count
-    const userResult = await req.pool.query(
-      'SELECT query_count FROM user_details WHERE user_id = $1',
-      [req.user.userId]
-    );
-    
-    const queryCount = userResult.rows[0]?.query_count || 0;
-    
-    res.json({
-      queries: result.rows,
-      query_count: queryCount,
-      max_queries_before_action: 3 // Define threshold for action
-    });
-  } catch (err) {
-    console.error('[PROFILE API] Error fetching user queries:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // Get user profile
 router.get("/", authenticateJWT, async (req, res) => {
-  try {
-    const result = await req.pool.query(`
-      SELECT
-        u.id, u.full_name, u.email, u.department, u.created_at,
-        ud.certifications, ud.cv, ud.portfolio, ud.job_description, ud.contract,
-        ud.query_count, ud.attendance, ud.other_details
-      FROM users u
-      LEFT JOIN user_details ud ON u.id = ud.user_id
-      WHERE u.id = $1
-    `, [req.user.userId]);
+  const pool = req.pool;
+  const userId = req.user.userId;
 
-    if (result.rows.length === 0) {
+  try {
+    // Get user info with role
+    const userResult = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.department, u.created_at, r.name as role
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const user = result.rows[0];
-
-    const responseData = {
+    const user = userResult.rows[0];
+    
+    // Get user details
+    const detailsResult = await pool.query(
+      `SELECT certifications, cv, portfolio, job_description, contract, query_count, attendance, other_details
+       FROM user_details
+       WHERE user_id = $1`,
+      [userId]
+    );
+    
+    const userDetails = detailsResult.rows.length > 0 ? detailsResult.rows[0] : {};
+    
+    res.json({
       id: user.id,
       full_name: user.full_name,
       email: user.email,
       department: user.department,
+      role: user.role,
       created_at: user.created_at,
-      certifications: user.certifications || [],
-      cv: user.cv,
-      portfolio: user.portfolio,
-      job_description: user.job_description,
-      contract: user.contract,
-      query_count: user.query_count || 0,
-      attendance: user.attendance || [],
-      other_details: user.other_details || {}
-    };
-
-    res.json(responseData);
+      certifications: userDetails.certifications || [],
+      cv: userDetails.cv || null,
+      portfolio: userDetails.portfolio || null,
+      job_description: userDetails.job_description || null,
+      contract: userDetails.contract || null,
+      query_count: userDetails.query_count || 0,
+      attendance: userDetails.attendance || [],
+      other_details: userDetails.other_details || {}
+    });
   } catch (err) {
-    console.error('[PROFILE API] Error fetching profile:', err);
+    console.error('Error fetching profile:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Update user profile
-router.put("/", authenticateJWT, async (req, res) => {
-  const { certifications, cv, portfolio, job_description, contract, other_details } = req.body;
+// Get queries for the current user
+router.get("/queries", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
 
   try {
-    await req.pool.query(`
-      UPDATE user_details
-      SET certifications = $1, cv = $2, portfolio = $3, job_description = $4,
-          contract = $5, other_details = $6, updated_at = NOW()
-      WHERE user_id = $7
-    `, [certifications, cv, portfolio, job_description, contract, other_details, req.user.userId]);
+    // Get the maximum number of queries before action is required
+    const maxQueriesResult = await pool.query(
+      'SELECT query_count FROM user_details WHERE user_id = $1',
+      [userId]
+    );
+    
+    const maxQueriesBeforeAction = maxQueriesResult.rows.length > 0 ? maxQueriesResult.rows[0].query_count : 5;
+    
+    // Get queries for this user
+    const queriesResult = await pool.query(
+      'SELECT * FROM hr_queries WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
 
-    res.json({ message: "Profile updated successfully" });
+    res.json({
+      queries: queriesResult.rows,
+      max_queries_before_action: maxQueriesBeforeAction
+    });
   } catch (err) {
-    console.error('Error updating profile:', err);
+    console.error('Error fetching user queries:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Add certification to user profile
+// Submit a new query
+router.post("/queries", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
+  const { subject, description } = req.body;
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO hr_queries (user_id, subject, description) VALUES ($1, $2, $3) RETURNING *',
+      [userId, subject, description]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error submitting query:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add a certification
 router.post("/certifications", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
   const { title, issuer, file_data, file_name, file_type, expiry_date, has_expiry } = req.body;
 
-  console.log('[CERT-ADD] Starting certification addition for user:', req.user.userId);
-  console.log('[CERT-ADD] Request body keys:', Object.keys(req.body));
-
-  if (!title || !issuer) {
-    return res.status(400).json({ error: "Title and issuer are required" });
-  }
-
   try {
-    // Check if user_details row exists
-    const userDetailsCheck = await req.pool.query(
-      'SELECT id FROM user_details WHERE user_id = $1',
-      [req.user.userId]
+    // Get current certifications
+    const currentResult = await pool.query(
+      'SELECT certifications FROM user_details WHERE user_id = $1',
+      [userId]
     );
 
-    console.log('[CERT-ADD] User details check result:', userDetailsCheck.rows);
-
-    if (userDetailsCheck.rows.length === 0) {
-      console.log('[CERT-ADD] No user_details row found, creating one...');
-      await req.pool.query(
-        'INSERT INTO user_details (user_id) VALUES ($1)',
-        [req.user.userId]
-      );
-      console.log('[CERT-ADD] Created user_details row');
+    let certifications = [];
+    if (currentResult.rows.length > 0) {
+      certifications = currentResult.rows[0].certifications || [];
     }
 
-    // Get current certifications
-    const currentResult = await req.pool.query(
-      'SELECT certifications FROM user_details WHERE user_id = $1',
-      [req.user.userId]
-    );
-
-    console.log('[CERT-ADD] Current certifications query result:', currentResult.rows);
-
-    const currentCerts = currentResult.rows[0]?.certifications || [];
-    console.log('[CERT-ADD] Current certifications:', currentCerts);
-
-    const newCert = {
-      id: Date.now().toString(),
+    // Create new certification object
+    const newCertification = {
+      id: Date.now().toString(), // Simple ID generation
       title,
       issuer,
-      file_data: file_data || null, // Base64 encoded file data
+      file_data: file_data || null,
       file_name: file_name || null,
       file_type: file_type || null,
-      expiry_date: has_expiry ? expiry_date : null,
-      has_expiry,
-      status: 'pending', // Pending approval
+      expiry_date: expiry_date || null,
+      has_expiry: has_expiry || false,
+      status: 'pending',
       created_at: new Date().toISOString()
     };
 
-    console.log('[CERT-ADD] New certification object created');
+    // Add new certification to array
+    certifications.push(newCertification);
 
-    const updatedCerts = [...currentCerts, newCert];
-    console.log('[CERT-ADD] Updated certifications array length:', updatedCerts.length);
-
-    const updateResult = await req.pool.query(
-      'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
-      [JSON.stringify(updatedCerts), req.user.userId]
+    // Update user details
+    const result = await pool.query(
+      `INSERT INTO user_details (user_id, certifications)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id)
+       DO UPDATE SET certifications = $2, updated_at = NOW()`,
+      [userId, JSON.stringify(certifications)]
     );
 
-    console.log('[CERT-ADD] Update query result:', updateResult.rowCount, 'rows affected');
-
-    console.log('[CERT-ADD] Certification added successfully');
-    res.status(201).json(newCert);
+    res.status(201).json(newCertification);
   } catch (err) {
-    console.error('[CERT-ADD] Error adding certification:', err);
-    console.error('[CERT-ADD] Error details:', {
-      message: err.message,
-      stack: err.stack,
-      code: err.code
-    });
+    console.error('Error adding certification:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Delete certification from user profile
+// Delete a certification
 router.delete("/certifications/:certId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
   const { certId } = req.params;
 
   try {
     // Get current certifications
-    const currentResult = await req.pool.query(
+    const currentResult = await pool.query(
       'SELECT certifications FROM user_details WHERE user_id = $1',
-      [req.user.userId]
+      [userId]
     );
 
     if (currentResult.rows.length === 0) {
       return res.status(404).json({ error: "User details not found" });
     }
 
-    const currentCerts = currentResult.rows[0]?.certifications || [];
-    const certIndex = currentCerts.findIndex(cert => cert.id === certId);
+    let certifications = currentResult.rows[0].certifications || [];
 
-    if (certIndex === -1) {
-      return res.status(404).json({ error: "Certification not found" });
-    }
+    // Remove certification with matching ID
+    certifications = certifications.filter((cert) => cert.id !== certId);
 
-    // Remove the certification from the array
-    currentCerts.splice(certIndex, 1);
-
-    await req.pool.query(
+    // Update user details
+    await pool.query(
       'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
-      [JSON.stringify(currentCerts), req.user.userId]
+      [JSON.stringify(certifications), userId]
     );
 
     res.json({ message: "Certification deleted successfully" });
   } catch (err) {
     console.error('Error deleting certification:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Update certification status (Now available to all users)
-// Removed requireHR middleware to allow all users access
-router.put("/certifications/:certId", authenticateJWT, async (req, res) => {
-  const { certId } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
-
-  try {
-    // Get current certifications for all users (since we need to find which user has this cert)
-    const allUsersResult = await req.pool.query('SELECT user_id, certifications FROM user_details');
-
-    for (const userRow of allUsersResult.rows) {
-      const certs = userRow.certifications || [];
-      const certIndex = certs.findIndex(cert => cert.id === certId);
-
-      if (certIndex !== -1) {
-        certs[certIndex].status = status;
-        certs[certIndex].approved_at = status === 'approved' ? new Date().toISOString() : null;
-
-        await req.pool.query(
-          'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',
-          [JSON.stringify(certs), userRow.user_id]
-        );
-
-        return res.json({ message: `Certification ${status} successfully` });
-      }
-    }
-
-    res.status(404).json({ error: "Certification not found" });
-  } catch (err) {
-    console.error('Error updating certification status:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
