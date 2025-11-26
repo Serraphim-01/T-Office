@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
-import { hasPageAccess } from '@/lib/page-access';
+import { hasPageAccess, clearPageAccessCache } from '@/lib/page-access';
 import { 
   Home,
   User,
@@ -111,6 +111,12 @@ const menuItems = [
     ]
   },
   {
+    title: 'Approvals',
+    href: '/approvals',
+    icon: CheckCircle,
+    pagePath: 'approvals'
+  },
+  {
     title: 'Admin',
     href: '/admin',
     icon: Building,
@@ -142,6 +148,65 @@ const menuItems = [
   }
 ];
 
+// Export refreshNavigation function so it can be called from other components
+export async function refreshNavigation(user: any, setAccessibleItems: any, setLoading: any) {
+  if (!user) {
+    setAccessibleItems([]);
+    return;
+  }
+
+  try {
+    // Clear the cache to get fresh data
+    clearPageAccessCache();
+    
+    const accessible = [];
+    const accessiblePaths = []; // Track accessible paths for logging
+    
+    for (const item of menuItems) {
+      // Check if user has access to the main item
+      const hasAccess = await hasPageAccess(user, item.pagePath);
+      
+      if (hasAccess) {
+        accessiblePaths.push(item.pagePath); // Log accessible path
+        
+        // If item has children, check their access too
+        if (item.children) {
+          const accessibleChildren = [];
+          for (const child of item.children) {
+            const childHasAccess = await hasPageAccess(user, child.pagePath);
+            if (childHasAccess) {
+              accessibleChildren.push(child);
+              accessiblePaths.push(child.pagePath); // Log accessible child path
+            }
+          }
+          
+          // Only include parent if it has accessible children
+          if (accessibleChildren.length > 0) {
+            accessible.push({
+              ...item,
+              children: accessibleChildren
+            });
+          }
+        } else {
+          // No children, just add the item
+          accessible.push(item);
+        }
+      }
+    }
+    
+    // Console log the accessible pages for debugging
+    console.log(`Department "${user.department}" has access to pages:`, accessiblePaths);
+    
+    setAccessibleItems(accessible);
+  } catch (error) {
+    console.error('Error checking navigation access:', error);
+    // Fallback to showing all items if there's an error
+    setAccessibleItems(menuItems);
+  } finally {
+    setLoading(false);
+  }
+};
+
 export function AccessControlledNav() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -149,63 +214,18 @@ export function AccessControlledNav() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      if (!user) {
-        setAccessibleItems([]);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const accessible = [];
-        const accessiblePaths = []; // Track accessible paths for logging
-        
-        for (const item of menuItems) {
-          // Check if user has access to the main item
-          const hasAccess = await hasPageAccess(user, item.pagePath);
-          
-          if (hasAccess) {
-            accessiblePaths.push(item.pagePath); // Log accessible path
-            
-            // If item has children, check their access too
-            if (item.children) {
-              const accessibleChildren = [];
-              for (const child of item.children) {
-                const childHasAccess = await hasPageAccess(user, child.pagePath);
-                if (childHasAccess) {
-                  accessibleChildren.push(child);
-                  accessiblePaths.push(child.pagePath); // Log accessible child path
-                }
-              }
-              
-              // Only include parent if it has accessible children
-              if (accessibleChildren.length > 0) {
-                accessible.push({
-                  ...item,
-                  children: accessibleChildren
-                });
-              }
-            } else {
-              // No children, just add the item
-              accessible.push(item);
-            }
-          }
-        }
-        
-        // Console log the accessible pages for debugging
-        console.log(`Department "${user.department}" has access to pages:`, accessiblePaths);
-        
-        setAccessibleItems(accessible);
-      } catch (error) {
-        console.error('Error checking navigation access:', error);
-        // Fallback to showing all items if there's an error
-        setAccessibleItems(menuItems);
-      } finally {
-        setLoading(false);
-      }
+    refreshNavigation(user, setAccessibleItems, setLoading);
+    
+    // Listen for navigation refresh events
+    const handleNavigationRefresh = () => {
+      refreshNavigation(user, setAccessibleItems, setLoading);
     };
-
-    checkAccess();
+    
+    window.addEventListener('navigation-refresh', handleNavigationRefresh);
+    
+    return () => {
+      window.removeEventListener('navigation-refresh', handleNavigationRefresh);
+    };
   }, [user]);
 
   const isActive = (href: string) => {

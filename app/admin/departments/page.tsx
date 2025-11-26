@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Pencil, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Department {
   id: number;
@@ -19,6 +20,14 @@ interface Department {
 }
 
 export default function DepartmentsPage() {
+  return (
+    <AccessControlWrapper pagePath="admin/departments">
+      <DepartmentsContent />
+    </AccessControlWrapper>
+  );
+}
+
+function DepartmentsContent() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [newDepartmentName, setNewDepartmentName] = useState('');
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
@@ -68,13 +77,7 @@ export default function DepartmentsPage() {
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             console.log('Retried departments data:', data);
-            // The /api/admin/departments endpoint returns {id, name} objects
-            // We need to map them to include page_count for consistency
-            const departmentsWithPageCount = data.map((dept: any) => ({
-              ...dept,
-              page_count: 0 // We'll need another API call to get actual page counts
-            }));
-            setDepartments(departmentsWithPageCount);
+            setDepartments(data);
             return;
           } else {
             const errorText = await retryResponse.text();
@@ -86,13 +89,7 @@ export default function DepartmentsPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('Departments data:', data);
-        // The /api/admin/departments endpoint returns {id, name} objects
-        // We need to map them to include page_count for consistency
-        const departmentsWithPageCount = data.map((dept: any) => ({
-          ...dept,
-          page_count: 0 // We'll need another API call to get actual page counts
-        }));
-        setDepartments(departmentsWithPageCount);
+        setDepartments(data);
       } else {
         const errorText = await response.text();
         console.error('Failed to fetch departments:', response.status, errorText);

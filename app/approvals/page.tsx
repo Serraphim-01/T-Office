@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Clock, FileText, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface CertificationApproval {
   id: string;
@@ -25,9 +26,15 @@ interface CertificationApproval {
   created_at: string;
 }
 
-
-
 export default function ApprovalsPage() {
+  return (
+    <AccessControlWrapper pagePath="approvals">
+      <ApprovalsContent />
+    </AccessControlWrapper>
+  );
+}
+
+function ApprovalsContent() {
   const { user } = useAuth();
   const [certifications, setCertifications] = useState<CertificationApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,8 +54,6 @@ export default function ApprovalsPage() {
         const certData = await certResponse.json();
         setCertifications(certData);
       }
-
-
     } catch (error) {
       console.error('Failed to fetch approvals:', error);
     } finally {
@@ -111,8 +116,6 @@ export default function ApprovalsPage() {
     }
   };
 
-
-
   const openCertification = (cert: CertificationApproval) => {
     console.log('Opening certification:', {
       id: cert.id,
@@ -126,8 +129,6 @@ export default function ApprovalsPage() {
     setSelectedCert(cert);
     setIsImageModalOpen(true);
   };
-
-
 
   if (loading) {
     return (

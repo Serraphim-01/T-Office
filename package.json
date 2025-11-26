@@ -8,7 +8,8 @@
     "dev:backend": "cd backend && npm run dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate:admin-access": "node db/run_admin_access_migration.js"
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",
@@ -49,6 +50,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.3.0",
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",

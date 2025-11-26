@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth-context';
 import { ChevronDown, ChevronRight, Database, Trash2 } from 'lucide-react';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Column {
   column_name: string;
@@ -22,6 +23,14 @@ interface TableData {
 }
 
 export default function DatabasePage() {
+  return (
+    <AccessControlWrapper pagePath="admin/db">
+      <DatabaseContent />
+    </AccessControlWrapper>
+  );
+}
+
+function DatabaseContent() {
   const { user } = useAuth();
   const [tables, setTables] = useState<TableData[]>([]);
   const [loading, setLoading] = useState(true);

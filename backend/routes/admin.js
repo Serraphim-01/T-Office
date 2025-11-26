@@ -202,7 +202,16 @@ router.delete("/departments/:id", authenticateJWT, async (req, res) => {
 router.get("/departments", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   try {
-    const result = await pool.query('SELECT id, name FROM departments ORDER BY name');
+    const result = await pool.query(`
+      SELECT 
+        d.id,
+        d.name,
+        COUNT(dpa.page_name) as page_count
+      FROM departments d
+      LEFT JOIN department_page_access dpa ON d.id = dpa.department_id
+      GROUP BY d.id, d.name
+      ORDER BY d.name
+    `);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching departments:', err);
@@ -328,7 +337,7 @@ router.delete("/approvals/certifications/:certId", authenticateJWT, async (req, 
 // ---------------------------------
 
 // Get all available pages (based on app directory structure)
-router.get("/feature-access/pages", authenticateJWT, async (req, res) => {
+router.get("/pages", authenticateJWT, async (req, res) => {
   try {
     // Define all available pages in the application
     const pages = [
@@ -337,6 +346,7 @@ router.get("/feature-access/pages", authenticateJWT, async (req, res) => {
       { name: 'chat', title: 'Chat' },
       { name: 'clock', title: 'Clock' },
       { name: 'settings', title: 'Settings' },
+      { name: 'approvals', title: 'Approvals' },
       { name: 'admin/db', title: 'Admin Database' },
       { name: 'admin/departments', title: 'Admin Departments' },
       { name: 'admin/features', title: 'Admin Features' },
@@ -360,7 +370,7 @@ router.get("/feature-access/pages", authenticateJWT, async (req, res) => {
 });
 
 // Get pages assigned to a department
-router.get("/feature-access/:departmentId", authenticateJWT, async (req, res) => {
+router.get("/departments/:departmentId/pages", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { departmentId } = req.params;
 
@@ -390,7 +400,7 @@ router.get("/feature-access/:departmentId", authenticateJWT, async (req, res) =>
 });
 
 // Update pages assigned to a department
-router.post("/feature-access/:departmentId", authenticateJWT, async (req, res) => {
+router.post("/departments/:departmentId/pages", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { departmentId } = req.params;
   const { pages } = req.body; // Array of page names
@@ -433,28 +443,6 @@ router.post("/feature-access/:departmentId", authenticateJWT, async (req, res) =
     // Rollback transaction on error
     await pool.query('ROLLBACK');
     console.error('Error updating department page access:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Get all departments with their page access counts
-router.get("/feature-access/departments", authenticateJWT, async (req, res) => {
-  const pool = req.pool;
-  try {
-    const result = await pool.query(`
-      SELECT 
-        d.id,
-        d.name,
-        COUNT(dpa.page_name) as page_count
-      FROM departments d
-      LEFT JOIN department_page_access dpa ON d.id = dpa.department_id
-      GROUP BY d.id, d.name
-      ORDER BY d.name
-    `);
-
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Error fetching departments with page access:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

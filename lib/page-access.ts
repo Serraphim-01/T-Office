@@ -19,6 +19,11 @@ export async function hasPageAccess(user: Profile | null, pagePath: string): Pro
     return false;
   }
 
+  // Special case: Admin department has access to all admin pages
+  if (user.department === 'Admin' && pagePath.startsWith('admin/')) {
+    return true;
+  }
+
   try {
     // Get department ID from department name
     const token = localStorage.getItem('token');
@@ -89,7 +94,7 @@ export async function hasPageAccess(user: Profile | null, pagePath: string): Pro
     }
 
     // Fetch page access for this department
-    const accessResponse = await fetch(`http://localhost:4000/api/admin/feature-access/${departmentId}`, {
+    const accessResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -155,4 +160,19 @@ export async function hasPageAccess(user: Profile | null, pagePath: string): Pro
 export function clearPageAccessCache() {
   departmentPageAccessCache = {};
   lastCacheUpdate = 0;
+}
+
+/**
+ * Check if user has access to current page and redirect if not
+ * @param user - The user profile
+ * @param currentPagePath - The current page path
+ * @returns Promise<boolean> - Whether the user has access to the current page
+ */
+export async function checkCurrentPageAccess(user: Profile | null, currentPagePath: string): Promise<boolean> {
+  // Special case: Always allow access to dashboard for all users
+  if (currentPagePath === 'dashboard') {
+    return true;
+  }
+  
+  return hasPageAccess(user, currentPagePath);
 }

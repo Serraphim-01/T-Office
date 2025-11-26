@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
+import { clearPageAccessCache } from '@/lib/page-access';
+import { refreshNavigation } from '@/components/access-controlled-nav';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Page {
   name: string;
@@ -22,6 +25,14 @@ interface Department {
 }
 
 export default function FeaturesPage() {
+  return (
+    <AccessControlWrapper pagePath="admin/features">
+      <FeaturesContent />
+    </AccessControlWrapper>
+  );
+}
+
+function FeaturesContent() {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -31,7 +42,7 @@ export default function FeaturesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // New state for saving indicator
   const { toast } = useToast();
-  const { refreshToken: authRefreshToken } = useAuth();
+  const { refreshToken: authRefreshToken, user } = useAuth();
 
   useEffect(() => {
     loadDepartments();
@@ -52,7 +63,7 @@ export default function FeaturesPage() {
         return;
       }
 
-      // Use the same endpoint as the departments page for consistency
+      // Use the standard departments endpoint which now includes page counts
       const response = await fetch('http://localhost:4000/api/admin/departments', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -75,16 +86,16 @@ export default function FeaturesPage() {
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             console.log('Retried departments data:', data);
-            // Transform the data to match the expected format
-            const transformedData = data.map((dept: any) => ({
-              ...dept,
-              page_count: 0 // Will be updated when we fetch actual page counts
-            }));
-            setDepartments(transformedData);
+            setDepartments(data);
             return;
           } else {
             const errorText = await retryResponse.text();
             console.error('Retry failed:', retryResponse.status, errorText);
+            toast({
+              title: "Error",
+              description: `Failed to load departments: ${retryResponse.status} ${errorText}`,
+              variant: "destructive",
+            });
           }
         }
       }
@@ -92,12 +103,7 @@ export default function FeaturesPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('Departments data:', data);
-        // Transform the data to match the expected format
-        const transformedData = data.map((dept: any) => ({
-          ...dept,
-          page_count: 0 // Will be updated when we fetch actual page counts
-        }));
-        setDepartments(transformedData);
+        setDepartments(data);
       } else {
         const errorText = await response.text();
         console.error('Failed to load departments:', response.status, errorText);
@@ -129,7 +135,7 @@ export default function FeaturesPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/admin/feature-access/pages', {
+      const response = await fetch('http://localhost:4000/api/admin/pages', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -140,7 +146,7 @@ export default function FeaturesPage() {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch('http://localhost:4000/api/admin/feature-access/pages', {
+          const retryResponse = await fetch('http://localhost:4000/api/admin/pages', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             },
@@ -183,7 +189,7 @@ export default function FeaturesPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/feature-access/${departmentId}`, {
+      const response = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -194,7 +200,7 @@ export default function FeaturesPage() {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch(`http://localhost:4000/api/admin/feature-access/${departmentId}`, {
+          const retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             },
@@ -265,7 +271,7 @@ export default function FeaturesPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/feature-access/${selectedDepartmentId}`, {
+      const response = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,7 +285,7 @@ export default function FeaturesPage() {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch(`http://localhost:4000/api/admin/feature-access/${selectedDepartmentId}`, {
+          const retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -290,6 +296,18 @@ export default function FeaturesPage() {
           if (retryResponse.ok) {
             // Update the departments list to reflect the new page count
             updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+            
+            // Clear cache and show success message
+            clearPageAccessCache();
+            
+            // Refresh navigation for all users
+            // Note: In a real application, you would use a more sophisticated approach
+            // like WebSocket or server-sent events to notify all clients
+            if (user) {
+              // This would refresh the navigation for the current user
+              // In a real app, you might want to broadcast this to all users
+              window.dispatchEvent(new CustomEvent('navigation-refresh'));
+            }
             
             toast({
               title: "Success",
@@ -304,6 +322,12 @@ export default function FeaturesPage() {
       if (response.ok) {
         // Update the departments list to reflect the new page count
         updateDepartmentPageCount(selectedDepartmentId, selectedPages.length);
+        
+        // Clear cache to force refresh of navigation
+        clearPageAccessCache();
+        
+        // Dispatch event to refresh navigation
+        window.dispatchEvent(new CustomEvent('navigation-refresh'));
         
         // Show success message
         toast({

@@ -1,78 +1,67 @@
--- Feature Access Migration: Create department_page_access table and insert default access
+-- Ensure Admin department has access to all admin pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'approvals'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
 
--- Create department_page_access table
-CREATE TABLE IF NOT EXISTS department_page_access (
-    department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
-    page_name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    PRIMARY KEY (department_id, page_name)
-);
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/db'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
 
--- Insert default access for Admin department to Admin Features page
--- First, get the Admin department ID
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/departments'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'admin/features'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
--- Insert default access for HR department to HR pages
 INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'hr'
+SELECT id, 'admin/hr'
 FROM departments
-WHERE name = 'HR'
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
-INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'hr/onboarding'
-FROM departments
-WHERE name = 'HR'
-ON CONFLICT (department_id, page_name) DO NOTHING;
-
-INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'hr/queries'
-FROM departments
-WHERE name = 'HR'
-ON CONFLICT (department_id, page_name) DO NOTHING;
-
-INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'hr/users'
-FROM departments
-WHERE name = 'HR'
-ON CONFLICT (department_id, page_name) DO NOTHING;
-
--- Insert default access for all departments to common pages
+-- Also ensure Admin has access to all common pages
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'dashboard'
 FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'profile'
 FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'chat'
 FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'clock'
 FROM departments
-ON CONFLICT (department_id, page_name) DO NOTHING;
-
-INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'resources/wiki'
-FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'settings'
 FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'approvals'
+SELECT id, 'resources/wiki'
 FROM departments
+WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
