@@ -219,7 +219,13 @@ CREATE TABLE IF NOT EXISTS user_locations (
 -- DEPARTMENT CONFIGURATION TABLES
 -- ===========================================
 
-b
+-- Department page access table
+CREATE TABLE IF NOT EXISTS department_page_access (
+    department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
+    page_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (department_id, page_name)
+);
 
 -- Location events table
 CREATE TABLE IF NOT EXISTS location_events (

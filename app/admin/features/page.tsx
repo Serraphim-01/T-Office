@@ -361,7 +361,20 @@ function FeaturesContent() {
 
   // Group pages by category for better UI organization
   const groupedPages = pages.reduce((acc, page) => {
-    const category = page.name.split('/')[0] || 'general';
+    // Extract category from page name
+    let category;
+    if (page.name.startsWith('chat/')) {
+      category = 'chat';
+    } else if (page.name.startsWith('clock/')) {
+      category = 'clock';
+    } else if (page.name.startsWith('hr/')) {
+      category = 'hr';
+    } else if (page.name.startsWith('resources/')) {
+      category = 'resources';
+    } else {
+      category = page.name.split('/')[0] || 'general';
+    }
+    
     if (!acc[category]) {
       acc[category] = [];
     }
@@ -369,13 +382,19 @@ function FeaturesContent() {
     return acc;
   }, {} as Record<string, Page[]>);
 
+  // Check if main pages are enabled for current department
+  const isChatPageEnabled = selectedPages.includes('chat');
+  const isClockPageEnabled = selectedPages.includes('clock');
+  const isHRPageEnabled = selectedPages.includes('hr') || selectedPages.includes('hr/onboarding') || selectedPages.includes('hr/queries') || selectedPages.includes('hr/users');
+  const isWikiPageEnabled = selectedPages.includes('resources/wiki');
+
   return (
     <DashboardLayout>
       <div className="p-4 md:p-8 space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Feature Access Control</h1>
           <p className="text-muted-foreground mt-1">
-            Manage which pages each department can access
+            Manage which pages and features each department can access
           </p>
         </div>
 
@@ -397,7 +416,7 @@ function FeaturesContent() {
                   <SelectContent>
                     {departments.map((dept) => (
                       <SelectItem key={dept.id} value={dept.name}>
-                        {dept.name} {dept.page_count !== undefined ? `(${dept.page_count} pages assigned)` : ''}
+                        {dept.name} {dept.page_count !== undefined ? `(${dept.page_count} features assigned)` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -408,7 +427,7 @@ function FeaturesContent() {
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-lg font-medium">Selected Department: {selectedDepartment}</p>
                   <p className="text-muted-foreground mt-2">
-                    Configure which pages this department can access.
+                    Configure which pages and features this department can access.
                   </p>
                 </div>
               )}
@@ -419,9 +438,9 @@ function FeaturesContent() {
         {selectedDepartmentId && (
           <Card>
             <CardHeader>
-              <CardTitle>Page Access</CardTitle>
+              <CardTitle>Page and Feature Access</CardTitle>
               <CardDescription>
-                Select which pages this department can access
+                Select which pages and features this department can access
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -431,7 +450,9 @@ function FeaturesContent() {
                 <div className="space-y-6">
                   {Object.entries(groupedPages).map(([category, categoryPages]) => (
                     <div key={category} className="space-y-3">
-                      <h3 className="text-lg font-medium capitalize">{category} Pages</h3>
+                      <h3 className="text-lg font-medium capitalize">
+                        {category === 'chat' ? 'Chat Features' : `${category} Pages`}
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categoryPages.map((page) => (
                           <div key={page.name} className="flex items-center space-x-2 p-3 border rounded-lg">
@@ -439,12 +460,45 @@ function FeaturesContent() {
                               id={page.name}
                               checked={selectedPages.includes(page.name)}
                               onCheckedChange={() => handlePageToggle(page.name)}
+                              disabled={
+                                (page.name.startsWith('chat/') && !isChatPageEnabled) ||
+                                (page.name.startsWith('clock/') && !isClockPageEnabled) ||
+                                (page.name.startsWith('hr/') && !isHRPageEnabled) ||
+                                (page.name.startsWith('resources/wiki/') && !isWikiPageEnabled)
+                              }
                             />
                             <label
                               htmlFor={page.name}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
+                                (page.name.startsWith('chat/') && !isChatPageEnabled) ||
+                                (page.name.startsWith('clock/') && !isClockPageEnabled) ||
+                                (page.name.startsWith('hr/') && !isHRPageEnabled) ||
+                                (page.name.startsWith('resources/wiki/') && !isWikiPageEnabled)
+                                  ? 'text-muted-foreground opacity-50' 
+                                  : ''
+                              }`}
                             >
                               {page.title}
+                              {page.name.startsWith('chat/') && !isChatPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires main Chat page access
+                                </span>
+                              )}
+                              {page.name.startsWith('clock/') && !isClockPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires main Clock page access
+                                </span>
+                              )}
+                              {page.name.startsWith('hr/') && !isHRPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires HR page access
+                                </span>
+                              )}
+                              {page.name.startsWith('resources/wiki/') && !isWikiPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Wiki page access
+                                </span>
+                              )}
                             </label>
                           </div>
                         ))}

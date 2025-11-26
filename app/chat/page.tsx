@@ -14,7 +14,7 @@ import { Send, Users, MessageCircle, Shield, Clock, PanelRightClose, PanelRightO
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/lib/auth-context';
-
+import { hasPageAccess } from '@/lib/page-access';
 
 interface Message {
   id: number;
@@ -36,6 +36,11 @@ export default function ChatPage() {
   const [timeRange, setTimeRange] = useState('last_7_days');
   const [isModeratorMode, setIsModeratorMode] = useState(false);
   const [isChatPaused, setIsChatPaused] = useState(false);
+  const [canUseChat, setCanUseChat] = useState(false);
+  const [canUseModerator, setCanUseModerator] = useState(false);
+  const [canPauseChat, setCanPauseChat] = useState(false);
+  const [canUseSummarizer, setCanUseSummarizer] = useState(false);
+  const [canClearChat, setCanClearChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Redirect if not logged in
@@ -45,24 +50,62 @@ export default function ChatPage() {
     }
   }, [user, loading, router]);
 
-  // Load messages and chat settings from backend
+  // Check feature access when user loads
   useEffect(() => {
     if (user) {
-      fetchMessages();
-      fetchChatSettings();
+      checkFeatureAccess();
     }
   }, [user]);
 
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to main chat page first
+    const chatAccess = await hasPageAccess(user, 'chat');
+    
+    if (!chatAccess) {
+      // If no access to main chat page, disable all chat features
+      setCanUseChat(false);
+      setCanUseModerator(false);
+      setCanPauseChat(false);
+      setCanUseSummarizer(false);
+      setCanClearChat(false);
+      return;
+    }
+    
+    // If user has access to main chat page, check individual features
+    setCanUseChat(true);
+    
+    // Check access to various chat features using the page access system
+    const moderatorAccess = await hasPageAccess(user, 'chat/moderator');
+    const pauseAccess = await hasPageAccess(user, 'chat/pause');
+    const summarizerAccess = await hasPageAccess(user, 'chat/summarizer');
+    const clearAccess = await hasPageAccess(user, 'chat/clear');
+    
+    setCanUseModerator(moderatorAccess);
+    setCanPauseChat(pauseAccess);
+    setCanUseSummarizer(summarizerAccess);
+    setCanClearChat(clearAccess);
+  };
+
+  // Load messages and chat settings from backend
+  useEffect(() => {
+    if (user && canUseChat) {
+      fetchMessages();
+      fetchChatSettings();
+    }
+  }, [user, canUseChat]);
+
   // Poll for new messages every 3 seconds
   useEffect(() => {
-    if (!user || isChatPaused) return;
+    if (!user || isChatPaused || !canUseChat) return;
 
     const interval = setInterval(() => {
       fetchMessages();
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [user, isChatPaused]);
+  }, [user, isChatPaused, canUseChat]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -81,6 +124,48 @@ export default function ChatPage() {
 
   if (!user) {
     return null;
+  }
+
+  // If user doesn't have access to chat page, show access denied message
+  if (!canUseChat) {
+    return (
+      <DashboardLayout>
+        <div className="h-full flex flex-col">
+          <div className="p-6 border-b border-border bg-background">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center">
+                  <MessageCircle className="mr-3 h-6 w-6 text-primary" />
+                  Anonymous Chat
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Open communication space for honest feedback and discussions
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-destructive" />
+                  Access Denied
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  You don't have permission to access the chat feature. Please contact your administrator.
+                </p>
+                <Button onClick={() => router.push('/dashboard')}>
+                  Return to Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const fetchMessages = async () => {
@@ -197,7 +282,7 @@ export default function ChatPage() {
   };
 
   const clearChat = async () => {
-    if (!user) return;
+    if (!user || !canClearChat) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -221,7 +306,7 @@ export default function ChatPage() {
   };
 
   const toggleChatPause = async () => {
-    if (!user) return; // Allow any user to pause now
+    if (!user || !canPauseChat) return;
 
     try {
       const token = localStorage.getItem('token');
@@ -253,7 +338,7 @@ export default function ChatPage() {
   };
 
   const handleSummarize = async (useDefaultSettings = true) => {
-    if (!user) return; // Remove department restriction
+    if (!user || !canUseSummarizer) return;
 
     setIsSummarizing(true);
     try {
@@ -289,125 +374,132 @@ export default function ChatPage() {
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-border bg-background">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground flex items-center">
-                  <MessageCircle className="mr-3 h-6 w-6 text-primary" />
-                  Anonymous Chat
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                  Open communication space for honest feedback and discussions
-                </p>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <div className="flex items-center text-sm text-muted-foreground mt-1">
-                    <Shield className="mr-1 h-4 w-4" />
-                    Anonymous & Secure
-                  </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground flex items-center">
+                <MessageCircle className="mr-3 h-6 w-6 text-primary" />
+                Anonymous Chat
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Open communication space for honest feedback and discussions
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <div className="flex items-center text-sm text-muted-foreground mt-1">
+                  <Shield className="mr-1 h-4 w-4" />
+                  Anonymous & Secure
                 </div>
+              </div>
 
-                {/* Summarize Button - Available to all users now */}
+              {/* Summarize Button - Available based on feature access */}
+              {canUseSummarizer && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSummarize(true)}
+                    disabled={isSummarizing}
+                    className="flex items-center"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Summarize
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <div className="p-3 space-y-3">
+                        <div>
+                          <Label htmlFor="timeRange" className="text-sm">Message Count</Label>
+                          <select
+                            id="timeRange"
+                            value={timeRange}
+                            onChange={(e) => setTimeRange(e.target.value)}
+                            className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                          >
+                            <option value="20">Last 20 messages</option>
+                            <option value="50">Last 50 messages</option>
+                            <option value="100">Last 100 messages</option>
+                            <option value="200">Last 200 messages</option>
+                          </select>
+                        </div>
+
+                        <Button
+                          onClick={() => handleSummarize(false)}
+                          disabled={isSummarizing}
+                          className="w-full"
+                        >
+                          {isSummarizing ? 'Generating...' : 'Generate Summary'}
+                        </Button>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Dialog open={!!summary} onOpenChange={() => setSummary(null)}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Chat Summary</DialogTitle>
+                      </DialogHeader>
+                      <div className="mt-4">
+                        {summary ? (
+                          <div className="prose prose-sm max-w-none">
+                            <p className="text-sm text-muted-foreground mb-4">
+                              {summary.split('\n').map((line, index) => {
+                                if (line.toLowerCase().includes('action') || line.includes('•') || line.includes('-')) {
+                                  return <span key={index} className="font-semibold block">{line}</span>;
+                                }
+                                return <span key={index} className="block">{line}</span>;
+                              })}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No summary available.</p>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
+
+              {/* Pause/Resume Chat Button - Available based on feature access */}
+              {canPauseChat && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleSummarize(true)}
-                  disabled={isSummarizing}
-                  className="flex items-center"
+                  onClick={toggleChatPause}
+                  className={cn(
+                    "flex items-center",
+                    isChatPaused ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
+                  )}
                 >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Summarize
+                  {isChatPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                  {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
                 </Button>
+              )}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    <div className="p-3 space-y-3">
-                      <div>
-                        <Label htmlFor="timeRange" className="text-sm">Message Count</Label>
-                        <select
-                          id="timeRange"
-                          value={timeRange}
-                          onChange={(e) => setTimeRange(e.target.value)}
-                          className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                        >
-                          <option value="20">Last 20 messages</option>
-                          <option value="50">Last 50 messages</option>
-                          <option value="100">Last 100 messages</option>
-                          <option value="200">Last 200 messages</option>
-                        </select>
-                      </div>
-
-                      <Button
-                        onClick={() => handleSummarize(false)}
-                        disabled={isSummarizing}
-                        className="w-full"
-                      >
-                        {isSummarizing ? 'Generating...' : 'Generate Summary'}
-                      </Button>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Dialog open={!!summary} onOpenChange={() => setSummary(null)}>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Chat Summary</DialogTitle>
-                    </DialogHeader>
-                    <div className="mt-4">
-                      {summary ? (
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {summary.split('\n').map((line, index) => {
-                              if (line.toLowerCase().includes('action') || line.includes('•') || line.includes('-')) {
-                                    return <span key={index} className="font-semibold block">{line}</span>;
-                                  }
-                                  return <span key={index} className="block">{line}</span>;
-                                })}
-                              </p>
-                            </div>
-                          ) : (
-                            <p className="text-muted-foreground">No summary available.</p>
-                          )}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Pause/Resume Chat Button - Available to all users now */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={toggleChatPause}
-                      className={cn(
-                        "flex items-center",
-                        isChatPaused ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
-                      )}
-                    >
-                      {isChatPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                      {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
-                    </Button>
-
-                    {/* Clear Chat Button - Now available to all users */}
-                    {/* {user?.department === 'Admin' && ( */}
-                      <Button variant="outline" size="sm" onClick={clearChat}>
-                        Clear Chat
-                      </Button>
-                    {/* )} */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hidden lg:inline-flex"
-                      onClick={() => setIsGuidelinesOpen(!isGuidelinesOpen)}
-                    >
-                      {isGuidelinesOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                    </Button>
-                  </div>
-                </div>
+              {/* Clear Chat Button - Available based on feature access */}
+              {canClearChat && (
+                <Button variant="outline" size="sm" onClick={clearChat}>
+                  Clear Chat
+                </Button>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden lg:inline-flex"
+                onClick={() => setIsGuidelinesOpen(!isGuidelinesOpen)}
+              >
+                {isGuidelinesOpen ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
             </div>
+          </div>
+        </div>
 
         {/* Chat Area */}
         <div className="flex-1 overflow-hidden">
@@ -439,7 +531,8 @@ export default function ChatPage() {
                               : "bg-card border-border text-card-foreground"
                           )}
                         >
-                          {message.is_moderator && (
+                          {/* Only show moderator badge if user has moderator feature access */}
+                          {message.is_moderator && canUseModerator && (
                             <div className="flex items-center mb-1">
                               <Badge variant="secondary" className="text-xs bg-primary-foreground/20 text-primary-foreground">
                                 <Shield className="mr-1 h-3 w-3" />
@@ -499,8 +592,8 @@ export default function ChatPage() {
                 )}
 
                 <div className="flex space-x-2">
-                  {/* Moderator Mode Toggle - Now available to all users */}
-                  {/* {(user?.department === 'Admin' || user?.department === 'HR') && ( */}
+                  {/* Moderator Mode Toggle - Available based on feature access */}
+                  {canUseModerator && (
                     <div className="flex items-center space-x-2 pr-4 border-r border-border">
                       <input
                         type="checkbox"
@@ -513,7 +606,7 @@ export default function ChatPage() {
                         Moderator Mode
                       </Label>
                     </div>
-                  {/* )} */}
+                  )}
 
                   <Input
                     placeholder={
@@ -558,39 +651,39 @@ export default function ChatPage() {
                 <CollapsibleContent className="w-80 p-6">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Chat Guidelines</h3>
               
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium">Anonymous Communication</h4>
-                  <p className="text-sm text-muted-foreground">Your identity is protected. Use randomly assigned names for open, honest discussions.</p>
-                </div>
-                <hr className="border-border" />
-                <div>
-                  <h4 className="text-sm font-medium">Respectful Environment</h4>
-                  <p className="text-sm text-muted-foreground">Maintain professionalism and respect for all participants in discussions.</p>
-                </div>
-                <hr className="border-border" />
-                <div>
-                  <h4 className="text-sm font-medium">Session-Based Storage</h4>
-                  <p className="text-sm text-muted-foreground">Messages are stored in the database and can be cleared by administrators.</p>
-                </div>
-                <hr className="border-border" />
-                <div>
-                  <h4 className="text-sm font-medium">Chat Moderation</h4>
-                  <p className="text-sm text-muted-foreground">Any user can pause the chat to prevent new messages from all users except moderators.</p>
-                </div>
-                <hr className="border-border" />
-                <div>
-                  <h4 className="text-sm font-medium">Constructive Feedback</h4>
-                  <p className="text-sm text-muted-foreground">Use this space for constructive feedback and collaborative problem-solving.</p>
-                </div>
-              </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium">Anonymous Communication</h4>
+                      <p className="text-sm text-muted-foreground">Your identity is protected. Use randomly assigned names for open, honest discussions.</p>
+                    </div>
+                    <hr className="border-border" />
+                    <div>
+                      <h4 className="text-sm font-medium">Respectful Environment</h4>
+                      <p className="text-sm text-muted-foreground">Maintain professionalism and respect for all participants in discussions.</p>
+                    </div>
+                    <hr className="border-border" />
+                    <div>
+                      <h4 className="text-sm font-medium">Session-Based Storage</h4>
+                      <p className="text-sm text-muted-foreground">Messages are stored in the database and can be cleared by administrators.</p>
+                    </div>
+                    <hr className="border-border" />
+                    <div>
+                      <h4 className="text-sm font-medium">Chat Moderation</h4>
+                      <p className="text-sm text-muted-foreground">Any user can pause the chat to prevent new messages from all users except moderators.</p>
+                    </div>
+                    <hr className="border-border" />
+                    <div>
+                      <h4 className="text-sm font-medium">Constructive Feedback</h4>
+                      <p className="text-sm text-muted-foreground">Use this space for constructive feedback and collaborative problem-solving.</p>
+                    </div>
+                  </div>
 
-              <div className="mt-6 p-4 bg-primary/10 rounded-lg">
-                <h4 className="text-sm font-medium text-primary mb-2">💡 Pro Tip</h4>
-                <p className="text-xs text-primary/80">
-                  Anonymous chat works best when everyone participates respectfully and focuses on constructive communication.
-                </p>
-              </div>
+                  <div className="mt-6 p-4 bg-primary/10 rounded-lg">
+                    <h4 className="text-sm font-medium text-primary mb-2">💡 Pro Tip</h4>
+                    <p className="text-xs text-primary/80">
+                      Anonymous chat works best when everyone participates respectfully and focuses on constructive communication.
+                    </p>
+                  </div>
                 </CollapsibleContent>
               </div>
             </Collapsible>

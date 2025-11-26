@@ -316,29 +316,39 @@ router.delete("/approvals/certifications/:certId", authenticateJWT, async (req, 
 // Feature Access Control APIs
 // ---------------------------------
 
-// Get all available pages (based on app directory structure)
+// Get all available pages and features
 router.get("/pages", authenticateJWT, async (req, res) => {
   try {
-    // Define all available pages in the application
+    // Define all available pages and features in the application
     const pages = [
       { name: 'dashboard', title: 'Dashboard' },
       { name: 'profile', title: 'Profile' },
       { name: 'chat', title: 'Chat' },
+      { name: 'chat/moderator', title: 'Chat - Moderator Mode' },
+      { name: 'chat/pause', title: 'Chat - Pause/Resume' },
+      { name: 'chat/summarizer', title: 'Chat - Summarizer' },
+      { name: 'chat/clear', title: 'Chat - Clear Chat' },
       { name: 'clock', title: 'Clock' },
+      { name: 'clock/manage-locations', title: 'Clock - Manage Your Locations' },
+      { name: 'clock/delete-locations', title: 'Clock - Delete Locations' },
       { name: 'settings', title: 'Settings' },
       { name: 'approvals', title: 'Approvals' },
       { name: 'admin/departments', title: 'Admin Departments' },
       { name: 'admin/features', title: 'Admin Features' },
-      { name: 'hr', title: 'HR Dashboard' },
       { name: 'hr/onboarding', title: 'HR Onboarding' },
+      { name: 'hr/onboarding/create-user', title: 'HR Onboarding - Create New User' },
+      { name: 'hr/onboarding/schedule-inductions', title: 'HR Onboarding - Schedule Inductions' },
       { name: 'hr/queries', title: 'HR Queries' },
+      { name: 'hr/queries/send-query', title: 'HR Queries - Send Query' },
       { name: 'hr/users', title: 'HR Users' },
+      { name: 'hr/users/view-details', title: 'HR Users - View Details' },
       { name: 'inventory/inbound', title: 'Inventory Inbound' },
       { name: 'inventory/outbound', title: 'Inventory Outbound' },
       { name: 'inventory/products', title: 'Inventory Products' },
       { name: 'inventory/store', title: 'Inventory Store' },
       { name: 'resources/wiki', title: 'Resources Wiki' },
-      { name: 'resources/wiki/create', title: 'Create Wiki Page' }
+      { name: 'resources/wiki/create', title: 'Create Wiki Page' },
+      { name: 'resources/wiki/create-topic', title: 'Create Wiki - Create Topic Button' }
     ];
 
     res.json(pages);

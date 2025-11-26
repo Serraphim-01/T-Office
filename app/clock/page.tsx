@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { MapPin, Clock, LogIn, LogOut, Navigation, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect, useRef } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 
@@ -54,8 +55,38 @@ export default function ClockPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canManageLocations, setCanManageLocations] = useState(false);
+  const [canDeleteLocations, setCanDeleteLocations] = useState(false);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<(google.maps.Marker | google.maps.marker.AdvancedMarkerElement)[]>([]);
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to main clock page first
+    const clockAccess = await hasPageAccess(user, 'clock');
+    
+    if (!clockAccess) {
+      // If no access to main clock page, disable all clock features
+      setCanManageLocations(false);
+      setCanDeleteLocations(false);
+      return;
+    }
+    
+    // Check access to specific clock features
+    const manageLocationsAccess = await hasPageAccess(user, 'clock/manage-locations');
+    const deleteLocationsAccess = await hasPageAccess(user, 'clock/delete-locations');
+    
+    setCanManageLocations(manageLocationsAccess);
+    setCanDeleteLocations(deleteLocationsAccess);
+  };
 
   useEffect(() => {
     if (user) {
@@ -661,137 +692,144 @@ export default function ClockPage() {
           </CardContent>
         </Card>
 
-        {/* Location Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <MapPin className="mr-2 h-5 w-5" />
-              Manage Your Locations
-            </CardTitle>
-            <CardDescription>Add, edit, and manage your personal clock-in locations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Location Name</label>
-                <input
-                  type="text"
-                  value={locationForm.name}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Home Office"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+        {/* Location Management - Only show if user has manage locations access */}
+        {canManageLocations && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MapPin className="mr-2 h-5 w-5" />
+                Manage Your Locations
+              </CardTitle>
+              <CardDescription>Add, edit, and manage your personal clock-in locations</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Location Name</label>
+                  <input
+                    type="text"
+                    value={locationForm.name}
+                    onChange={(e) => setLocationForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., Home Office"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Address (Optional)</label>
+                  <input
+                    type="text"
+                    value={locationForm.address}
+                    onChange={(e) => setLocationForm(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="e.g., 123 Main St, City"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={locationForm.latitude}
+                    onChange={(e) => setLocationForm(prev => ({ ...prev, latitude: e.target.value }))}
+                    placeholder="e.g., 40.7128"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={locationForm.longitude}
+                    onChange={(e) => setLocationForm(prev => ({ ...prev, longitude: e.target.value }))}
+                    placeholder="e.g., -74.0060"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Radius (meters)</label>
+                  <input
+                    type="number"
+                    value={locationForm.radius_meters}
+                    onChange={(e) => setLocationForm(prev => ({ ...prev, radius_meters: e.target.value }))}
+                    placeholder="100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex items-end space-x-2">
+                  <Button
+                    onClick={handleSaveLocation}
+                    disabled={isLoading}
+                    className="flex-1"
+                  >
+                    {isLoading ? 'Saving...' : 'Save Location'}
+                  </Button>
+                  <Button
+                    onClick={handleSetDefaultLocation}
+                    variant="outline"
+                    disabled={isLoading}
+                  >
+                    Default Location
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address (Optional)</label>
-                <input
-                  type="text"
-                  value={locationForm.address}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="e.g., 123 Main St, City"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Latitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={locationForm.latitude}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, latitude: e.target.value }))}
-                  placeholder="e.g., 40.7128"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Longitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={locationForm.longitude}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, longitude: e.target.value }))}
-                  placeholder="e.g., -74.0060"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Radius (meters)</label>
-                <input
-                  type="number"
-                  value={locationForm.radius_meters}
-                  onChange={(e) => setLocationForm(prev => ({ ...prev, radius_meters: e.target.value }))}
-                  placeholder="100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex items-end space-x-2">
-                <Button
-                  onClick={handleSaveLocation}
-                  disabled={isLoading}
-                  className="flex-1"
-                >
-                  {isLoading ? 'Saving...' : 'Save Location'}
-                </Button>
-                <Button
-                  onClick={handleSetDefaultLocation}
-                  variant="outline"
-                  disabled={isLoading}
-                >
-                  Default Location
-                </Button>
-              </div>
-            </div>
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                {error}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  {error}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-        {/* User Locations List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Locations</CardTitle>
-            <CardDescription>Manage your saved locations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {userLocations.length === 0 ? (
-                <div className="text-muted-foreground text-center py-4">No locations saved yet</div>
-              ) : (
-                userLocations.map((location) => (
-                  <div key={location.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <div>
-                        <div className="font-medium">{location.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {parseFloat(location.latitude.toString()).toFixed(6)}, {parseFloat(location.longitude.toString()).toFixed(6)}
-                          {location.address && ` • ${location.address}`}
+        {/* User Locations List - Only show if user has manage locations access */}
+        {canManageLocations && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Locations</CardTitle>
+              <CardDescription>Manage your saved locations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {userLocations.length === 0 ? (
+                  <div className="text-muted-foreground text-center py-4">No locations saved yet</div>
+                ) : (
+                  userLocations.map((location) => (
+                    <div key={location.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <div>
+                          <div className="font-medium">{location.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {parseFloat(location.latitude.toString()).toFixed(6)}, {parseFloat(location.longitude.toString()).toFixed(6)}
+                            {location.address && ` • ${location.address}`}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={location.is_active}
+                          onCheckedChange={(checked) => handleToggleLocation(location.id, checked)}
+                        />
+                        {/* Only show delete button if user has delete locations access */}
+                        {canDeleteLocations && (
+                          <Button
+                            onClick={() => handleDeleteLocation(location.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={location.is_active}
-                        onCheckedChange={(checked) => handleToggleLocation(location.id, checked)}
-                      />
-                      <Button
-                        onClick={() => handleDeleteLocation(location.id)}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Map */}
         <Card>

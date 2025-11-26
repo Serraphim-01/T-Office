@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, BookOpen, Plus, FolderOpen, Menu, CheckCircl
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useUI } from '@/lib/ui-context';
+import { hasPageAccess } from '@/lib/page-access'; // Import hasPageAccess function
 
 interface WikiTopic {
   id: number;
@@ -35,10 +36,33 @@ export default function WikiPage() {
   const [loading, setLoading] = useState(true);
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [canCreateTopic, setCanCreateTopic] = useState(false); // State for create topic access
 
   useEffect(() => {
     fetchWikiData();
+    checkFeatureAccess(); // Check feature access when component mounts
   }, []);
+
+  // Check feature access for creating topics
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to main wiki page first
+    const wikiAccess = await hasPageAccess(user, 'resources/wiki');
+    
+    if (!wikiAccess) {
+      // If no access to main wiki page, disable create topic feature
+      setCanCreateTopic(false);
+      return;
+    }
+    
+    // Check access to create wiki page (which controls create topic buttons)
+    const createWikiAccess = await hasPageAccess(user, 'resources/wiki/create');
+    const createTopicAccess = await hasPageAccess(user, 'resources/wiki/create-topic');
+    
+    // User can create topics if they have access to either the create wiki page or the specific create topic feature
+    setCanCreateTopic(createWikiAccess || createTopicAccess);
+  };
 
   const fetchCompletionData = async (topicsData: DepartmentTopics): Promise<CompletionData> => {
     try {
@@ -246,7 +270,8 @@ export default function WikiPage() {
             ))}
           </div>
 
-          {!sidebarCollapsed && (
+          {/* Only show Create Topic button if user has access */}
+          {!sidebarCollapsed && canCreateTopic && (
             <div className="p-4 border-t">
               <Button asChild className="w-full">
                 <Link href="/resources/wiki/create">
@@ -267,12 +292,19 @@ export default function WikiPage() {
               <p className="text-muted-foreground mb-6">
                 Select a department from the sidebar to browse available topics, or create new content.
               </p>
-              <Button asChild>
-                <Link href="/resources/wiki/create">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Your First Topic
-                </Link>
-              </Button>
+              {/* Only show Create Your First Topic button if user has access */}
+              {canCreateTopic ? (
+                <Button asChild>
+                  <Link href="/resources/wiki/create">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Your First Topic
+                  </Link>
+                </Button>
+              ) : (
+                <p className="text-muted-foreground">
+                  You don't have permission to create new topics.
+                </p>
+              )}
             </div>
           </div>
         </div>

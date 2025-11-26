@@ -48,9 +48,9 @@ const menuItems = [
   },
   {
     title: 'HR',
-    href: '/hr',
+    href: '', // Empty href for parent items with children
     icon: Users,
-    pagePath: 'hr',
+    pagePath: 'hr/onboarding',
     children: [
       {
         title: 'Onboarding',
@@ -107,6 +107,11 @@ const menuItems = [
         title: 'Wiki',
         href: '/resources/wiki',
         pagePath: 'resources/wiki'
+      },
+      {
+        title: 'Create Wiki',
+        href: '/resources/wiki/create',
+        pagePath: 'resources/wiki/create'
       }
     ]
   },
@@ -245,7 +250,7 @@ export function AccessControlledNav() {
         const hasChildren = item.children && item.children.length > 0;
         
         return (
-          <div key={item.href}>
+          <div key={item.href || item.title}>
             {hasChildren ? (
               // Parent items with children are not clickable, just toggle dropdown
               <div

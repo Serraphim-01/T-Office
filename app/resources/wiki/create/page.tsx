@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useUI } from '@/lib/ui-context';
 import { useToast } from '@/hooks/use-toast';
+import { hasPageAccess } from '@/lib/page-access'; // Import hasPageAccess function
 
 export default function CreateWikiPage() {
   const { user } = useAuth();
@@ -33,11 +34,45 @@ export default function CreateWikiPage() {
       correct_answer: number;
     }>
   });
+  const [canCreateTopic, setCanCreateTopic] = useState(false); // State for create topic access
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
+    // Check feature access when component mounts
+    checkFeatureAccess();
+    
     // Fetch available departments
     fetchDepartments();
   }, [user, router]);
+
+  // Check feature access for creating topics
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to main wiki page first
+    const wikiAccess = await hasPageAccess(user, 'resources/wiki');
+    
+    if (!wikiAccess) {
+      // If no access to main wiki page, deny access to create page
+      router.push('/resources/wiki');
+      return;
+    }
+    
+    // Check access to create wiki page
+    const createWikiAccess = await hasPageAccess(user, 'resources/wiki/create');
+    
+    if (!createWikiAccess) {
+      // If no access to create wiki page, deny access
+      router.push('/resources/wiki');
+      return;
+    }
+    
+    // Check access to create topic feature
+    const createTopicAccess = await hasPageAccess(user, 'resources/wiki/create-topic');
+    
+    // User can create topics if they have access to the create wiki page and the specific create topic feature
+    setCanCreateTopic(createWikiAccess && createTopicAccess);
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -69,6 +104,16 @@ export default function CreateWikiPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!formData.department || !formData.topic || !formData.content) {
       toast({
@@ -142,6 +187,16 @@ export default function CreateWikiPage() {
   };
 
   const addQuestion = () => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: [...prev.questions, {
@@ -153,6 +208,16 @@ export default function CreateWikiPage() {
   };
 
   const removeQuestion = (index: number) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.filter((_, i) => i !== index)
@@ -160,6 +225,16 @@ export default function CreateWikiPage() {
   };
 
   const updateQuestion = (index: number, field: string, value: any) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -169,6 +244,16 @@ export default function CreateWikiPage() {
   };
 
   const addOption = (questionIndex: number) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -180,6 +265,16 @@ export default function CreateWikiPage() {
   };
 
   const removeOption = (questionIndex: number, optionIndex: number) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -191,6 +286,16 @@ export default function CreateWikiPage() {
   };
 
   const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.map((q, i) =>
@@ -205,6 +310,16 @@ export default function CreateWikiPage() {
   };
 
   const applyFormatting = (tag: string) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -229,6 +344,16 @@ export default function CreateWikiPage() {
   };
 
   const applyFontSize = (size: string) => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -253,6 +378,16 @@ export default function CreateWikiPage() {
   };
 
   const applyLink = () => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -282,6 +417,16 @@ export default function CreateWikiPage() {
   };
 
   const applyLessonLink = () => {
+    // Check if user has access to create topics
+    if (!canCreateTopic) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to create wiki topics.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -417,9 +562,36 @@ export default function CreateWikiPage() {
     }
   };
 
-
-
-
+  // If user doesn't have access, show access denied message
+  if (!canCreateTopic) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/resources/wiki">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Wiki
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Access Denied</h1>
+              <p className="text-muted-foreground">
+                You don't have permission to create wiki topics.
+              </p>
+            </div>
+          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="text-lg text-muted-foreground">
+                Please contact your administrator to request access to create wiki topics.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

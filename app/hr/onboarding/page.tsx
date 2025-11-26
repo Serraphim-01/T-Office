@@ -11,10 +11,12 @@ import { Calendar, Users, UserPlus, FileText, Clock, CheckCircle, Plus, X, Trash
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchDepartments } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
+import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface User {
   id: number;
@@ -40,6 +42,14 @@ interface DepartmentInduction {
 }
 
 export default function HROnboardingPage() {
+  return (
+    <AccessControlWrapper pagePath="hr/onboarding">
+      <HROnboardingContent />
+    </AccessControlWrapper>
+  );
+}
+
+function HROnboardingContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
@@ -48,10 +58,40 @@ export default function HROnboardingPage() {
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [selectedInduction, setSelectedInduction] = useState<Induction | null>(null);
   const [departments, setDepartments] = useState<string[]>([]);
+  const [canCreateUser, setCanCreateUser] = useState(false);
+  const [canScheduleInductions, setCanScheduleInductions] = useState(false);
 
   // Form states
   const [newUser, setNewUser] = useState<{ name: string; email: string; department: string }>({ name: '', email: '', department: '' });
   const [newInductions, setNewInductions] = useState<DepartmentInduction[]>([{ department: '', induction_time: '', attendees: [] }]);
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to HR onboarding page
+    const onboardingAccess = await hasPageAccess(user, 'hr/onboarding');
+    
+    if (!onboardingAccess) {
+      // If no access to HR onboarding page, disable all features
+      setCanCreateUser(false);
+      setCanScheduleInductions(false);
+      return;
+    }
+    
+    // Check access to specific HR onboarding features
+    const createUserAccess = await hasPageAccess(user, 'hr/onboarding/create-user');
+    const scheduleInductionsAccess = await hasPageAccess(user, 'hr/onboarding/schedule-inductions');
+    
+    setCanCreateUser(createUserAccess);
+    setCanScheduleInductions(scheduleInductionsAccess);
+  };
 
   useEffect(() => {
     if (user) {
@@ -125,15 +165,26 @@ export default function HROnboardingPage() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`User created successfully! Default password: ${data.default_password}`);
+        toast({
+          title: "Success",
+          description: `User created successfully! Default password: ${data.default_password}`,
+        });
         setNewUser({ name: '', email: '', department: '' });
         fetchUsers();
       } else {
-        alert('Failed to create user');
+        toast({
+          title: "Error",
+          description: "Failed to create user",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('Error creating user');
+      toast({
+        title: "Error",
+        description: "Error creating user",
+        variant: "destructive",
+      });
     }
     setLoading(false);
   };
@@ -191,15 +242,26 @@ export default function HROnboardingPage() {
       const allSuccessful = responses.every(response => response.ok);
 
       if (allSuccessful) {
-        alert('All inductions created successfully!');
+        toast({
+          title: "Success",
+          description: "All inductions created successfully!",
+        });
         setNewInductions([{ department: '', induction_time: '', attendees: [] }]);
         fetchInductions();
       } else {
-        alert('Failed to create some inductions');
+        toast({
+          title: "Error",
+          description: "Failed to create some inductions",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error creating inductions:', error);
-      alert('Error creating inductions');
+      toast({
+        title: "Error",
+        description: "Error creating inductions",
+        variant: "destructive",
+      });
     }
     setLoading(false);
   };
@@ -218,14 +280,25 @@ export default function HROnboardingPage() {
       });
 
       if (response.ok) {
-        alert('Induction deleted successfully!');
+        toast({
+          title: "Success",
+          description: "Induction deleted successfully!",
+        });
         fetchInductions(); // Refresh the list
       } else {
-        alert('Failed to delete induction');
+        toast({
+          title: "Error",
+          description: "Failed to delete induction",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error deleting induction:', error);
-      alert('Error deleting induction');
+      toast({
+        title: "Error",
+        description: "Error deleting induction",
+        variant: "destructive",
+      });
     }
   };
 
@@ -245,168 +318,172 @@ export default function HROnboardingPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">HR Onboarding</h1>
-          <div className="text-sm text-muted-foreground">{user.department}</div>
+          <div className="text-sm text-muted-foreground">{user?.department}</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Create User */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <UserPlus className="mr-2 h-5 w-5" />
-                Create New User
-              </CardTitle>
-              <CardDescription>Create a new user account with default password</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  placeholder="Enter full name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  placeholder="Enter email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button onClick={createUser} disabled={loading} className="w-full">
-                {loading ? 'Creating...' : 'Create User'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Create Inductions for Multiple Departments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="mr-2 h-5 w-5" />
-                Schedule Inductions
-              </CardTitle>
-              <CardDescription>Schedule induction sessions for multiple departments</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {newInductions.map((induction, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium">Department {index + 1}</h3>
-                    {newInductions.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeDepartmentInduction(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor={`department-${index}`}>Department</Label>
-                    <Select 
-                      value={induction.department} 
-                      onValueChange={(value) => updateDepartmentInduction(index, 'department', value)}
-                    >
-                      <SelectTrigger id={`department-${index}`}>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor={`induction-date-${index}`}>Induction Date & Time</Label>
-                    <Input
-                      id={`induction-date-${index}`}
-                      type="datetime-local"
-                      value={induction.induction_time}
-                      onChange={(e) => updateDepartmentInduction(index, 'induction_time', e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Attendees</Label>
-                    <Select
-                      value=""
-                      onValueChange={(value) => addAttendeeToInduction(index, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select attendees" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.full_name} ({user.email})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {induction.attendees && induction.attendees.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {induction.attendees.map((attendeeId) => {
-                          const user = users.find(u => u.id.toString() === attendeeId);
-                          return (
-                            <div key={attendeeId} className="flex items-center gap-2 bg-secondary px-2 py-1 rounded">
-                              <span className="text-sm">{user?.full_name || attendeeId}</span>
-                              <button
-                                onClick={() => removeAttendeeFromInduction(index, attendeeId)}
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+          {/* Create User - Only show if user has create user access */}
+          {canCreateUser && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  Create New User
+                </CardTitle>
+                <CardDescription>Create a new user account with default password</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    placeholder="Enter full name"
+                  />
                 </div>
-              ))}
-              
-              <Button type="button" variant="outline" onClick={addDepartmentInduction} className="w-full">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Another Department
-              </Button>
-              
-              <Button onClick={createInductions} disabled={loading} className="w-full">
-                {loading ? 'Scheduling...' : 'Schedule All Inductions'}
-              </Button>
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    placeholder="Enter email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button onClick={createUser} disabled={loading} className="w-full">
+                  {loading ? 'Creating...' : 'Create User'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Create Inductions for Multiple Departments - Only show if user has schedule inductions access */}
+          {canScheduleInductions && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Schedule Inductions
+                </CardTitle>
+                <CardDescription>Schedule induction sessions for multiple departments</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {newInductions.map((induction, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-medium">Department {index + 1}</h3>
+                      {newInductions.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeDepartmentInduction(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`department-${index}`}>Department</Label>
+                      <Select 
+                        value={induction.department} 
+                        onValueChange={(value) => updateDepartmentInduction(index, 'department', value)}
+                      >
+                        <SelectTrigger id={`department-${index}`}>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`induction-date-${index}`}>Induction Date & Time</Label>
+                      <Input
+                        id={`induction-date-${index}`}
+                        type="datetime-local"
+                        value={induction.induction_time}
+                        onChange={(e) => updateDepartmentInduction(index, 'induction_time', e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Attendees</Label>
+                      <Select
+                        value=""
+                        onValueChange={(value) => addAttendeeToInduction(index, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select attendees" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id.toString()}>
+                              {user.full_name} ({user.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {induction.attendees && induction.attendees.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {induction.attendees.map((attendeeId) => {
+                            const user = users.find(u => u.id.toString() === attendeeId);
+                            return (
+                              <div key={attendeeId} className="flex items-center gap-2 bg-secondary px-2 py-1 rounded">
+                                <span className="text-sm">{user?.full_name || attendeeId}</span>
+                                <button
+                                  onClick={() => removeAttendeeFromInduction(index, attendeeId)}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                
+                <Button type="button" variant="outline" onClick={addDepartmentInduction} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Another Department
+                </Button>
+                
+                <Button onClick={createInductions} disabled={loading} className="w-full">
+                  {loading ? 'Scheduling...' : 'Schedule All Inductions'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Inductions List */}
+        {/* Inductions List - Always show if user has access to onboarding page */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">

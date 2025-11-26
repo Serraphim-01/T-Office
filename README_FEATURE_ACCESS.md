@@ -1,25 +1,20 @@
 # Feature Access Control System
 
-This document explains how to use the newly implemented feature access control system in the T-Office application.
+This document explains the feature access control system in the T-Office application.
 
 ## Overview
 
-The feature access control system allows administrators to control which pages each department can access. This ensures that users only see and can navigate to pages that are relevant to their role.
+The feature access control system allows administrators to grant or revoke access to specific pages and features for different departments. This provides fine-grained control over who can access which parts of the application.
 
-## Key Features
-
-1. **Department-Based Access Control**: Each department can be granted access to specific pages
-2. **Admin Department Special Handling**: Admin department automatically has access to all admin pages
-3. **Direct URL Protection**: Users cannot access pages directly via URL if they don't have permission
-4. **Real-time Navigation Updates**: Navigation updates immediately when permissions are changed
-5. **Access Denied Page**: Users see a friendly message when they don't have access to a page
+All access control is managed through a single unified system using the `department_page_access` table, which stores both page access and feature access permissions.
 
 ## How It Works
 
 ### Backend Implementation
 
-The system uses a `department_page_access` table in the database to store which pages each department can access:
+The system uses a single table in the database to store all access information:
 
+#### Page and Feature Access Table
 ```sql
 CREATE TABLE department_page_access (
     department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
@@ -29,17 +24,55 @@ CREATE TABLE department_page_access (
 );
 ```
 
-### Frontend Implementation
+Pages and features are stored in the same table. Features are identified by paths like `chat/moderator`, `chat/pause`, etc.
 
-1. **Access Control Wrapper**: All protected pages are wrapped with the `AccessControlWrapper` component
-2. **Navigation Filtering**: The `AccessControlledNav` component only shows pages the user has access to
-3. **Real-time Updates**: Navigation refreshes automatically when permissions change
+### Default Access
 
-## Setting Up Access Control
+By default, all departments have access to common pages:
+- dashboard
+- profile
+- chat
+- clock
+- resources/wiki
+- settings
+- approvals
 
-### 1. Run Database Migration
+The Admin department additionally has access to all admin pages and features:
+- admin/features
+- admin/departments
+- admin/db
+- approvals
+- chat/moderator
+- chat/pause
+- chat/summarizer
+- chat/clear
+- clock/manage-locations
+- clock/delete-locations
+- resources/wiki/create
+- resources/wiki/create-topic
 
-First, ensure the Admin department has access to all admin pages:
+The HR department has access to HR pages and features:
+- hr/onboarding
+- hr/onboarding/create-user
+- hr/onboarding/schedule-inductions
+- hr/queries
+- hr/queries/send-query
+- hr/users
+- hr/users/view-details
+- chat/moderator
+- chat/pause
+- chat/summarizer
+- chat/clear
+- clock/manage-locations
+- clock/delete-locations
+- resources/wiki/create
+- resources/wiki/create-topic
+
+## Managing Access
+
+### 1. Run the Migration
+
+First, run the feature access migration to create the necessary database tables:
 
 ```bash
 npm run migrate:admin-access
@@ -58,18 +91,25 @@ npm run test:admin-access
 1. Log in as an Admin user
 2. Navigate to the Features page (`/admin/features`)
 3. Select a department from the dropdown
-4. Check/uncheck pages to grant/revoke access
+4. Check/uncheck pages or features to grant/revoke access
 5. Click "Save Changes"
 
 The navigation will update immediately to reflect the changes.
 
-## Adding New Pages to Access Control
+Note: 
+- Chat features (moderator, pause, summarizer, clear) are dependent on the main chat page access. When the main chat page is disabled, all chat sub-features are automatically disabled and non-selectable. When the main chat page is enabled, the chat sub-features become selectable.
+- Clock features (manage-locations, delete-locations) are dependent on the main clock page access.
+- HR features are dependent on their respective HR page access (onboarding, queries, users).
+- Wiki features (create-topic) are dependent on the main wiki page access.
 
-To add a new page to the access control system:
+## Adding New Pages or Features to Access Control
 
-1. Add the page to the `pages` array in `/backend/routes/admin.js` in the `/pages` endpoint
+To add a new page or feature to the access control system:
+
+1. Add the page/feature to the `pages` array in `/backend/routes/admin.js` in the `/pages` endpoint
 2. Wrap the page component with `AccessControlWrapper` in the page's `page.tsx` file
-3. Add the page to the navigation menu in `/components/access-controlled-nav.tsx` if it should appear in the sidebar
+3. Add the page/feature to the navigation menu in `/components/access-controlled-nav.tsx` if it should appear in the sidebar
+4. For features, implement access checks in the relevant frontend components using `hasPageAccess`
 
 ## Special Cases
 
@@ -91,56 +131,55 @@ Run the verification script to ensure all components are correctly implemented:
 npm run verify:updates
 ```
 
-### Manual Testing
+## API Endpoints
 
-1. Log in as a user from a department with limited access
-2. Verify they only see pages they have access to in the navigation
-3. Try to access a page directly via URL that they don't have access to
-4. Verify they see the access denied message
-5. Log in as an Admin user
-6. Go to the Features page and modify access for a department
-7. Verify the navigation updates immediately
-8. Log in as a user from that department and verify they can now access the newly granted pages
+The following API endpoints are available in `/backend/routes/admin.js`:
 
-## Troubleshooting
+### Page and Feature Access Endpoints
+- `GET /api/admin/pages` - Get all available pages and features
+- `GET /api/admin/departments/:departmentId/pages` - Get pages and features assigned to a department
+- `POST /api/admin/departments/:departmentId/pages` - Update pages and features assigned to a department
 
-### Navigation Not Updating
+## Utility Functions
 
-If navigation doesn't update after changing permissions:
+The following utility functions in `/lib/page-access.ts` can be used throughout the application:
 
-1. Ensure the `navigation-refresh` event is being dispatched in the Features page
-2. Check that the `AccessControlledNav` component is listening for this event
-3. Verify there are no JavaScript errors in the browser console
+- `hasPageAccess(user, pagePath)` - Check if user has access to a specific page or feature
+- `clearPageAccessCache()` - Clear the access cache
+- `checkCurrentPageAccess(user, currentPagePath)` - Check if user has access to current page
 
-### Access Denied for Admin User
+## Feature Dependencies
 
-If an Admin user is seeing access denied messages:
+### Chat Features
+The following chat features can be controlled per department:
+- **chat/moderator** - Allows users to send messages as a moderator
+- **chat/pause** - Allows users to pause/resume the chat for all users
+- **chat/summarizer** - Allows users to generate summaries of chat conversations
+- **chat/clear** - Allows users to clear all messages from the chat
 
-1. Run the admin access migration: `npm run migrate:admin-access`
-2. Verify the Admin department has the correct access: `npm run test:admin-access`
-3. Check that the special case handling for Admin department is working in `/lib/page-access.ts`
+Important: Chat features are dependent on the main chat page access. When the main chat page (`chat`) is disabled for a department, all chat sub-features are automatically inaccessible. When the main chat page is enabled, individual chat features can be selectively enabled or disabled.
 
-### Page Counts Not Updating
+### Clock Features
+The following clock features can be controlled per department:
+- **clock/manage-locations** - Allows users to manage their stored locations
+- **clock/delete-locations** - Allows users to delete stored locations
 
-If department page counts are not updating in the Features page:
+Important: Clock features are dependent on the main clock page access. When the main clock page (`clock`) is disabled for a department, all clock sub-features are automatically inaccessible. When the main clock page is enabled, individual clock features can be selectively enabled or disabled.
 
-1. Ensure you're using the `/departments` endpoint which includes page counts
-2. Verify that the page count is being updated in the UI after saving changes
-3. Check that the cache is being cleared after saving changes
+### HR Features
+The following HR features can be controlled per department:
+- **hr/onboarding/create-user** - Allows users to create new users in the onboarding section
+- **hr/onboarding/schedule-inductions** - Allows users to schedule inductions in the onboarding section
+- **hr/queries/send-query** - Allows users to send queries in the queries section
+- **hr/users/view-details** - Allows users to view user details in the users management section
 
-## Future Enhancements
+Important: HR features are dependent on their respective HR page access. When the main HR pages (`hr/onboarding`, `hr/queries`, `hr/users`) are disabled for a department, all related sub-features are automatically inaccessible. When the main HR pages are enabled, individual HR features can be selectively enabled or disabled.
 
-1. **WebSocket Integration**: Use WebSockets for real-time navigation updates across all users
-2. **Audit Logging**: Log all access control changes for security auditing
-3. **Bulk Operations**: Add support for assigning/unassigning multiple pages at once
-4. **Permission Templates**: Create templates for common department configurations
+### Wiki Features
+The following wiki features can be controlled per department:
+- **resources/wiki/create** - Allows users to access the create wiki page
+- **resources/wiki/create-topic** - Allows users to create new topics in the wiki
 
-## Route Structure Changes
+Important: Wiki features are dependent on the main wiki page access. When the main wiki page (`resources/wiki`) is disabled for a department, all wiki sub-features are automatically inaccessible. When the main wiki page is enabled, individual wiki features can be selectively enabled or disabled.
 
-As part of the latest updates, the routing structure has been simplified:
-
-- **Approvals**: Now accessible at `/approvals` instead of `/admin/approvals`
-- **HR**: Remains accessible at `/hr` (not nested under admin)
-- **Admin**: Contains only administrative functions like Database, Departments, and Features
-
-This change makes the navigation more intuitive and aligns with the principle that HR and Approvals should be standalone top-level items rather than nested under the Admin section.
+When a department does not have access to a feature, the corresponding UI elements are hidden from the interface.
