@@ -483,3 +483,698 @@ INSERT INTO locations (name, latitude, longitude, radius_meters, address, is_act
 ('Warehouse Facility', 40.7589, -73.9851, 150, '456 Industrial Ave, New York, NY 10002', true),
 ('Branch Office', 40.7505, -73.9934, 80, '789 Business Blvd, New York, NY 10003', true)
 ON CONFLICT DO NOTHING;
+
+-- ===========================================
+-- DEPARTMENT PAGE ACCESS CONFIGURATION
+-- ===========================================
+
+-- Insert default access for Admin department to Admin Features page
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/features'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for HR department to HR pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/users'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for Admin department to chat features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/moderator'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/pause'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/summarizer'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/clear'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for HR department to chat features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/moderator'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/pause'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/summarizer'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/clear'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for Admin department to clock features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/manage-locations'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/delete-locations'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for HR department to clock features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/manage-locations'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/delete-locations'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for Admin department to HR features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/create-user'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/schedule-inductions'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/send-query'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/users/view-details'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for HR department to HR features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/create-user'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/schedule-inductions'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/send-query'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/users/view-details'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for Admin department to wiki features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create-topic'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for HR department to wiki features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create-topic'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for all departments to common pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'dashboard'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'profile'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'settings'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'approvals'
+FROM departments
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure Admin department has access to all admin pages and chat features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'approvals'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/db'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/departments'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/features'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/hr'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Also ensure Admin has access to all common pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'dashboard'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'profile'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/moderator'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/pause'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/summarizer'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/clear'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/manage-locations'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/delete-locations'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'settings'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki/create-topic'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure HR department has access to HR pages and features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/create-user'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/onboarding/schedule-inductions'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/send-query'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/users'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/users/view-details'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure Admin department has access to Inventory pages and features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/add-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/edit-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/delete-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/inbound/mark-as-stored'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/store/create-outbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/mark-as-dispatched'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/mark-as-delivered'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/outbound/delete-transaction'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure Admin department has access to Inventory Products pages and features
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/import-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/import-all-data'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/export-csv'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/add-product'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/view-details'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/edit-product'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/delete-product'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Give Admin department access to all Admin pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'approvals'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/db'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/departments'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'admin/features'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Also ensure Admin has access to all common pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'dashboard'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'profile'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'settings'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Ensure Admin department has access to approvals page
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'approvals'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Migration script to add inventory features to existing departments
+-- This script ensures all departments have the new inventory features in the department_page_access table
+
+-- Add inventory inbound page access for all departments that already have inbound access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/inbound/export-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/inbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/inbound/add-transaction'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/inbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/inbound/edit-transaction'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/inbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/inbound/delete-transaction'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/inbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/inbound/mark-as-stored'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/inbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Add inventory store page access for all departments that already have store access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/store/export-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/store'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/store/create-outbound'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/store'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Add inventory outbound page access for all departments that already have outbound access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/outbound/export-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/outbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/outbound/mark-as-dispatched'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/outbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/outbound/mark-as-delivered'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/outbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/outbound/delete-transaction'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/outbound'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Add inventory products page access for all departments that already have products access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/import-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/import-all-data'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/export-csv'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/add-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/view-details'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/edit-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/delete-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;

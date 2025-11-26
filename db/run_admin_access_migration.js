@@ -12,16 +12,16 @@ async function runMigration() {
   try {
     console.log('Running admin access migration...');
     
-    // Run the SQL file using the existing run_sql.js script
-    const { stdout, stderr } = await execPromise('node db/run_sql.js db/ensure_admin_access.sql');
-    
-    if (stderr) {
-      console.error('Error running migration:', stderr);
-      process.exit(1);
-    }
-    
-    console.log('Admin access migration completed successfully!');
-    console.log(stdout);
+    // Since we've consolidated all migrations into create_migration.sql,
+    // we'll inform the user that this migration is now part of the main migration
+    console.log('NOTE: Admin access configurations are now part of the main create_migration.sql file.');
+    console.log('To apply these configurations, please run the main migration:');
+    console.log('  node db/run_sql.js db/create_migration.sql');
+    console.log('');
+    console.log('If you only want to update admin access, you can run:');
+    console.log('  node db/run_sql.js db/create_migration.sql');
+    console.log('');
+    console.log('Admin access migration note completed successfully!');
   } catch (error) {
     console.error('Failed to run admin access migration:', error);
     process.exit(1);

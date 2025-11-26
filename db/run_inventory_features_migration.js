@@ -1,50 +1,31 @@
 // Script to run the inventory features migration
-const fs = require('fs');
-const path = require('path');
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Read the SQL migration file
-const sqlFilePath = path.join(__dirname, 'migrate_inventory_features.sql');
-const sql = fs.readFileSync(sqlFilePath, 'utf8');
-
-console.log('Running inventory features migration...');
-
-// This would typically connect to the database and run the SQL
-// For now, we'll just output the SQL that would be run
-console.log('\n--- SQL to be executed ---\n');
-console.log(sql);
-console.log('\n--- End of SQL ---\n');
-
-console.log('To apply this migration, you would typically:');
-console.log('1. Connect to your PostgreSQL database');
-console.log('2. Run the SQL statements above');
-console.log('3. Verify the changes were applied successfully\n');
-
-// In a real implementation, you would do something like:
-/*
-const { Client } = require('pg');
+const execPromise = promisify(exec);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function runMigration() {
-  const client = new Client({
-    user: 'your_db_user',
-    host: 'localhost',
-    database: 'your_db_name',
-    password: 'your_db_password',
-    port: 5432,
-  });
-
   try {
-    await client.connect();
-    await client.query(sql);
-    console.log('Migration completed successfully!');
-  } catch (err) {
-    console.error('Error running migration:', err);
-  } finally {
-    await client.end();
+    console.log('Running inventory features migration...');
+    
+    // Since we've consolidated all migrations into create_migration.sql,
+    // we'll inform the user that this migration is now part of the main migration
+    console.log('NOTE: Inventory features configurations are now part of the main create_migration.sql file.');
+    console.log('To apply these configurations, please run the main migration:');
+    console.log('  node db/run_sql.js db/create_migration.sql');
+    console.log('');
+    console.log('If you only want to update inventory features, you can run:');
+    console.log('  node db/run_sql.js db/create_migration.sql');
+    console.log('');
+    console.log('Inventory features migration note completed successfully!');
+  } catch (error) {
+    console.error('Failed to run inventory features migration:', error);
+    process.exit(1);
   }
 }
 
 runMigration();
-*/
-
-console.log('Migration script template completed.');
-console.log('Please adapt this script to your specific database connection settings.');

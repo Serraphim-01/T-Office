@@ -38,6 +38,7 @@ DROP TABLE IF EXISTS location_events CASCADE;
 DROP TABLE IF EXISTS auto_attendance CASCADE;
 DROP TABLE IF EXISTS compliance_documents CASCADE;
 DROP TABLE IF EXISTS crawled_sites CASCADE;
+DROP TABLE IF EXISTS department_page_access CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
 DROP TABLE IF EXISTS outbound_serial_numbers CASCADE;
 DROP TABLE IF EXISTS outbound_transactions CASCADE;

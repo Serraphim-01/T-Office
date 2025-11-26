@@ -58,14 +58,75 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
 });
 
+// Function to split SQL properly, taking into account dollar-quoted strings
+function splitSQLStatements(sql) {
+  const statements = [];
+  let currentStatement = '';
+  let i = 0;
+  
+  while (i < sql.length) {
+    const char = sql[i];
+    
+    // Check for dollar quote start ($$ or $tag$)
+    if (char === '$' && i + 1 < sql.length) {
+      // Look for the end of the dollar quote tag
+      let tagEnd = i + 1;
+      while (tagEnd < sql.length && sql[tagEnd] !== '$') {
+        // Allow alphanumeric characters and underscores in tag names
+        if (!/[a-zA-Z0-9_]/.test(sql[tagEnd]) && sql[tagEnd] !== '$') {
+          break;
+        }
+        tagEnd++;
+      }
+      
+      if (tagEnd < sql.length && sql[tagEnd] === '$') {
+        // Found a dollar quote tag
+        const tag = sql.substring(i, tagEnd + 1);
+        currentStatement += tag;
+        i = tagEnd + 1;
+        
+        // Now look for the closing tag
+        const closingTagIndex = sql.indexOf(tag, i);
+        if (closingTagIndex !== -1) {
+          // Add everything up to and including the closing tag
+          currentStatement += sql.substring(i, closingTagIndex + tag.length);
+          i = closingTagIndex + tag.length;
+          continue;
+        }
+      }
+    }
+    
+    // Handle semicolon outside of dollar quotes
+    if (char === ';') {
+      currentStatement = currentStatement.trim();
+      if (currentStatement.length > 0) {
+        statements.push(currentStatement);
+      }
+      currentStatement = '';
+    } else {
+      currentStatement += char;
+    }
+    
+    i++;
+  }
+  
+  // Add the last statement if it exists
+  currentStatement = currentStatement.trim();
+  if (currentStatement.length > 0) {
+    statements.push(currentStatement);
+  }
+  
+  return statements;
+}
+
 async function runSQL(sqlFilePath) {
   try {
     // Read the SQL file
     const sql = readFileSync(sqlFilePath, 'utf8');
     console.log(`Reading SQL file: ${sqlFilePath}`);
     
-    // Split the SQL into individual statements
-    const statements = sql.split(';').filter(stmt => stmt.trim().length > 0);
+    // Split the SQL into individual statements, properly handling dollar-quoted strings
+    const statements = splitSQLStatements(sql);
     console.log(`Executing ${statements.length} SQL statements from ${sqlFilePath}...`);
     
     // Execute each statement
@@ -83,6 +144,7 @@ async function runSQL(sqlFilePath) {
           }
         } catch (err) {
           console.error(`✗ Error executing statement ${i + 1}:`, err.message);
+          console.error(`Statement content: ${statement.substring(0, 100)}...`);
           throw err;
         }
       }
