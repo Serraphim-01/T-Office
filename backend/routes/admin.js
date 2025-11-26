@@ -45,26 +45,7 @@ router.get("/tables", authenticateJWT, async (req, res) => {
   }
 });
 
-// Clear all database records including users
-// Removed requireAdmin middleware to allow all users access
-router.post("/clear-db", authenticateJWT, async (req, res) => {
-  const pool = req.pool;
-  try {
-    // Clear tables in order to avoid foreign key issues
-    await pool.query('TRUNCATE TABLE user_activities CASCADE');
-    await pool.query('TRUNCATE TABLE crawled_sites CASCADE');
-    await pool.query('TRUNCATE TABLE compliance_documents CASCADE');
-    await pool.query('TRUNCATE TABLE users CASCADE');
-
-    res.json({ message: "Database cleared successfully" });
-  } catch (err) {
-    console.error('Error clearing database:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // Delete a specific user
-// Removed requireAdmin middleware to allow all users access
 router.delete("/users/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { id } = req.params;
@@ -87,7 +68,6 @@ router.delete("/users/:id", authenticateJWT, async (req, res) => {
 });
 
 // Add new department
-// Removed requireAdmin middleware to allow all users access
 router.post("/departments", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { name } = req.body;
@@ -347,7 +327,6 @@ router.get("/pages", authenticateJWT, async (req, res) => {
       { name: 'clock', title: 'Clock' },
       { name: 'settings', title: 'Settings' },
       { name: 'approvals', title: 'Approvals' },
-      { name: 'admin/db', title: 'Admin Database' },
       { name: 'admin/departments', title: 'Admin Departments' },
       { name: 'admin/features', title: 'Admin Features' },
       { name: 'hr', title: 'HR Dashboard' },

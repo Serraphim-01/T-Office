@@ -20,7 +20,6 @@ This document summarizes all the changes made to implement comprehensive feature
 2. **Page Components Updates**
    - Updated all admin pages to use the access control wrapper:
      - `app/approvals/page.tsx` (moved from `app/admin/approvals/page.tsx`)
-     - `app/admin/db/page.tsx`
      - `app/admin/departments/page.tsx`
      - `app/admin/features/page.tsx`
    - Each page now has two components:
@@ -51,7 +50,7 @@ This document summarizes all the changes made to implement comprehensive feature
 2. **Admin Access Migration (`db/ensure_admin_access.sql`)**
    - Updated to use `approvals` instead of `admin/approvals`
    - Created migration to ensure Admin department has access to all admin pages
-   - Includes `approvals`, `admin/db`, `admin/departments`, `admin/features`, and `admin/hr`
+   - Includes `approvals`, `admin/departments`, `admin/features`, and `admin/hr`
    - Also ensures access to common pages like dashboard, profile, etc.
    - Uses `ON CONFLICT` to prevent duplicate entries
 

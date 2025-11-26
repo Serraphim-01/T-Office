@@ -123,11 +123,6 @@ const menuItems = [
     pagePath: 'admin/departments',
     children: [
       {
-        title: 'Database',
-        href: '/admin/db',
-        pagePath: 'admin/db'
-      },
-      {
         title: 'Departments',
         href: '/admin/departments',
         pagePath: 'admin/departments'
