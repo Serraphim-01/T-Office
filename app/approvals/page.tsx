@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, Clock, FileText, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
+import { Input } from '@/components/ui/input';
 
 interface CertificationApproval {
   id: string;
@@ -23,6 +24,7 @@ interface CertificationApproval {
   expiry_date?: string;
   has_expiry: boolean;
   status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
   created_at: string;
 }
 
@@ -40,6 +42,8 @@ function ApprovalsContent() {
   const [loading, setLoading] = useState(true);
   const [selectedCert, setSelectedCert] = useState<CertificationApproval | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [rejectionReasons, setRejectionReasons] = useState<{[key: string]: string}>({});
+  const [showRejectionInput, setShowRejectionInput] = useState<{[key: string]: boolean}>({});
 
   const fetchApprovals = async () => {
     try {
@@ -95,19 +99,35 @@ function ApprovalsContent() {
     }
 
     try {
+      const requestBody: any = { status };
+      
+      // Include rejection reason if rejecting
+      if (status === 'rejected' && rejectionReasons[certId]) {
+        requestBody.rejection_reason = rejectionReasons[certId];
+      }
+
       const response = await fetch(`http://localhost:4000/api/admin/approvals/certifications/${certId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         // Revert optimistic update on failure
         await fetchApprovals(); // Refetch to restore the correct state
         console.error('Failed to update certification status');
+      } else {
+        // Clear rejection reason after successful rejection
+        if (status === 'rejected') {
+          setRejectionReasons(prev => {
+            const newReasons = { ...prev };
+            delete newReasons[certId];
+            return newReasons;
+          });
+        }
       }
     } catch (error) {
       // Revert optimistic update on error
@@ -201,14 +221,53 @@ function ApprovalsContent() {
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Approve
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleCertificationApproval(cert.id, 'rejected')}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
+                          <div className="flex flex-col space-y-2">
+                            {showRejectionInput[cert.id] ? (
+                              <div className="flex flex-col space-y-2">
+                                <Input
+                                  placeholder="Reason for rejection"
+                                  value={rejectionReasons[cert.id] || ''}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectionReasons(prev => ({
+                                    ...prev,
+                                    [cert.id]: e.target.value
+                                  }))}
+                                />
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleCertificationApproval(cert.id, 'rejected')}
+                                    disabled={!rejectionReasons[cert.id]}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Confirm Reject
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowRejectionInput(prev => ({
+                                      ...prev,
+                                      [cert.id]: false
+                                    }))}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setShowRejectionInput(prev => ({
+                                  ...prev,
+                                  [cert.id]: true
+                                }))}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>

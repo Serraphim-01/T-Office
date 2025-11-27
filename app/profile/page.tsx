@@ -28,8 +28,8 @@ interface Certification {
   expiry_date?: string;
   has_expiry: boolean;
   status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
   created_at: string;
-  approved_at?: string;
 }
 
 interface Profile {
@@ -55,6 +55,7 @@ interface Induction {
   department: string;
   induction_time: string;
   attendees: string[];
+  attendee_names: { id: string; name: string }[];
 }
 
 interface UserQuery {
@@ -486,14 +487,28 @@ export default function ProfilePage() {
                 <CardContent>
                   <div className="space-y-3">
                     {profile.inductions.map((induction) => (
-                      <div key={induction.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">{induction.department} Department</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(induction.induction_time).toLocaleString()}
+                      <div key={induction.id} className="flex flex-col p-3 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{induction.department} Department</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(induction.induction_time).toLocaleString()}
+                            </div>
                           </div>
+                          <Badge variant="secondary">Scheduled</Badge>
                         </div>
-                        <Badge variant="secondary">Scheduled</Badge>
+                        {induction.attendee_names && induction.attendee_names.length > 0 && (
+                          <div className="mt-2">
+                            <div className="text-xs text-muted-foreground">Attendees:</div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {induction.attendee_names.map((attendee) => (
+                                <Badge key={attendee.id} variant="outline" className="text-xs">
+                                  {attendee.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -637,6 +652,12 @@ export default function ProfilePage() {
                               {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
                             </Badge>
                           </div>
+                          {cert.status === 'rejected' && cert.rejection_reason && (
+                            <div className="mt-2 p-2 bg-destructive/10 rounded text-sm">
+                              <p className="font-medium text-destructive">Rejection Reason:</p>
+                              <p className="text-destructive/80">{cert.rejection_reason}</p>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2 ml-2">
                           {(cert.file_data || cert.file_url) && (

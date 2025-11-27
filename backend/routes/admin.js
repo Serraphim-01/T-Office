@@ -455,6 +455,7 @@ router.get("/approvals/certifications", authenticateJWT, async (req, res) => {
             expiry_date: cert.expiry_date,
             has_expiry: cert.has_expiry,
             status: cert.status,
+            rejection_reason: cert.rejection_reason,
             created_at: cert.created_at
           });
         }
@@ -472,7 +473,7 @@ router.get("/approvals/certifications", authenticateJWT, async (req, res) => {
 router.put("/approvals/certifications/:certId", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { certId } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
+  const { status, rejection_reason } = req.body; // 'approved' or 'rejected'
 
   try {
     // Find the user and certification
@@ -485,6 +486,13 @@ router.put("/approvals/certifications/:certId", authenticateJWT, async (req, res
       if (certIndex !== -1) {
         certs[certIndex].status = status;
         certs[certIndex].approved_at = status === 'approved' ? new Date().toISOString() : null;
+        // Add rejection reason if status is rejected
+        if (status === 'rejected' && rejection_reason) {
+          certs[certIndex].rejection_reason = rejection_reason;
+        } else if (status === 'approved') {
+          // Remove rejection reason when approved
+          delete certs[certIndex].rejection_reason;
+        }
 
         await pool.query(
           'UPDATE user_details SET certifications = $1, updated_at = NOW() WHERE user_id = $2',

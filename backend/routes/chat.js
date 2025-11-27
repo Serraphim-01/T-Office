@@ -72,29 +72,64 @@ router.put("/settings/:userId", authenticateJWT, async (req, res) => {
   }
 });
 
-// Get messages for a user with optional time range filtering
-router.get("/messages/:userId", authenticateJWT, async (req, res) => {
+// New endpoint to get global chat pause status
+router.get("/global-pause", authenticateJWT, async (req, res) => {
   const pool = req.pool;
-  const { userId } = req.params;
-  const { timeRange } = req.query;
 
   try {
-    // Modified to fetch all messages for shared chat, not filtered by user_id
-    let query = 'SELECT * FROM chat_messages';
-    let params = [];
+    const result = await pool.query(
+      'SELECT is_chat_paused, paused_by, paused_at FROM global_chat_settings WHERE id = 1'
+    );
 
-    if (timeRange) {
-      const { startDate, endDate } = getDateRange(timeRange);
-      query += ' WHERE created_at >= $1 AND created_at <= $2';
-      params = [startDate, endDate];
+    if (result.rows.length === 0) {
+      // Return default settings
+      return res.json({
+        is_chat_paused: false,
+        paused_by: null,
+        paused_at: null
+      });
     }
 
-    query += ' ORDER BY created_at DESC LIMIT 100';
-
-    const result = await pool.query(query, params);
-    res.json(result.rows.reverse()); // Reverse to show oldest first
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error fetching chat messages:', err);
+    console.error('Error fetching global chat pause status:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// New endpoint to set global chat pause status
+router.put("/global-pause", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { is_chat_paused } = req.body;
+  const userId = req.user.userId;
+
+  try {
+    const result = await pool.query(
+      `UPDATE global_chat_settings 
+       SET is_chat_paused = $1, paused_by = $2, paused_at = $3, updated_at = NOW()
+       WHERE id = 1
+       RETURNING is_chat_paused, paused_by, paused_at`,
+      [is_chat_paused, is_chat_paused ? userId : null, is_chat_paused ? new Date() : null]
+    );
+
+    if (result.rows.length === 0) {
+      // Insert if not exists
+      await pool.query(
+        `INSERT INTO global_chat_settings (id, is_chat_paused, paused_by, paused_at)
+         VALUES (1, $1, $2, $3)`,
+        [is_chat_paused, is_chat_paused ? userId : null, is_chat_paused ? new Date() : null]
+      );
+      
+      return res.json({
+        is_chat_paused: is_chat_paused,
+        paused_by: is_chat_paused ? userId : null,
+        paused_at: is_chat_paused ? new Date() : null
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating global chat pause status:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -127,8 +162,15 @@ router.post("/messages", authenticateJWT, async (req, res) => {
     
     const isPaused = settingsResult.rows.length > 0 ? settingsResult.rows[0].is_paused : false;
     
-    // If chat is paused, only allow moderators to send messages
-    if (isPaused && !is_moderator) {
+    // Check if global chat is paused
+    const globalPauseResult = await pool.query(
+      'SELECT is_chat_paused FROM global_chat_settings WHERE id = 1'
+    );
+    
+    const isGlobalPaused = globalPauseResult.rows.length > 0 ? globalPauseResult.rows[0].is_chat_paused : false;
+    
+    // If either chat is paused, only allow moderators to send messages
+    if ((isPaused || isGlobalPaused) && !is_moderator) {
       return res.status(403).json({ error: "Chat is currently paused. Only moderators can send messages." });
     }
 
@@ -185,6 +227,33 @@ router.post("/messages", authenticateJWT, async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error sending message:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get messages for a user with optional time range filtering
+router.get("/messages/:userId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { userId } = req.params;
+  const { timeRange } = req.query;
+
+  try {
+    // Modified to fetch all messages for shared chat, not filtered by user_id
+    let query = 'SELECT * FROM chat_messages';
+    let params = [];
+
+    if (timeRange) {
+      const { startDate, endDate } = getDateRange(timeRange);
+      query += ' WHERE created_at >= $1 AND created_at <= $2';
+      params = [startDate, endDate];
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT 100';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows.reverse()); // Reverse to show oldest first
+  } catch (err) {
+    console.error('Error fetching chat messages:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

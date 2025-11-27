@@ -39,11 +39,39 @@ router.get("/", authenticateJWT, async (req, res) => {
     
     // Get user inductions
     const inductionsResult = await pool.query(
-      `SELECT id, department, induction_time, attendees
-       FROM inductions
-       WHERE $1::text = ANY(SELECT jsonb_array_elements_text(attendees))`,
+      `SELECT i.id, i.department, i.induction_time, i.attendees
+       FROM inductions i
+       WHERE $1::text = ANY(SELECT jsonb_array_elements_text(i.attendees))`,
       [userId.toString()]
     );
+    
+    // Enhance inductions with attendee names
+    const enhancedInductions = [];
+    for (const induction of inductionsResult.rows) {
+      // Get attendee names
+      const attendeeIds = induction.attendees || [];
+      if (attendeeIds.length > 0) {
+        const attendeeQuery = `SELECT id, full_name FROM users WHERE id = ANY($1::int[])`;
+        const attendeeResult = await pool.query(attendeeQuery, [attendeeIds]);
+        const attendeeMap = {};
+        attendeeResult.rows.forEach(row => {
+          attendeeMap[row.id] = row.full_name;
+        });
+        
+        enhancedInductions.push({
+          ...induction,
+          attendee_names: attendeeIds.map(id => ({
+            id: id,
+            name: attendeeMap[id] || 'Unknown User'
+          }))
+        });
+      } else {
+        enhancedInductions.push({
+          ...induction,
+          attendee_names: []
+        });
+      }
+    }
     
     res.json({
       id: user.id,
@@ -60,7 +88,7 @@ router.get("/", authenticateJWT, async (req, res) => {
       query_count: userDetails.query_count || 0,
       attendance: userDetails.attendance || [],
       other_details: userDetails.other_details || {},
-      inductions: inductionsResult.rows || []
+      inductions: enhancedInductions || []
     });
   } catch (err) {
     console.error('Error fetching profile:', err);

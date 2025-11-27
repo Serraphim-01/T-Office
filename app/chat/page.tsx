@@ -7,12 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { Send, Users, MessageCircle, Shield, Clock, PanelRightClose, PanelRightOpen, FileText, ChevronDown, Pause, Play } from 'lucide-react';
+import { Send, Users, MessageCircle, Shield, Clock, FileText, ChevronDown, Pause, Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 
@@ -23,12 +22,17 @@ interface Message {
   is_moderator?: boolean;
 }
 
+interface GlobalPauseStatus {
+  is_chat_paused: boolean;
+  paused_by: number | null;
+  paused_at: string | null;
+}
+
 export default function ChatPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(true);
   const [isCheckingToxicity, setIsCheckingToxicity] = useState(false);
   const [toxicityWarning, setToxicityWarning] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -36,11 +40,14 @@ export default function ChatPage() {
   const [timeRange, setTimeRange] = useState('last_7_days');
   const [isModeratorMode, setIsModeratorMode] = useState(false);
   const [isChatPaused, setIsChatPaused] = useState(false);
+  const [isChatGloballyPaused, setIsChatGloballyPaused] = useState(false);
+  const [globalPauseInfo, setGlobalPauseInfo] = useState<GlobalPauseStatus | null>(null);
   const [canUseChat, setCanUseChat] = useState(false);
   const [canUseModerator, setCanUseModerator] = useState(false);
   const [canPauseChat, setCanPauseChat] = useState(false);
   const [canUseSummarizer, setCanUseSummarizer] = useState(false);
   const [canClearChat, setCanClearChat] = useState(false);
+  const [showGuidelines, setShowGuidelines] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Redirect if not logged in
@@ -57,11 +64,22 @@ export default function ChatPage() {
     }
   }, [user]);
 
+  // Show guidelines modal only on first visit
+  useEffect(() => {
+    if (user && canUseChat) {
+      const hasSeenGuidelines = localStorage.getItem('chatGuidelinesShown');
+      if (!hasSeenGuidelines) {
+        setShowGuidelines(true);
+        localStorage.setItem('chatGuidelinesShown', 'true');
+      }
+    }
+  }, [user, canUseChat]);
+
   const checkFeatureAccess = async () => {
     if (!user) return;
     
     // Check access to main chat page first
-    const chatAccess = await hasPageAccess(user, 'chat');
+    const chatAccess = await hasPageAccess(user.id.toString(), 'chat');
     
     if (!chatAccess) {
       // If no access to main chat page, disable all chat features
@@ -77,10 +95,10 @@ export default function ChatPage() {
     setCanUseChat(true);
     
     // Check access to various chat features using the page access system
-    const moderatorAccess = await hasPageAccess(user, 'chat/moderator');
-    const pauseAccess = await hasPageAccess(user, 'chat/pause');
-    const summarizerAccess = await hasPageAccess(user, 'chat/summarizer');
-    const clearAccess = await hasPageAccess(user, 'chat/clear');
+    const moderatorAccess = await hasPageAccess(user.id.toString(), 'chat/moderator');
+    const pauseAccess = await hasPageAccess(user.id.toString(), 'chat/pause');
+    const summarizerAccess = await hasPageAccess(user.id.toString(), 'chat/summarizer');
+    const clearAccess = await hasPageAccess(user.id.toString(), 'chat/clear');
     
     setCanUseModerator(moderatorAccess);
     setCanPauseChat(pauseAccess);
@@ -93,19 +111,21 @@ export default function ChatPage() {
     if (user && canUseChat) {
       fetchMessages();
       fetchChatSettings();
+      fetchGlobalPauseStatus();
     }
   }, [user, canUseChat]);
 
-  // Poll for new messages every 3 seconds
+  // Poll for new messages and global pause status every 3 seconds
   useEffect(() => {
-    if (!user || isChatPaused || !canUseChat) return;
+    if (!user || !canUseChat) return;
 
     const interval = setInterval(() => {
       fetchMessages();
+      fetchGlobalPauseStatus();
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [user, isChatPaused, canUseChat]);
+  }, [user, canUseChat]);
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -207,11 +227,30 @@ export default function ChatPage() {
     }
   };
 
+  // Add this new function
+  const fetchGlobalPauseStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/chat/global-pause`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data: GlobalPauseStatus = await response.json();
+        setIsChatGloballyPaused(data.is_chat_paused || false);
+        setGlobalPauseInfo(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch global pause status:', error);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isCheckingToxicity) return;
     
-    // Check if chat is paused and user is not a moderator
-    if (isChatPaused && !isModeratorMode) {
+    // Check if chat is paused (either locally or globally) and user is not a moderator
+    if ((isChatPaused || isChatGloballyPaused) && !isModeratorMode) {
       alert('Chat is currently paused. Only moderators can send messages.');
       return;
     }
@@ -308,26 +347,26 @@ export default function ChatPage() {
   const toggleChatPause = async () => {
     if (!user || !canPauseChat) return;
 
+    // Determine the new pause state (opposite of current global state)
+    const newPauseState = !(isChatGloballyPaused || isChatPaused);
+
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/chat/settings/${user.id}`, {
+      // Use global pause endpoint
+      const response = await fetch(`http://localhost:4000/api/chat/global-pause`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ 
-          is_paused: !isChatPaused,
-          theme: 'light',
-          notifications_enabled: true,
-          sound_enabled: true,
-          auto_summarize: false,
-          summary_interval: 50
+          is_chat_paused: newPauseState
         }),
       });
 
       if (response.ok) {
-        setIsChatPaused(!isChatPaused);
+        // Refresh global pause status for all users
+        fetchGlobalPauseStatus();
       } else {
         alert('Failed to toggle chat pause');
       }
@@ -474,11 +513,11 @@ export default function ChatPage() {
                   onClick={toggleChatPause}
                   className={cn(
                     "flex items-center",
-                    isChatPaused ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
+                    (isChatPaused || isChatGloballyPaused) ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
                   )}
                 >
-                  {isChatPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                  {isChatPaused ? 'Resume Chat' : 'Pause Chat'}
+                  {(isChatPaused || isChatGloballyPaused) ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                  {(isChatPaused || isChatGloballyPaused) ? 'Resume Chat' : 'Pause Chat'}
                 </Button>
               )}
 
@@ -490,12 +529,11 @@ export default function ChatPage() {
               )}
               
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="hidden lg:inline-flex"
-                onClick={() => setIsGuidelinesOpen(!isGuidelinesOpen)}
+                onClick={() => setShowGuidelines(true)}
               >
-                {isGuidelinesOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                Chat Guidelines
               </Button>
             </div>
           </div>
@@ -573,7 +611,7 @@ export default function ChatPage() {
               {/* Message Input */}
               <div className="p-6 bg-background border-t border-border">
                 {/* Chat Paused Warning */}
-                {isChatPaused && !isModeratorMode && (
+                {(isChatPaused || isChatGloballyPaused) && !isModeratorMode && (
                   <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800 font-medium flex items-center">
                       <Pause className="mr-2 h-4 w-4" />
@@ -641,54 +679,65 @@ export default function ChatPage() {
                 </p>
               </div>
             </div>
-
-            {/* Sidebar Info */}
-            <Collapsible open={isGuidelinesOpen} onOpenChange={setIsGuidelinesOpen}>
-              <div className={cn(
-                "border-l border-border bg-card transition-all duration-300 ease-in-out hidden lg:block",
-                isGuidelinesOpen ? "w-80" : "w-0 p-0"
-              )}>
-                <CollapsibleContent className="w-80 p-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-4">Chat Guidelines</h3>
-              
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium">Anonymous Communication</h4>
-                      <p className="text-sm text-muted-foreground">Your identity is protected. Use randomly assigned names for open, honest discussions.</p>
-                    </div>
-                    <hr className="border-border" />
-                    <div>
-                      <h4 className="text-sm font-medium">Respectful Environment</h4>
-                      <p className="text-sm text-muted-foreground">Maintain professionalism and respect for all participants in discussions.</p>
-                    </div>
-                    <hr className="border-border" />
-                    <div>
-                      <h4 className="text-sm font-medium">Session-Based Storage</h4>
-                      <p className="text-sm text-muted-foreground">Messages are stored in the database and can be cleared by administrators.</p>
-                    </div>
-                    <hr className="border-border" />
-                    <div>
-                      <h4 className="text-sm font-medium">Chat Moderation</h4>
-                      <p className="text-sm text-muted-foreground">Any user can pause the chat to prevent new messages from all users except moderators.</p>
-                    </div>
-                    <hr className="border-border" />
-                    <div>
-                      <h4 className="text-sm font-medium">Constructive Feedback</h4>
-                      <p className="text-sm text-muted-foreground">Use this space for constructive feedback and collaborative problem-solving.</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 p-4 bg-primary/10 rounded-lg">
-                    <h4 className="text-sm font-medium text-primary mb-2">💡 Pro Tip</h4>
-                    <p className="text-xs text-primary/80">
-                      Anonymous chat works best when everyone participates respectfully and focuses on constructive communication.
-                    </p>
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
           </div>
         </div>
+
+        {/* Chat Guidelines Modal */}
+        <Dialog open={showGuidelines} onOpenChange={setShowGuidelines}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex justify-between items-center">
+                <DialogTitle>Chat Guidelines</DialogTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowGuidelines(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+            <div className="mt-4 space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Anonymous Communication</h3>
+                <p className="text-muted-foreground">
+                  Your identity is protected. Use randomly assigned names for open, honest discussions.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Respectful Environment</h3>
+                <p className="text-muted-foreground">
+                  Maintain professionalism and respect for all participants in discussions.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Session-Based Storage</h3>
+                <p className="text-muted-foreground">
+                  Messages are stored in the database and can be cleared by administrators.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Chat Moderation</h3>
+                <p className="text-muted-foreground">
+                  Any user can pause the chat to prevent new messages from all users except moderators.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Constructive Feedback</h3>
+                <p className="text-muted-foreground">
+                  Use this space for constructive feedback and collaborative problem-solving.
+                </p>
+              </div>
+              
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <h4 className="text-sm font-medium text-primary mb-2">💡 Pro Tip</h4>
+                <p className="text-xs text-primary/80">
+                  Anonymous chat works best when everyone participates respectfully and focuses on constructive communication.
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

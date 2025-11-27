@@ -71,7 +71,7 @@ export default function ClockPage() {
     if (!user) return;
     
     // Check access to main clock page first
-    const clockAccess = await hasPageAccess(user, 'clock');
+    const clockAccess = await hasPageAccess(user.id.toString(), 'clock');
     
     if (!clockAccess) {
       // If no access to main clock page, disable all clock features
@@ -81,8 +81,8 @@ export default function ClockPage() {
     }
     
     // Check access to specific clock features
-    const manageLocationsAccess = await hasPageAccess(user, 'clock/manage-locations');
-    const deleteLocationsAccess = await hasPageAccess(user, 'clock/delete-locations');
+    const manageLocationsAccess = await hasPageAccess(user.id.toString(), 'clock/manage-locations');
+    const deleteLocationsAccess = await hasPageAccess(user.id.toString(), 'clock/delete-locations');
     
     setCanManageLocations(manageLocationsAccess);
     setCanDeleteLocations(deleteLocationsAccess);
