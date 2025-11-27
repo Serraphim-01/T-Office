@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUI } from '@/lib/ui-context';
 import { usePathname } from 'next/navigation';
-import { AccessControlledNav } from '@/components/access-controlled-nav';
+import AccessControlledNav from '@/components/access-controlled-nav';
 import {
   Building2,
   LogOut,

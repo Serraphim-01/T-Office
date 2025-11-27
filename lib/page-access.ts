@@ -48,6 +48,7 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
     });
 
     if (!response.ok) {
+      console.error(`Profile fetch failed with status: ${response.status}`);
       return false;
     }
 

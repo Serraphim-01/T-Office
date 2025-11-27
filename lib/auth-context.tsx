@@ -26,10 +26,13 @@ const refreshAuthToken = async (): Promise<string | null> => {
   if (typeof window === 'undefined') {
     return null;
   }
-  
+
   try {
     const token = localStorage.getItem('token');
-    if (!token) return null;
+    if (!token || token === 'null' || token === 'undefined') {
+      localStorage.removeItem('token');
+      return null;
+    }
 
     const response = await fetch('http://localhost:4000/api/refresh-token', {
       method: 'POST',
@@ -44,12 +47,14 @@ const refreshAuthToken = async (): Promise<string | null> => {
       return data.token;
     } else {
       // If refresh fails, remove the token
+      console.error('Token refresh failed with status:', response.status);
       localStorage.removeItem('token');
       return null;
     }
   } catch (error) {
     console.error('Token refresh failed:', error);
-    // Don't remove token on network errors, might be temporary
+    // Remove token on network errors as well, since it might be corrupted
+    localStorage.removeItem('token');
     return null;
   }
 };
@@ -76,10 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('token', newToken);
           }
 
+          // Get the updated token (either refreshed or original)
+          const currentToken = newToken || token;
+          
           // Verify token with backend
           const response = await fetch('http://localhost:4000/api/profile', {
             headers: {
-              'Authorization': `Bearer ${newToken || token}`,
+              'Authorization': `Bearer ${currentToken}`,
             },
           });
 
@@ -95,12 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           } else {
             // Token is invalid, remove it
+            console.error('Profile fetch failed with status:', response.status);
             localStorage.removeItem('token');
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          // Don't remove token on network errors, might be temporary
-          // Only remove if we're certain it's invalid
+          // Remove token on network errors as well
+          localStorage.removeItem('token');
         }
       }
       setLoading(false);

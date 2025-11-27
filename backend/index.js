@@ -48,7 +48,7 @@ try {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
   });
-  
+
   // Test the connection
   pool.on('error', (err) => {
     console.error('Database connection error:', err.message);
@@ -58,6 +58,92 @@ try {
   console.error('Database setup failed:', err.message);
   process.exit(1);
 }
+
+// Middleware to attach pool to requests (must be before all routes that need it)
+app.use((req, res, next) => {
+  req.pool = pool;
+  next();
+});
+
+// Refresh token route
+app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
+  try {
+    console.log('Refresh token request received');
+    // Get user info from the authenticated request
+    const { userId } = req.user;
+    console.log('User ID from token:', userId);
+
+    // Check if userId exists
+    if (!userId) {
+      console.error('User ID not found in token during refresh');
+      return res.status(400).json({ error: "User ID not found in token" });
+    }
+
+    // Validate that userId is a valid format
+    if (typeof userId !== 'string' && typeof userId !== 'number') {
+      console.error('Invalid user ID format:', userId);
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+
+    console.log('Fetching user data from database for user ID:', userId);
+    // Fetch the latest user information from the database
+    // Handle cases where role_id might be null or role might not exist
+    const userResult = await req.pool.query(
+      `SELECT u.department, COALESCE(r.name, 'default') as role
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = $1`,
+      [userId]
+    );
+    console.log('Database query result:', userResult);
+
+    if (userResult.rows.length === 0) {
+      console.error('User not found in database during refresh:', userId);
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const { department, role } = userResult.rows[0];
+    console.log('User data fetched:', { department, role });
+
+    // Validate department
+    if (!department) {
+      console.error('Department not found for user:', userId);
+      return res.status(400).json({ error: "Department not found for user" });
+    }
+
+    // Log the refresh for debugging
+    console.log(`Token refresh for user ${userId}: department=${department}, role=${role || 'default'}`);
+
+    // Generate a new token with extended expiration and updated information
+    const newToken = jwt.sign(
+      {
+        userId: userId,
+        department: department,
+        role: role || 'default' // Use 'default' if no role found
+      },
+      process.env.JWT_SECRET || 'demo-secret',
+      {
+        expiresIn: "1h",
+      }
+    );
+
+    console.log('New token generated successfully');
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error('Token refresh error:', err);
+    // Send a more detailed error message
+    if (err instanceof Error) {
+      // Check if it's a database error
+      if (err.message && err.message.includes('database')) {
+        res.status(500).json({ error: "Database error during token refresh", message: err.message, stack: err.stack });
+      } else {
+        res.status(500).json({ error: "Internal server error", message: err.message, stack: err.stack });
+      }
+    } else {
+      res.status(500).json({ error: "Internal server error", details: JSON.stringify(err) });
+    }
+  }
+});
 
 // Test route
 app.get("/api/hello", (req, res) => {
@@ -210,75 +296,6 @@ app.post("/api/login", async (req, res) => {
     console.error('Login error:', err);
     res.status(500).json({ error: "Internal server error" });
   }
-});
-
-// Refresh token route
-app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
-  try {
-    // Get user info from the authenticated request
-    const { userId } = req.user;
-    
-    // Check if userId exists
-    if (!userId) {
-      console.error('User ID not found in token during refresh');
-      return res.status(400).json({ error: "User ID not found in token" });
-    }
-    
-    // Validate that userId is a valid format
-    if (typeof userId !== 'string' && typeof userId !== 'number') {
-      console.error('Invalid user ID format:', userId);
-      return res.status(400).json({ error: "Invalid user ID format" });
-    }
-    
-    // Fetch the latest user information from the database
-    const userResult = await req.pool.query(
-      `SELECT u.department, r.name as role 
-       FROM users u 
-       LEFT JOIN roles r ON u.role_id = r.id 
-       WHERE u.id = $1`, 
-      [userId]
-    );
-    
-    if (userResult.rows.length === 0) {
-      console.error('User not found in database during refresh:', userId);
-      return res.status(404).json({ error: "User not found" });
-    }
-    
-    const { department, role } = userResult.rows[0];
-    
-    // Validate department
-    if (!department) {
-      console.error('Department not found for user:', userId);
-      return res.status(400).json({ error: "Department not found for user" });
-    }
-    
-    // Log the refresh for debugging
-    console.log(`Token refresh for user ${userId}: department=${department}, role=${role || 'default'}`);
-
-    // Generate a new token with extended expiration and updated information
-    const newToken = jwt.sign(
-      { 
-        userId: userId, 
-        department: department, 
-        role: role || null // Allow null role
-      }, 
-      process.env.JWT_SECRET || 'demo-secret', 
-      {
-        expiresIn: "1h",
-      }
-    );
-
-    res.json({ token: newToken });
-  } catch (err) {
-    console.error('Token refresh error:', err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Middleware to attach pool to requests (must be before inventory routes)
-app.use((req, res, next) => {
-  req.pool = pool;
-  next();
 });
 
 // Mount route modules

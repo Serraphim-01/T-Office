@@ -150,7 +150,7 @@ const menuItems = [
 
 // Export refreshNavigation function so it can be called from other components
 export async function refreshNavigation(user: any, setAccessibleItems: any, setLoading: any) {
-  if (!user) {
+  if (!user || !user.id) {
     setAccessibleItems([]);
     setLoading(false);
     return;
@@ -208,8 +208,13 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
     
     // Console log the accessible pages for debugging
     console.log(`User "${user.full_name}" with role "${user.role || 'default'}" in department "${user.department}" has access to pages:`, accessiblePaths);
-    
+
     setAccessibleItems(accessible);
+
+    // Store the navigation data in localStorage for faster subsequent loads
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`nav-access-${user.id}`, JSON.stringify(accessiblePaths));
+    }
   } catch (error) {
     console.error('Error checking navigation access:', error);
     // Fallback to showing all items if there's an error
@@ -224,10 +229,11 @@ export function AccessControlledNav() {
   const { user, loading: authLoading } = useAuth();
   const [accessibleItems, setAccessibleItems] = useState<typeof menuItems>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Memoize the refresh function to prevent unnecessary re-renders
-  const refreshNav = useCallback(async () => {
+  const refreshNav = useCallback(async (forceRefresh = false) => {
     if (user && !authLoading) {
+      // Always fetch fresh navigation data to ensure accuracy
       await refreshNavigation(user, setAccessibleItems, setLoading);
     } else {
       setAccessibleItems([]);
@@ -236,17 +242,18 @@ export function AccessControlledNav() {
   }, [user, authLoading]);
 
   useEffect(() => {
+    // Only refresh navigation when user changes or on initial load
     refreshNav();
-    
-    // Listen for navigation refresh events
+
+    // Listen for navigation refresh events (only when features actually change)
     const handleNavigationRefresh = () => {
-      refreshNav();
+      refreshNav(true); // Force refresh when features change
     };
-    
+
     // Check if window is defined (client-side)
     if (typeof window !== 'undefined') {
       window.addEventListener('navigation-refresh', handleNavigationRefresh);
-      
+
       return () => {
         window.removeEventListener('navigation-refresh', handleNavigationRefresh);
       };
@@ -272,6 +279,15 @@ export function AccessControlledNav() {
     return (
       <div className="p-4 text-sm text-muted-foreground">
         Loading navigation...
+      </div>
+    );
+  }
+
+  // Show empty state if no accessible items and user is logged in
+  if (accessibleItems.length === 0 && user) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        No accessible items found. Please contact your administrator.
       </div>
     );
   }
