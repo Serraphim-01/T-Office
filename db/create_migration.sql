@@ -137,13 +137,29 @@ CREATE TABLE IF NOT EXISTS hr_queries (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     subject VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    priority VARCHAR(20) DEFAULT 'medium',
-    status VARCHAR(20) DEFAULT 'open',
     assigned_to INTEGER REFERENCES users(id),
     resolution TEXT,
     resolved_at TIMESTAMP WITH TIME ZONE,
+    query_type VARCHAR(100), -- Added for query types
+    is_locked BOOLEAN DEFAULT false, -- Added for locked queries
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Query types table for predefined query types
+CREATE TABLE IF NOT EXISTS query_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Query replies table for query responses
+CREATE TABLE IF NOT EXISTS query_replies (
+    id SERIAL PRIMARY KEY,
+    query_id INTEGER REFERENCES hr_queries(id) ON DELETE CASCADE,
+    reply_text TEXT NOT NULL,
+    replied_by INTEGER REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ===========================================
@@ -366,8 +382,10 @@ CREATE INDEX IF NOT EXISTS idx_chat_summaries_user_created ON chat_summaries(use
 
 -- HR indexes
 CREATE INDEX IF NOT EXISTS idx_attendance_user_date ON attendance(user_id, clock_in DESC);
-CREATE INDEX IF NOT EXISTS idx_hr_queries_status ON hr_queries(status);
 CREATE INDEX IF NOT EXISTS idx_hr_queries_assigned_to ON hr_queries(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_hr_queries_user_id ON hr_queries(user_id); -- Added for better query performance
+CREATE INDEX IF NOT EXISTS idx_hr_queries_query_type ON hr_queries(query_type); -- Added for query type filtering
+CREATE INDEX IF NOT EXISTS idx_query_replies_query_id ON query_replies(query_id); -- Added for reply performance
 CREATE INDEX IF NOT EXISTS idx_inductions_department ON inductions(department);
 CREATE INDEX IF NOT EXISTS idx_inductions_time ON inductions(induction_time);
 
@@ -1250,3 +1268,15 @@ FROM department_page_access dpa
 JOIN roles r ON dpa.department_id = r.department_id
 WHERE r.is_default = true
 ON CONFLICT (role_id, page_name) DO NOTHING;
+
+-- Insert default query types
+INSERT INTO query_types (name) VALUES
+('Misconduct'),
+('Dressing'),
+('Attendance'),
+('Performance'),
+('Policy Violation'),
+('Workplace Behavior'),
+('Equipment Issue'),
+('Other')
+ON CONFLICT (name) DO NOTHING;

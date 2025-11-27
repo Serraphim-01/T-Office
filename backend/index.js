@@ -216,9 +216,27 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
   try {
     // Get user info from the authenticated request
-    const { userId, department, role } = req.user;
+    const { userId } = req.user;
+    
+    // Fetch the latest user information from the database
+    const userResult = await req.pool.query(
+      `SELECT u.department, r.name as role 
+       FROM users u 
+       LEFT JOIN roles r ON u.role_id = r.id 
+       WHERE u.id = $1`, 
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const { department, role } = userResult.rows[0];
+    
+    // Log the refresh for debugging
+    console.log(`Token refresh for user ${userId}: department=${department}, role=${role}`);
 
-    // Generate a new token with extended expiration
+    // Generate a new token with extended expiration and updated information
     const newToken = jwt.sign({ userId, department, role }, process.env.JWT_SECRET || 'demo-secret', {
       expiresIn: "1h",
     });

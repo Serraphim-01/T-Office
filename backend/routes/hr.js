@@ -160,12 +160,12 @@ router.delete("/inductions/:id", authenticateJWT, async (req, res) => {
 // Send query to user
 router.post("/queries", authenticateJWT, async (req, res) => {
   const pool = req.pool;
-  const { user_id, subject, description } = req.body;
+  const { user_id, subject, description, query_type, is_locked } = req.body;
 
   try {
     const result = await pool.query(
-      'INSERT INTO hr_queries (user_id, subject, description) VALUES ($1, $2, $3) RETURNING *',
-      [user_id, subject, description]
+      'INSERT INTO hr_queries (user_id, subject, description, query_type, is_locked) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [user_id, subject, description, query_type, is_locked]
     );
 
     // Increment query count
@@ -181,17 +181,57 @@ router.post("/queries", authenticateJWT, async (req, res) => {
   }
 });
 
-// Get queries for a user
+// Get queries for a user with replies
 router.get("/queries/:userId", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { userId } = req.params;
 
   try {
-    const result = await pool.query(
-      'SELECT * FROM hr_queries WHERE user_id = $1 ORDER BY created_at DESC',
+    // Get queries for this user with replies
+    const queriesResult = await pool.query(
+      `SELECT q.*, u.full_name as replied_by_name, r.id as reply_id, r.reply_text, r.replied_by, r.created_at as reply_created_at
+       FROM hr_queries q
+       LEFT JOIN query_replies r ON q.id = r.query_id
+       LEFT JOIN users u ON r.replied_by = u.id
+       WHERE q.user_id = $1 
+       ORDER BY q.created_at DESC, r.created_at ASC`,
       [userId]
     );
-    res.json(result.rows);
+
+    // Group queries with their replies
+    const queriesMap = new Map();
+    queriesResult.rows.forEach(row => {
+      if (!queriesMap.has(row.id)) {
+        queriesMap.set(row.id, {
+          id: row.id,
+          user_id: row.user_id,
+          subject: row.subject,
+          description: row.description,
+          assigned_to: row.assigned_to,
+          resolution: row.resolution,
+          resolved_at: row.resolved_at,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          query_type: row.query_type,
+          is_locked: row.is_locked,
+          replies: []
+        });
+      }
+      
+      // Add reply if exists
+      if (row.reply_id) {
+        queriesMap.get(row.id).replies.push({
+          id: row.reply_id,
+          query_id: row.id,
+          reply_text: row.reply_text,
+          replied_by: row.replied_by,
+          replied_by_name: row.replied_by_name,
+          created_at: row.reply_created_at
+        });
+      }
+    });
+
+    res.json(Array.from(queriesMap.values()));
   } catch (err) {
     console.error('Error fetching queries:', err);
     res.status(500).json({ error: "Internal server error" });
@@ -202,17 +242,136 @@ router.get("/queries/:userId", authenticateJWT, async (req, res) => {
 router.put("/queries/:id", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { id } = req.params;
-  const { response, status } = req.body;
+  const { resolution } = req.body; // Removed status
 
   try {
     await pool.query(
-      'UPDATE hr_queries SET resolution = $1, status = $2, updated_at = NOW() WHERE id = $3',
-      [response, status, id]
+      'UPDATE hr_queries SET resolution = $1, resolved_at = NOW(), updated_at = NOW() WHERE id = $2',
+      [resolution, id] // Removed status
     );
 
     res.json({ message: "Query updated successfully" });
   } catch (err) {
     console.error('Error updating query:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Reply to a query
+router.post("/queries/:id/reply", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+  const { reply_text, is_locked } = req.body;
+  const userId = req.user.userId;
+
+  try {
+    // Insert the reply
+    const result = await pool.query(
+      'INSERT INTO query_replies (query_id, reply_text, replied_by) VALUES ($1, $2, $3) RETURNING *',
+      [id, reply_text, userId]
+    );
+
+    // Update query resolved_at timestamp and locked status if provided
+    let updateQuery = 'UPDATE hr_queries SET resolved_at = NOW(), updated_at = NOW()';
+    const updateParams = [id];
+    
+    if (is_locked !== undefined) {
+      updateQuery += ', is_locked = $2 WHERE id = $1';
+      updateParams.push(is_locked);
+    } else {
+      updateQuery += ' WHERE id = $1';
+    }
+    
+    await pool.query(updateQuery, updateParams);
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error replying to query:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all query replies (for HR queries page)
+router.get("/queries-replies", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+
+  try {
+    // Get all queries that have replies where the last reply was not from someone with HR queries access
+    const queriesResult = await pool.query(
+      `WITH latest_replies AS (
+         SELECT 
+           qr.query_id,
+           qr.replied_by,
+           u.department as replied_by_department,
+           ROW_NUMBER() OVER (PARTITION BY qr.query_id ORDER BY qr.created_at DESC) as rn
+         FROM query_replies qr
+         JOIN users u ON qr.replied_by = u.id
+       )
+       SELECT q.*, u.full_name as user_name, r.id as reply_id, r.reply_text, r.replied_by, r.created_at as reply_created_at, ur.full_name as replied_by_name,
+              CASE 
+                WHEN lr.replied_by_department IN ('HR', 'Admin') THEN true
+                ELSE false
+              END as last_reply_from_authorized_user
+       FROM hr_queries q
+       JOIN users u ON q.user_id = u.id
+       JOIN query_replies r ON q.id = r.query_id
+       JOIN users ur ON r.replied_by = ur.id
+       LEFT JOIN latest_replies lr ON q.id = lr.query_id AND lr.rn = 1
+       WHERE lr.replied_by_department NOT IN ('HR', 'Admin') OR lr.replied_by_department IS NULL
+       ORDER BY q.created_at DESC, r.created_at ASC`
+    );
+
+    // Group queries with their replies
+    const queriesMap = new Map();
+    queriesResult.rows.forEach(row => {
+      if (!queriesMap.has(row.id)) {
+        queriesMap.set(row.id, {
+          id: row.id,
+          user_id: row.user_id,
+          user_name: row.user_name,
+          subject: row.subject,
+          description: row.description,
+          assigned_to: row.assigned_to,
+          resolution: row.resolution,
+          resolved_at: row.resolved_at,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          query_type: row.query_type,
+          is_locked: row.is_locked,
+          replies: [],
+          last_reply_from_authorized_user: row.last_reply_from_authorized_user
+        });
+      }
+      
+      // Add reply
+      queriesMap.get(row.id).replies.push({
+        id: row.reply_id,
+        query_id: row.id,
+        reply_text: row.reply_text,
+        replied_by: row.replied_by,
+        replied_by_name: row.replied_by_name,
+        created_at: row.reply_created_at
+      });
+    });
+
+    res.json(Array.from(queriesMap.values()));
+  } catch (err) {
+    console.error('Error fetching query replies:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Delete a query
+router.delete("/queries/:id", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { id } = req.params;
+
+  try {
+    // Delete the query (replies will be deleted automatically due to CASCADE)
+    await pool.query('DELETE FROM hr_queries WHERE id = $1', [id]);
+    res.json({ message: "Query deleted successfully" });
+  } catch (err) {
+    console.error('Error deleting query:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -319,6 +319,9 @@ router.put("/roles/:roleId", authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: "Role not found" });
     }
 
+    // Log the role update for debugging
+    console.log(`Role ${roleId} updated: name changed from '${roleResult.rows[0].name}' to '${name}', is_default: ${shouldBeDefault}`);
+
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error updating role:', err);

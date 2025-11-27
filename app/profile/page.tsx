@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare } from 'lucide-react';
+import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare, Plus, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { fetchDepartments } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +37,7 @@ interface Profile {
   full_name: string;
   email: string;
   department: string;
+  role?: string;
   created_at: string;
   certifications: Certification[];
   cv?: string;
@@ -44,6 +47,14 @@ interface Profile {
   query_count: number;
   attendance: any[];
   other_details: any;
+  inductions?: Induction[];
+}
+
+interface Induction {
+  id: number;
+  department: string;
+  induction_time: string;
+  attendees: string[];
 }
 
 interface UserQuery {
@@ -51,18 +62,30 @@ interface UserQuery {
   user_id: number;
   subject: string;
   description: string;
-  priority: string;
-  status: string;
   assigned_to?: number;
   resolution?: string;
   resolved_at?: string;
   created_at: string;
   updated_at: string;
+  query_type?: string;
+  is_locked?: boolean; // Added for locked queries
+  last_reply_from_authorized_user?: boolean; // Added to track who last replied
+  replies?: QueryReply[];
+}
+
+interface QueryReply {
+  id: number;
+  query_id: number;
+  reply_text: string;
+  replied_by: number;
+  replied_by_name: string;
+  created_at: string;
 }
 
 interface ProfileWithQueries extends Profile {
   queries: UserQuery[];
   max_queries_before_action: number;
+  role?: string;
 }
 
 export default function ProfilePage() {
@@ -85,6 +108,11 @@ export default function ProfilePage() {
   });
   const [dragActive, setDragActive] = useState(false);
   const [departments, setDepartments] = useState<string[]>([]);
+  
+  // Added states for query modal
+  const [selectedQuery, setSelectedQuery] = useState<UserQuery | null>(null);
+  const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
+  const [replyText, setReplyText] = useState('');
 
   // Fetch profile data
   useEffect(() => {
@@ -293,7 +321,55 @@ export default function ProfilePage() {
     }
   };
 
-  const submitQuery = async (subject: string, description: string) => {
+  // Added function to open query in modal
+  const openQueryModal = (query: UserQuery) => {
+    setSelectedQuery(query);
+    setIsQueryModalOpen(true);
+    setReplyText('');
+  };
+
+  // Added function to submit a reply
+  const submitReply = async () => {
+    if (!selectedQuery || !replyText.trim()) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/hr/queries/${selectedQuery.id}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reply_text: replyText.trim() })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Reply submitted successfully!",
+        });
+        setIsQueryModalOpen(false);
+        setReplyText('');
+        // Refresh the profile to show the new reply
+        fetchProfile();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to submit reply.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitQuery = async (subject: string, description: string, query_type: string) => {
     try {
       const response = await fetch('http://localhost:4000/api/profile/queries', {
         method: 'POST',
@@ -301,7 +377,7 @@ export default function ProfilePage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ subject, description })
+        body: JSON.stringify({ subject, description, query_type })
       });
 
       if (response.ok) {
@@ -396,6 +472,34 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Inductions Section */}
+            {profile?.inductions && profile.inductions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Scheduled Inductions
+                  </CardTitle>
+                  <CardDescription>Your upcoming induction sessions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {profile.inductions.map((induction) => (
+                      <div key={induction.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <div className="font-medium">{induction.department} Department</div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(induction.induction_time).toLocaleString()}
+                          </div>
+                        </div>
+                        <Badge variant="secondary">Scheduled</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Certifications - Full Width */}
             <Card>
@@ -572,59 +676,36 @@ export default function ProfilePage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>My Queries</CardTitle>
-                  <CardDescription>View and manage your submitted queries</CardDescription>
+                  <CardDescription>View and manage queries sent by HR</CardDescription>
                 </div>
-                <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      size="sm"
-                      disabled={profile?.queries && profile.queries.length >= (profile?.max_queries_before_action || 5)}
-                    >
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Submit Query
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Submit a Query</DialogTitle>
-                      <DialogDescription>
-                        Describe your issue or question and it will be sent to HR for review.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <QueryForm onSubmit={submitQuery} />
-                  </DialogContent>
-                </Dialog>
               </CardHeader>
               <CardContent>
                 {profile?.queries && profile.queries.length > 0 ? (
                   <div className="space-y-3">
                     {profile.queries.map((query) => (
-                      <div key={query.id} className="p-3 border rounded-lg">
+                      <div 
+                        key={query.id} 
+                        className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => openQueryModal(query)}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <Badge
-                              variant={query.status === 'open' ? 'secondary' : query.status === 'resolved' ? 'default' : 'outline'}
-                              className="text-xs"
-                            >
-                              {query.status.charAt(0).toUpperCase() + query.status.slice(1)}
-                            </Badge>
+                            {query.query_type && (
+                              <Badge variant="outline" className="text-xs">
+                                {query.query_type}
+                              </Badge>
+                            )}
                             <span className="text-sm font-medium">{query.subject}</span>
                           </div>
                           <span className="text-xs text-muted-foreground">
                             {new Date(query.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-2">{query.description}</p>
-                        {query.resolution && (
-                          <div className="mt-2 p-2 bg-muted rounded">
-                            <p className="text-sm">
-                              <span className="font-medium">Resolution:</span> {query.resolution}
-                            </p>
-                            {query.resolved_at && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Resolved on {new Date(query.resolved_at).toLocaleDateString()}
-                              </p>
-                            )}
+                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{query.description}</p>
+                        {query.replies && query.replies.length > 0 && (
+                          <div className="mt-2 flex items-center text-xs text-muted-foreground">
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            <span>{query.replies.length} repl{query.replies.length === 1 ? 'y' : 'ies'}</span>
                           </div>
                         )}
                       </div>
@@ -633,9 +714,9 @@ export default function ProfilePage() {
                 ) : (
                   <div className="text-center py-8">
                     <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 font-medium">No queries submitted</h3>
+                    <h3 className="mt-4 font-medium">No queries received</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Submit your first query to get help from HR.
+                      HR has not sent you any queries yet.
                     </p>
                   </div>
                 )}
@@ -643,48 +724,101 @@ export default function ProfilePage() {
             </Card>
           </div>
         )}
+
+        {/* Query Detail Modal */}
+        <Dialog open={isQueryModalOpen} onOpenChange={setIsQueryModalOpen}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedQuery?.subject}</DialogTitle>
+              <DialogDescription>
+                Sent on {selectedQuery?.created_at ? new Date(selectedQuery.created_at).toLocaleString() : ''}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedQuery && (
+              <div className="space-y-4">
+                {selectedQuery.query_type && (
+                  <Badge variant="outline">{selectedQuery.query_type}</Badge>
+                )}
+                
+                <div>
+                  <h4 className="font-medium text-sm mb-1">Description:</h4>
+                  <p className="text-sm">{selectedQuery.description}</p>
+                </div>
+                
+                {selectedQuery.resolution && (
+                  <div className="p-2 bg-muted rounded">
+                    <h4 className="font-medium text-sm mb-1">HR Response:</h4>
+                    <p className="text-sm">{selectedQuery.resolution}</p>
+                    {selectedQuery.resolved_at && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Responded on {new Date(selectedQuery.resolved_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Display query replies if any */}
+                {selectedQuery.replies && selectedQuery.replies.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Replies:</h4>
+                    {selectedQuery.replies.map((reply) => (
+                      <div key={reply.id} className="p-2 bg-muted rounded">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-medium">{reply.replied_by_name}</span>
+                          <span>{new Date(reply.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mt-1">{reply.reply_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Reply form - only show if query is not locked and either:
+                     1. No replies yet, or 
+                     2. Last reply was from someone authorized (HR/Admin) */}
+                {selectedQuery && !selectedQuery.is_locked && (!selectedQuery.replies || selectedQuery.replies.length === 0 || 
+                  (selectedQuery.replies.length > 0 && selectedQuery.last_reply_from_authorized_user)) && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label htmlFor="reply-text">Your Reply</Label>
+                    <Textarea
+                      id="reply-text"
+                      placeholder="Enter your reply..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      rows={3}
+                    />
+                    <Button 
+                      onClick={submitReply}
+                      disabled={!replyText.trim()}
+                      className="w-full"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Reply
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Message when user needs to wait for authorized person to respond */}
+                {selectedQuery && !selectedQuery.is_locked && selectedQuery.replies && selectedQuery.replies.length > 0 && 
+                  !selectedQuery.last_reply_from_authorized_user && (
+                  <div className="pt-2 border-t text-sm text-muted-foreground">
+                    You have replied to this query. Please wait for an authorized person to respond before replying again.
+                  </div>
+                )}
+                
+                {selectedQuery && selectedQuery.is_locked && (
+                  <div className="pt-2 border-t text-sm text-muted-foreground">
+                    This is a locked query and does not accept replies.
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
 }
 
-function QueryForm({ onSubmit }: { onSubmit: (subject: string, description: string) => void }) {
-  const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(subject, description);
-    setSubject('');
-    setDescription('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="query-subject">Subject</Label>
-        <Input
-          id="query-subject"
-          placeholder="Briefly describe your issue"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="query-description">Description</Label>
-        <textarea
-          id="query-description"
-          placeholder="Provide detailed information about your issue"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          required
-        />
-      </div>
-      <Button type="submit" className="w-full">
-        Submit Query
-      </Button>
-    </form>
-  );
-}
+// Removed QueryForm component as it's no longer needed

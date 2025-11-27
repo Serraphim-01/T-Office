@@ -37,6 +37,8 @@ DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS chat_settings CASCADE;
 DROP TABLE IF EXISTS attendance CASCADE;
 DROP TABLE IF EXISTS inductions CASCADE;
+DROP TABLE IF EXISTS query_replies CASCADE;
+DROP TABLE IF EXISTS query_types CASCADE;
 DROP TABLE IF EXISTS hr_queries CASCADE;
 DROP TABLE IF EXISTS user_locations CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
@@ -53,14 +55,19 @@ DROP TABLE IF EXISTS outbound_transactions CASCADE;
 DROP TABLE IF EXISTS inbound_serial_numbers CASCADE;
 DROP TABLE IF EXISTS inbound_transactions CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
+
+-- Remove role_id column from users table (only if table exists)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+        ALTER TABLE users DROP COLUMN IF EXISTS role_id;
+    END IF;
+END $$;
+
+-- Drop users table last
 DROP TABLE IF EXISTS users CASCADE;
 
 -- Drop functions
 DROP FUNCTION IF EXISTS update_updated_at_column();
-
--- Remove role_id column from users table
-ALTER TABLE users 
-DROP COLUMN IF EXISTS role_id;
 
 -- Re-enable triggers
 SET session_replication_role = DEFAULT;
