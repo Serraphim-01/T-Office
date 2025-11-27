@@ -1,9 +1,8 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUI } from '@/lib/ui-context';
 import { usePathname } from 'next/navigation';
@@ -61,6 +60,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
     router.push('/login');
   };
 

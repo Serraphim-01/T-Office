@@ -48,6 +48,7 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export function UIProvider({ children }: { children: ReactNode }) {
   const [isActivityBarOpen, setActivityBarOpen] = useState(true);
   const [theme, setTheme] = useState<Theme>(() => {
+    // Check if we're in browser environment
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('customTheme');
       return stored ? JSON.parse(stored) : defaultTheme;
@@ -68,11 +69,24 @@ export function UIProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    Object.entries(theme).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(`--${key}`, value);
-    });
-    localStorage.setItem('customTheme', JSON.stringify(theme));
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      Object.entries(theme).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(`--${key}`, value);
+      });
+      localStorage.setItem('customTheme', JSON.stringify(theme));
+    }
   }, [theme]);
+
+  // Apply theme on mount to ensure consistency
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      Object.entries(theme).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(`--${key}`, value);
+      });
+    }
+  }, []);
 
   return (
     <UIContext.Provider value={{ isActivityBarOpen, toggleActivityBar, setActivityBarOpen, theme, updateTheme, resetTheme }}>

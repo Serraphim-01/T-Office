@@ -15,29 +15,41 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
   const router = useRouter();
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
+      // Don't show loading state on initial render to prevent flash
+      if (!initialCheckDone) {
+        setLoading(false);
+      }
+
+      // Validate inputs
       if (!user) {
         router.push('/login');
         return;
       }
 
+      // Ensure userId is a string
+      const userId = typeof user.id === 'string' ? user.id : user.id.toString();
+
       try {
-        const access = await hasPageAccess(user.id, pagePath);
+        const access = await hasPageAccess(userId, pagePath);
         setHasAccess(access);
       } catch (error) {
         console.error('Error checking access:', error);
         setHasAccess(false);
       } finally {
         setLoading(false);
+        setInitialCheckDone(true);
       }
     };
 
     checkAccess();
-  }, [user, pagePath, router]);
+  }, [user, pagePath, router, initialCheckDone]);
 
-  if (loading) {
+  // Show loading only on subsequent checks, not initial render
+  if (loading && initialCheckDone) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -45,7 +57,7 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
     );
   }
 
-  if (!hasAccess) {
+  if (!hasAccess && initialCheckDone) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -56,5 +68,10 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
     );
   }
 
-  return <>{children}</>;
+  // Render children immediately to prevent flash, hide with CSS if no access
+  return (
+    <div style={{ display: (initialCheckDone && !hasAccess) ? 'none' : 'block' }}>
+      {children}
+    </div>
+  );
 }

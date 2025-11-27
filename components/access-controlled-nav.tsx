@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -152,10 +152,12 @@ const menuItems = [
 export async function refreshNavigation(user: any, setAccessibleItems: any, setLoading: any) {
   if (!user) {
     setAccessibleItems([]);
+    setLoading(false);
     return;
   }
 
   try {
+    setLoading(true);
     // Clear the cache to get fresh data
     clearPageAccessCache();
     
@@ -163,34 +165,44 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
     const accessiblePaths = []; // Track accessible paths for logging
     
     for (const item of menuItems) {
-      // Check if user has access to the main item
-      const hasAccess = await hasPageAccess(user.id, item.pagePath);
-      
-      if (hasAccess) {
-        accessiblePaths.push(item.pagePath); // Log accessible path
+      try {
+        // Check if user has access to the main item
+        const hasAccess = await hasPageAccess(user.id.toString(), item.pagePath);
         
-        // If item has children, check their access too
-        if (item.children) {
-          const accessibleChildren = [];
-          for (const child of item.children) {
-            const childHasAccess = await hasPageAccess(user.id, child.pagePath);
-            if (childHasAccess) {
-              accessibleChildren.push(child);
-              accessiblePaths.push(child.pagePath); // Log accessible child path
-            }
-          }
+        if (hasAccess) {
+          accessiblePaths.push(item.pagePath); // Log accessible path
           
-          // Only include parent if it has accessible children
-          if (accessibleChildren.length > 0) {
-            accessible.push({
-              ...item,
-              children: accessibleChildren
-            });
+          // If item has children, check their access too
+          if (item.children) {
+            const accessibleChildren = [];
+            for (const child of item.children) {
+              try {
+                const childHasAccess = await hasPageAccess(user.id.toString(), child.pagePath);
+                if (childHasAccess) {
+                  accessibleChildren.push(child);
+                  accessiblePaths.push(child.pagePath); // Log accessible child path
+                }
+              } catch (childError) {
+                console.error(`Error checking access for child item ${child.pagePath}:`, childError);
+                // Continue with other children even if one fails
+              }
+            }
+            
+            // Only include parent if it has accessible children
+            if (accessibleChildren.length > 0) {
+              accessible.push({
+                ...item,
+                children: accessibleChildren
+              });
+            }
+          } else {
+            // No children, just add the item
+            accessible.push(item);
           }
-        } else {
-          // No children, just add the item
-          accessible.push(item);
         }
+      } catch (itemError) {
+        console.error(`Error checking access for item ${item.pagePath}:`, itemError);
+        // Continue with other items even if one fails
       }
     }
     
@@ -209,24 +221,43 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
 
 export function AccessControlledNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [accessibleItems, setAccessibleItems] = useState<typeof menuItems>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Memoize the refresh function to prevent unnecessary re-renders
+  const refreshNav = useCallback(async () => {
+    if (user && !authLoading) {
+      await refreshNavigation(user, setAccessibleItems, setLoading);
+    } else {
+      setAccessibleItems([]);
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
-    refreshNavigation(user, setAccessibleItems, setLoading);
+    refreshNav();
     
     // Listen for navigation refresh events
     const handleNavigationRefresh = () => {
-      refreshNavigation(user, setAccessibleItems, setLoading);
+      refreshNav();
     };
     
-    window.addEventListener('navigation-refresh', handleNavigationRefresh);
-    
-    return () => {
-      window.removeEventListener('navigation-refresh', handleNavigationRefresh);
-    };
-  }, [user]);
+    // Check if window is defined (client-side)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('navigation-refresh', handleNavigationRefresh);
+      
+      return () => {
+        window.removeEventListener('navigation-refresh', handleNavigationRefresh);
+      };
+    }
+  }, [refreshNav]);
+
+  // Add effect to handle route changes without full page reload
+  useEffect(() => {
+    // Don't refresh the entire navigation on route change, just update active state
+    // This prevents the flashing/loading issue when navigating between pages
+  }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
@@ -235,7 +266,8 @@ export function AccessControlledNav() {
     return pathname?.startsWith(href);
   };
 
-  if (loading) {
+  // Show loading only when auth is loading or when we're specifically loading nav data
+  if (authLoading || loading) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
         Loading navigation...
@@ -302,3 +334,5 @@ export function AccessControlledNav() {
     </nav>
   );
 }
+
+export default AccessControlledNav;

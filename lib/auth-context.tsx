@@ -22,6 +22,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Function to refresh the token
 const refreshAuthToken = async (): Promise<string | null> => {
+  // Check if we're in browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  
   try {
     const token = localStorage.getItem('token');
     if (!token) return null;
@@ -44,7 +49,7 @@ const refreshAuthToken = async (): Promise<string | null> => {
     }
   } catch (error) {
     console.error('Token refresh failed:', error);
-    localStorage.removeItem('token');
+    // Don't remove token on network errors, might be temporary
     return null;
   }
 };
@@ -56,6 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
+      // Check if we're in browser environment
+      if (typeof window === 'undefined') {
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -88,7 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('token');
+          // Don't remove token on network errors, might be temporary
+          // Only remove if we're certain it's invalid
         }
       }
       setLoading(false);
@@ -99,6 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Set up token refresh interval (refresh every 55 minutes to stay ahead of 1-hour expiration)
   useEffect(() => {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      return;
+    }
+    
     const interval = setInterval(async () => {
       const token = localStorage.getItem('token');
       if (token) {
@@ -118,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshToken = async (): Promise<boolean> => {
     const newToken = await refreshAuthToken();
-    if (newToken) {
+    if (newToken && typeof window !== 'undefined') {
       localStorage.setItem('token', newToken);
       return true;
     }
@@ -127,7 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
   };
 
   const value = {

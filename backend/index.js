@@ -218,6 +218,18 @@ app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
     // Get user info from the authenticated request
     const { userId } = req.user;
     
+    // Check if userId exists
+    if (!userId) {
+      console.error('User ID not found in token during refresh');
+      return res.status(400).json({ error: "User ID not found in token" });
+    }
+    
+    // Validate that userId is a valid format
+    if (typeof userId !== 'string' && typeof userId !== 'number') {
+      console.error('Invalid user ID format:', userId);
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+    
     // Fetch the latest user information from the database
     const userResult = await req.pool.query(
       `SELECT u.department, r.name as role 
@@ -228,18 +240,33 @@ app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
     );
     
     if (userResult.rows.length === 0) {
+      console.error('User not found in database during refresh:', userId);
       return res.status(404).json({ error: "User not found" });
     }
     
     const { department, role } = userResult.rows[0];
     
+    // Validate department
+    if (!department) {
+      console.error('Department not found for user:', userId);
+      return res.status(400).json({ error: "Department not found for user" });
+    }
+    
     // Log the refresh for debugging
-    console.log(`Token refresh for user ${userId}: department=${department}, role=${role}`);
+    console.log(`Token refresh for user ${userId}: department=${department}, role=${role || 'default'}`);
 
     // Generate a new token with extended expiration and updated information
-    const newToken = jwt.sign({ userId, department, role }, process.env.JWT_SECRET || 'demo-secret', {
-      expiresIn: "1h",
-    });
+    const newToken = jwt.sign(
+      { 
+        userId: userId, 
+        department: department, 
+        role: role || null // Allow null role
+      }, 
+      process.env.JWT_SECRET || 'demo-secret', 
+      {
+        expiresIn: "1h",
+      }
+    );
 
     res.json({ token: newToken });
   } catch (err) {
