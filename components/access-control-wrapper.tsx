@@ -30,8 +30,8 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
         return;
       }
 
-      // Ensure userId is a string
-      const userId = typeof user.id === 'string' ? user.id : user.id.toString();
+      // Ensure userId is a string (user.id is already a string according to Profile interface)
+      const userId = user.id;
 
       try {
         const access = await hasPageAccess(userId, pagePath);

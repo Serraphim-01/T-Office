@@ -86,9 +86,9 @@ function HRQueriesContent() {
     user_id: '', 
     subject: '', 
     description: '', 
-    query_type: '',
-    is_locked: false // Added for locked queries
+    query_type: ''
   }); // Added query_type
+  const [isLockedQuery, setIsLockedQuery] = useState(false); // For locking new queries
   const [replyText, setReplyText] = useState(''); // For reply input
   const [selectedQueryId, setSelectedQueryId] = useState<number | null>(null); // For tracking which query is being replied to
   const [isLockedReply, setIsLockedReply] = useState(false); // For locking reply
@@ -164,13 +164,19 @@ function HRQueriesContent() {
   const sendQuery = async () => {
     setLoading(true);
     try {
+      // Prepare the request body with is_locked field
+      const requestBody = { 
+        ...newQuery,
+        is_locked: isLockedQuery // Use the checkbox state
+      };
+      
       const response = await fetch('http://localhost:4000/api/hr/queries', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify(newQuery),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -182,9 +188,9 @@ function HRQueriesContent() {
           user_id: '', 
           subject: '', 
           description: '', 
-          query_type: '',
-          is_locked: false
+          query_type: ''
         }); // Reset form
+        setIsLockedQuery(false); // Reset locked state
         if (selectedUser) {
           fetchUserQueries(selectedUser.id);
         }
@@ -242,13 +248,18 @@ function HRQueriesContent() {
   // Reply to a query
   const replyToQuery = async (queryId: number, replyText: string) => {
     try {
+      const requestBody = { 
+        reply_text: replyText,
+        is_locked: isLockedReply
+      };
+      
       const response = await fetch(`http://localhost:4000/api/hr/queries/${queryId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ reply_text: replyText, is_locked: isLockedReply }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -446,8 +457,8 @@ function HRQueriesContent() {
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="query-locked"
-                        checked={newQuery.is_locked}
-                        onCheckedChange={(checked: boolean) => setNewQuery({ ...newQuery, is_locked: checked })}
+                        checked={isLockedQuery}
+                        onCheckedChange={(checked: boolean) => setIsLockedQuery(checked)}
                       />
                       <Label htmlFor="query-locked">Locked Query (No Replies)</Label>
                     </div>

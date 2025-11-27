@@ -253,11 +253,12 @@ export function AccessControlledNav() {
     }
   }, [refreshNav]);
 
-  // Add effect to handle route changes without full page reload
-  useEffect(() => {
-    // Don't refresh the entire navigation on route change, just update active state
-    // This prevents the flashing/loading issue when navigating between pages
-  }, [pathname]);
+  // Remove the effect that was causing navigation refresh on route changes
+  // This was causing the sidenav to reload every time the route changed
+  // useEffect(() => {
+  //   // Don't refresh the entire navigation on route change, just update active state
+  //   // This prevents the flashing/loading issue when navigating between pages
+  // }, [pathname]);
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {

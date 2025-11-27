@@ -1,7 +1,7 @@
 // Utility functions for checking page access based on user role
 
 // Cache for page access to avoid repeated database queries
-const pageAccessCache = new Map<string, { pages: Set<string>; timestamp: number }>();
+const pageAccessCache = new Map<string, { pages: Set<string>; timestamp: number; userData: any }>();
 // Timestamp for cache invalidation (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -30,6 +30,17 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
       return false;
     }
 
+    // Create cache key
+    const cacheKey = `user-${userId}`;
+    
+    // Check cache first with timestamp
+    const cachedEntry = pageAccessCache.get(cacheKey);
+    if (cachedEntry && cachedEntry.timestamp && (Date.now() - cachedEntry.timestamp < CACHE_DURATION)) {
+      // Check if the specific page is in the cached pages
+      return cachedEntry.pages.has(pagePath);
+    }
+    
+    // If not in cache or cache expired, fetch user data and pages
     const response = await fetch('http://localhost:4000/api/profile', {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -49,40 +60,74 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
       return false;
     }
     
-    // Create cache key
-    const cacheKey = `${department}-${role || 'default'}`;
-    
-    // Check cache first with timestamp
-    const cachedEntry = pageAccessCache.get(cacheKey);
-    if (cachedEntry && cachedEntry.timestamp && (Date.now() - cachedEntry.timestamp < CACHE_DURATION)) {
-      return cachedEntry.pages.has(pagePath);
-    }
-    
-    // If not in cache or cache expired, fetch from backend
+    // Create department-role cache key for pages
+    const pagesCacheKey = `${department}-${role || 'default'}`;
     let pages: string[] = [];
     
-    if (role) {
-      try {
-        // Fetch role-specific pages using the role name
-        const roleResponse = await fetch(`http://localhost:4000/api/admin/roles/${encodeURIComponent(role)}/pages`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (roleResponse.ok) {
-          pages = await roleResponse.json();
-        } else if (roleResponse.status === 404) {
-          console.warn(`Role '${role}' not found, falling back to department access`);
-        } else {
-          console.error(`Error fetching role pages: ${roleResponse.status} ${roleResponse.statusText}`);
+    // Check if pages are already cached for this department-role combination
+    const pagesCachedEntry = pageAccessCache.get(pagesCacheKey);
+    if (pagesCachedEntry && pagesCachedEntry.timestamp && (Date.now() - pagesCachedEntry.timestamp < CACHE_DURATION)) {
+      pages = Array.from(pagesCachedEntry.pages);
+    } else {
+      // If not in cache or cache expired, fetch from backend
+      if (role) {
+        try {
+          // Fetch role-specific pages using the role name
+          const roleResponse = await fetch(`http://localhost:4000/api/admin/roles/${encodeURIComponent(role)}/pages`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          
+          if (roleResponse.ok) {
+            pages = await roleResponse.json();
+          } else if (roleResponse.status === 404) {
+            console.warn(`Role '${role}' not found, falling back to department access`);
+          } else {
+            console.error(`Error fetching role pages: ${roleResponse.status} ${roleResponse.statusText}`);
+          }
+        } catch (roleError) {
+          console.error('Error fetching role pages:', roleError);
         }
-      } catch (roleError) {
-        console.error('Error fetching role pages:', roleError);
-      }
-      
-      // If role has no specific pages, fall back to department access
-      if (pages.length === 0) {
+        
+        // If role has no specific pages, fall back to department access
+        if (pages.length === 0) {
+          try {
+            // Fetch department ID first
+            const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (deptIdResponse.ok) {
+              const departments = await deptIdResponse.json();
+              const departmentData = departments.find((d: any) => d.name === department);
+              
+              if (departmentData) {
+                // Fetch department-specific pages using the department ID
+                const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                  },
+                });
+                
+                if (deptResponse.ok) {
+                  pages = await deptResponse.json();
+                } else {
+                  console.error(`Error fetching department pages: ${deptResponse.status} ${deptResponse.statusText}`);
+                }
+              } else {
+                console.warn(`Department '${department}' not found in department list`);
+              }
+            } else {
+              console.error(`Error fetching departments: ${deptIdResponse.status} ${deptIdResponse.statusText}`);
+            }
+          } catch (deptError) {
+            console.error('Error fetching department pages:', deptError);
+          }
+        }
+      } else {
         try {
           // Fetch department ID first
           const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
@@ -118,47 +163,20 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
           console.error('Error fetching department pages:', deptError);
         }
       }
-    } else {
-      try {
-        // Fetch department ID first
-        const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (deptIdResponse.ok) {
-          const departments = await deptIdResponse.json();
-          const departmentData = departments.find((d: any) => d.name === department);
-          
-          if (departmentData) {
-            // Fetch department-specific pages using the department ID
-            const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            
-            if (deptResponse.ok) {
-              pages = await deptResponse.json();
-            } else {
-              console.error(`Error fetching department pages: ${deptResponse.status} ${deptResponse.statusText}`);
-            }
-          } else {
-            console.warn(`Department '${department}' not found in department list`);
-          }
-        } else {
-          console.error(`Error fetching departments: ${deptIdResponse.status} ${deptIdResponse.statusText}`);
-        }
-      } catch (deptError) {
-        console.error('Error fetching department pages:', deptError);
-      }
+      
+      // Cache the pages result with timestamp
+      pageAccessCache.set(pagesCacheKey, {
+        pages: new Set(pages),
+        timestamp: Date.now(),
+        userData: null
+      });
     }
     
-    // Cache the result with timestamp
+    // Cache the user data with timestamp
     pageAccessCache.set(cacheKey, {
       pages: new Set(pages),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      userData: userData
     });
     
     return pages.includes(pagePath);

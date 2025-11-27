@@ -163,9 +163,10 @@ router.post("/queries", authenticateJWT, async (req, res) => {
   const { user_id, subject, description, query_type, is_locked } = req.body;
 
   try {
+    // Insert with is_locked column (now that we know it exists)
     const result = await pool.query(
       'INSERT INTO hr_queries (user_id, subject, description, query_type, is_locked) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [user_id, subject, description, query_type, is_locked]
+      [user_id, subject, description, query_type, is_locked || false] // Default to false for is_locked if not provided
     );
 
     // Increment query count
@@ -275,6 +276,7 @@ router.post("/queries/:id/reply", authenticateJWT, async (req, res) => {
     let updateQuery = 'UPDATE hr_queries SET resolved_at = NOW(), updated_at = NOW()';
     const updateParams = [id];
     
+    // Check if is_locked is provided
     if (is_locked !== undefined) {
       updateQuery += ', is_locked = $2 WHERE id = $1';
       updateParams.push(is_locked);
@@ -481,6 +483,27 @@ router.post("/attendance", authenticateJWT, async (req, res) => {
   } catch (err) {
     console.error('Error adding attendance:', err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Check if locked queries feature is supported
+router.get("/check-locked-queries-support", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+
+  try {
+    // Check if the is_locked column exists in hr_queries table
+    const result = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'hr_queries' AND column_name = 'is_locked'
+    `);
+    
+    const supported = result.rows.length > 0;
+    
+    res.json({ supported });
+  } catch (err) {
+    console.error('Error checking locked queries support:', err);
+    res.status(500).json({ error: "Internal server error", supported: false });
   }
 });
 
