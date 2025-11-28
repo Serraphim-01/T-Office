@@ -1,0 +1,214 @@
+T-Office User Guide
+
+Table of Contents
+1. Introduction
+2. Getting Started
+3. Main Features
+   3.1 Dashboard
+   3.2 Chat
+   3.3 Clock & Attendance
+   3.4 Profile Management
+   3.5 Settings
+   3.6 HR Management
+   3.7 Admin Panel
+   3.8 Approvals
+   3.9 Inventory Management
+   3.10 Resources & Wiki
+4. Conclusion
+
+---
+
+1. Introduction
+
+Welcome to T-Office, your comprehensive internal office management platform. This guide will help you understand and utilize all the features available in the application to streamline your daily work processes.
+
+T-Office is designed to centralize administrative, HR, inventory, and collaboration workflows within your organization, making it easier to manage tasks, communicate with colleagues, and track important information.
+
+2. Getting Started
+
+To access T-Office:
+1. Open your web browser and navigate to the T-Office URL provided by your administrator
+2. Enter your username and password to log in
+3. Upon successful authentication, you'll be directed to your personalized dashboard
+
+If you don't have an account yet, contact your system administrator to create one for you.
+
+3. Main Features
+
+3.1 Dashboard
+
+The Dashboard serves as your central hub for all activities within T-Office.
+
+Key Features:
+• Activity Feed: See recent activities and system events relevant to you
+• Quick Stats: View key metrics and statistics
+• Navigation Hub: Easy access to all sections of the application
+
+The dashboard provides a personalized overview of your work environment and helps you stay informed about important updates.
+
+3.2 Chat
+
+The Chat module enables internal team communication with privacy features.
+
+Key Features:
+• Send and receive messages anonymously
+• Moderator Mode: Send messages with special privileges (if authorized)
+• Chat History: Review past conversations
+• Summarizer: Generate key points from previous discussions
+• Pause/Resume Chat: Temporarily stop chat activities
+• Clear Chat: Remove all messages from the chat (if authorized)
+
+This feature promotes collaborative work while maintaining professional communication standards.
+
+3.3 Clock & Attendance
+
+Track your work hours and manage attendance with the Clock module.
+
+Key Features:
+• Clock In/Out: Record your work hours with timestamp logging
+• Location Management:
+  - Add Location: Save office locations
+  - Delete Location: Remove saved locations
+  - View Locations: See all your saved locations
+• Map View: Visualize your current location relative to office locations
+• Attendance History: Review your past clock-in/clock-out records
+• Reports: Access attendance summaries (managers only)
+
+This system helps ensure accurate time tracking for payroll and productivity analysis.
+
+3.4 Profile Management
+
+Manage your personal information and documents in the Profile section.
+
+Key Features:
+• Personal Information: View and update your contact details
+• Certifications: View and manage your professional certificates
+• Account Status: Check your current account standing
+• HR Queries: View responses to queries submitted to HR
+• Scheduled Inductions: View upcoming induction sessions you're registered for
+
+Keep your profile updated to ensure accurate communication and record-keeping.
+
+3.5 Settings
+
+Customize your application experience in the Settings section.
+
+Key Features:
+• Theme Selection: Choose between light and dark display modes
+
+Adjust these settings to create a comfortable working environment.
+
+3.6 HR Management
+
+The HR Management section provides tools for human resources operations and is divided into three sub-sections:
+
+3.6.1 Onboarding
+Manage employee onboarding processes:
+• Create New Users: Add new employee accounts to the system (HR/Admin only)
+• Schedule Inductions: Plan onboarding sessions for new employees across multiple departments
+• View Inductions: See all scheduled induction sessions with details
+• Delete Inductions: Cancel planned induction sessions (HR/Admin only)
+
+3.6.2 Queries
+Handle HR-related questions and communications:
+• Send Queries: Submit questions or concerns to the HR department
+• View Query History: Review past communications with HR and their resolutions
+• Reply Queries: Provide responses to HR queries responded to by the Quried User
+
+3.6.3 Users
+Manage employee information and records:
+• View User Details: Access employee information and profiles (HR/Admin only)
+• Edit User Information: Update employee details
+• Deactivate Accounts: Temporarily disable employee accounts
+
+This module streamlines employee onboarding and HR communication processes.
+
+3.7 Admin Panel
+
+Administrative controls for managing the entire system (Admin users only).
+
+Key Features:
+• Database Management: View and manage system data
+• User Administration: Manage accounts, roles, and permissions
+• System Logs: Monitor application activities and security events
+• Features Documentation: Access comprehensive system information
+• Department Management: Create and manage departments and roles
+• Feature Access Control: Configure which features each department can access
+
+The Admin Panel provides complete control over the T-Office environment.
+
+3.8 Approvals
+
+Handle certificate and document approval requests.
+
+Key Features:
+• Accept/Reject Certificate Approvals: Process certification requests from employees
+
+This streamlined approval process ensures proper documentation validation.
+
+3.9 Inventory Management
+
+Comprehensive product and stock management system with four sub-sections:
+
+3.9.1 Products
+Manage your product catalog:
+• View Product List: See all products in the inventory
+• Add New Products: Create entries for new items
+• Edit Product Information: Update product details
+• Delete Products: Remove items from the catalog
+• Import Products: Bulk upload product data via CSV
+• Export Product List: Download product data as CSV
+• View Product Details: See comprehensive information about specific products
+
+3.9.2 Inbound
+Track incoming inventory shipments:
+• View Inbound Transactions: See all incoming shipments
+• Add New Inbound Transaction: Record new incoming shipments
+• Edit Inbound Details: Update shipment information
+• Delete Inbound Records: Remove incorrect entries
+• Mark as Stored: Move received items to storage
+• Export Inbound Data: Download inbound transaction data as CSV
+
+3.9.3 Store
+Manage stored inventory:
+• View Stored Items: See all items currently in storage
+• Edit Storage Details: Update storage information
+• Delete Storage Records: Remove items from storage
+• Create Outbound Request: Initiate shipment of stored items
+• Export Storage Data: Download stored inventory data as CSV
+
+3.9.4 Outbound
+Process outgoing inventory requests:
+• View Outbound Transactions: See all outgoing shipments
+• Mark as Dispatched: Record when items are sent
+• Mark as Delivered: Record when items are received
+• Delete Outbound Records: Remove incorrect entries
+• Export Outbound Data: Download outbound transaction data as CSV
+
+This system provides complete visibility into inventory movements and stock levels.
+
+3.10 Resources & Wiki
+
+Access and contribute to department-specific knowledge bases with two sub-sections:
+
+3.10.1 Wiki
+Access department-specific documentation:
+• View Topics: Browse available documentation for your department
+• Search Wiki: Find specific information using search functionality
+• Read Articles: Access detailed guides and procedures
+
+3.10.2 Create
+Contribute to the knowledge base (if authorized):
+• Create New Topics: Add new documentation articles
+• Edit Existing Topics: Update current documentation
+• Delete Topics: Remove outdated information
+
+The Wiki promotes knowledge sharing and ensures important information is readily available.
+
+4. Conclusion
+
+T-Office is designed to enhance productivity and streamline workplace processes. By leveraging its comprehensive feature set, you can efficiently manage your daily tasks, collaborate with colleagues, and maintain accurate records.
+
+For technical support or questions about specific features, please contact your system administrator.
+
+Regular updates and improvements to T-Office ensure you always have access to the latest tools for workplace efficiency.
