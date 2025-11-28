@@ -19,9 +19,6 @@ interface Theme {
 }
 
 interface UIContextType {
-  isActivityBarOpen: boolean;
-  toggleActivityBar: () => void;
-  setActivityBarOpen: (isOpen: boolean) => void;
   theme: Theme;
   updateTheme: (key: keyof Theme, value: string) => void;
   resetTheme: () => void;
@@ -46,7 +43,6 @@ const defaultTheme: Theme = {
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export function UIProvider({ children }: { children: ReactNode }) {
-  const [isActivityBarOpen, setActivityBarOpen] = useState(true);
   const [theme, setTheme] = useState<Theme>(() => {
     // Check if we're in browser environment
     if (typeof window !== 'undefined') {
@@ -55,10 +51,6 @@ export function UIProvider({ children }: { children: ReactNode }) {
     }
     return defaultTheme;
   });
-
-  const toggleActivityBar = () => {
-    setActivityBarOpen(prev => !prev);
-  };
 
   const updateTheme = (key: keyof Theme, value: string) => {
     setTheme(prev => ({ ...prev, [key]: value }));
@@ -89,7 +81,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UIContext.Provider value={{ isActivityBarOpen, toggleActivityBar, setActivityBarOpen, theme, updateTheme, resetTheme }}>
+    <UIContext.Provider value={{ theme, updateTheme, resetTheme }}>
       {children}
     </UIContext.Provider>
   );

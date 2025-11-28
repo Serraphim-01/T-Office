@@ -1,3 +1,5 @@
+/// <reference types="google.maps" />
+
 'use client';
 
 import { DashboardLayout } from '@/components/dashboard-layout';

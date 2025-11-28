@@ -11,10 +11,7 @@ import {
   Building2,
   LogOut,
   Menu,
-  X,
-  PanelRightClose,
-  PanelRightOpen,
-  Activity
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback,} from '@/components/ui/avatar';
@@ -29,24 +26,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isActivityBarOpen, toggleActivityBar } = useUI();
-  const [activities, setActivities] = useState<{ action: string, details: any, created_at: string }[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [loading, user, router]);
-
-  // Mock activities for demo mode
-  useEffect(() => {
-    if (isActivityBarOpen) {
-      setActivities([
-        { action: 'auth.login', details: {}, created_at: new Date().toISOString() },
-        { action: 'dashboard.view', details: {}, created_at: new Date(Date.now() - 3600000).toISOString() }
-      ]);
-    }
-  }, [isActivityBarOpen]);
 
   if (loading || !user) {
     return (
@@ -64,22 +49,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       localStorage.removeItem('token');
     }
     router.push('/login');
-  };
-
-  const formatActivity = (activity: { action: string, details: any, created_at: string }) => {
-    const { action, details } = activity;
-    switch (action) {
-      case 'auth.login':
-        return 'Logged in successfully.';
-      case 'compliance.site.create':
-        return `Added a new site: ${details.url}`;
-      case 'compliance.site.delete':
-        return `Deleted a site (ID: ${details.siteId}).`;
-      case 'compliance.document.update':
-        return 'Updated the master compliance document.';
-      default:
-        return action;
-    }
   };
 
   return (
@@ -157,15 +126,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-lg font-semibold text-foreground">
               Task Office
             </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden lg:inline-flex"
-              onClick={toggleActivityBar}
-            >
-              {isActivityBarOpen ? <PanelRightClose /> : <PanelRightOpen />}
-            </Button>
-            <div className="w-10 lg:hidden"></div>
+            <div className="w-10"></div>
           </div>
         </header>
 
@@ -173,31 +134,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>
-      </div>
-
-      {/* Activity Bar */}
-      <div className={cn(
-        "border-l border-border bg-card p-4 hidden lg:block transition-all duration-300 ease-in-out overflow-hidden",
-        isActivityBarOpen ? "w-80" : "w-0 p-0"
-      )}>
-        <div className={cn("transition-opacity", isActivityBarOpen ? "opacity-100" : "opacity-0")}>
-          <h3 className="text-lg font-semibold text-foreground mb-4">Activity</h3>
-          <div className="space-y-4">
-            {activities.length > 0 ? activities.map((activity, index) => (
-              <div key={index} className="flex items-start">
-                <Activity className="h-4 w-4 mt-1 mr-3 text-primary flex-shrink-0" />
-                <div className="flex-grow">
-                  <p className="text-sm">{formatActivity(activity)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(activity.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            )) : (
-              <p className="text-sm text-muted-foreground">No recent activity.</p>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
