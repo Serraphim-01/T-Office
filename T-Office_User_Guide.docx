@@ -40,8 +40,6 @@ If you don't have an account yet, contact your system administrator to create on
 The Dashboard serves as your central hub for all activities within T-Office.
 
 Key Features:
-• Activity Feed: See recent activities and system events relevant to you
-• Quick Stats: View key metrics and statistics
 • Navigation Hub: Easy access to all sections of the application
 
 The dashboard provides a personalized overview of your work environment and helps you stay informed about important updates.
@@ -139,7 +137,7 @@ The Admin Panel provides complete control over the T-Office environment.
 
 3.8 Approvals
 
-Handle certificate and document approval requests.
+Handle certificate approval requests.
 
 Key Features:
 • Accept/Reject Certificate Approvals: Process certification requests from employees
