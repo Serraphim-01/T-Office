@@ -316,12 +316,25 @@ CREATE TABLE IF NOT EXISTS crawled_sites (
 -- INVENTORY TABLES
 -- ===========================================
 
+-- Providers table
+CREATE TABLE IF NOT EXISTS providers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    contact_person VARCHAR(255),
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    address TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     part_number VARCHAR(100) UNIQUE NOT NULL,
     product_type VARCHAR(100) NOT NULL,
+    provider_id INTEGER REFERENCES providers(id) ON DELETE RESTRICT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -335,7 +348,7 @@ CREATE TABLE IF NOT EXISTS inbound_transactions (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL,
-    provider VARCHAR(255) NOT NULL,
+    provider_id INTEGER REFERENCES providers(id) ON DELETE RESTRICT,
     expected_arrival_start DATE NOT NULL,
     expected_arrival_end DATE NOT NULL,
     arrival_date DATE,
@@ -418,12 +431,17 @@ CREATE INDEX IF NOT EXISTS idx_location_events_user_timestamp ON location_events
 CREATE INDEX IF NOT EXISTS idx_location_events_location_timestamp ON location_events(location_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_auto_attendance_user_timestamp ON auto_attendance(user_id, timestamp DESC);
 
+-- Providers indexes
+CREATE INDEX IF NOT EXISTS idx_providers_name ON providers(name);
+
 -- Product indexes
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_part_number ON products(part_number);
+CREATE INDEX IF NOT EXISTS idx_products_provider_id ON products(provider_id);
 
 -- Inbound indexes
 CREATE INDEX IF NOT EXISTS idx_inbound_transactions_product_id ON inbound_transactions(product_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_transactions_provider_id ON inbound_transactions(provider_id);
 CREATE INDEX IF NOT EXISTS idx_inbound_transactions_status ON inbound_transactions(status);
 CREATE INDEX IF NOT EXISTS idx_inbound_serial_numbers_transaction_id ON inbound_serial_numbers(transaction_id);
 
@@ -482,13 +500,10 @@ INSERT INTO departments (name, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert sample products
-INSERT INTO products (name, part_number, product_type) VALUES
-('Laptop Computer', 'LAPTOP-001', 'Electronics'),
-('Wireless Mouse', 'MOUSE-001', 'Electronics'),
-('Mechanical Keyboard', 'KEYBOARD-001', 'Electronics'),
-('USB-C Cable', 'CABLE-001', 'Electronics'),
-('External Hard Drive', 'HDD-001', 'Electronics')
-ON CONFLICT (part_number) DO NOTHING;
+-- REMOVED: Sample products will not be inserted during migration
+
+-- Truncate all inventory tables to ensure they are empty
+TRUNCATE TABLE inbound_serial_numbers, inbound_transactions, outbound_serial_numbers, outbound_transactions, products, providers RESTART IDENTITY CASCADE;
 
 -- Insert sample wiki topics
 INSERT INTO wiki_topics (department, topic, content, video_url) VALUES
@@ -1011,6 +1026,12 @@ WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/add-provider'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'inventory/products/view-details'
 FROM departments
 WHERE name = 'Admin'
@@ -1023,7 +1044,19 @@ WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/edit-provider'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'inventory/products/delete-product'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'inventory/products/delete-provider'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -1195,6 +1228,12 @@ WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/add-provider'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT dpa.department_id, 'inventory/products/view-details'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/products'
@@ -1207,7 +1246,19 @@ WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/edit-provider'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT dpa.department_id, 'inventory/products/delete-product'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'inventory/products/delete-provider'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;

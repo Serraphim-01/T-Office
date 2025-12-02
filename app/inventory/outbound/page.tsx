@@ -39,6 +39,7 @@ interface OutboundTransaction {
   status: 'Outgoing' | 'Dispatched' | 'Delivered';
   created_at: string;
   serial_numbers: string[] | null;
+  provider_name: string; // Added provider information
 }
 
 interface StoredTransaction {
@@ -106,7 +107,7 @@ function OutboundContent() {
     if (!user) return;
     
     // Check access to inventory outbound page
-    const outboundAccess = await hasPageAccess(user, 'inventory/outbound');
+    const outboundAccess = await hasPageAccess(user.id, 'inventory/outbound');
     
     if (!outboundAccess) {
       // If no access to inventory outbound page, disable all features
@@ -118,10 +119,10 @@ function OutboundContent() {
     }
     
     // Check access to specific inventory outbound features
-    const exportCSVAccess = await hasPageAccess(user, 'inventory/outbound/export-csv');
-    const markAsDispatchedAccess = await hasPageAccess(user, 'inventory/outbound/mark-as-dispatched');
-    const markAsDeliveredAccess = await hasPageAccess(user, 'inventory/outbound/mark-as-delivered');
-    const deleteTransactionAccess = await hasPageAccess(user, 'inventory/outbound/delete-transaction');
+    const exportCSVAccess = await hasPageAccess(user.id, 'inventory/outbound/export-csv');
+    const markAsDispatchedAccess = await hasPageAccess(user.id, 'inventory/outbound/mark-as-dispatched');
+    const markAsDeliveredAccess = await hasPageAccess(user.id, 'inventory/outbound/mark-as-delivered');
+    const deleteTransactionAccess = await hasPageAccess(user.id, 'inventory/outbound/delete-transaction');
     
     setCanExportCSV(exportCSVAccess);
     setCanMarkAsDispatched(markAsDispatchedAccess);
@@ -435,6 +436,7 @@ function OutboundContent() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
+                    <TableHead>Provider</TableHead> {/* Added Provider column */}
                     <TableHead>Delivery Address</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Status</TableHead>
@@ -450,6 +452,7 @@ function OutboundContent() {
                         </Link>
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
+                      <TableCell>{transaction.provider_name || 'N/A'}</TableCell> {/* Added Provider cell */}
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <MapPin className="h-4 w-4 text-muted-foreground" />

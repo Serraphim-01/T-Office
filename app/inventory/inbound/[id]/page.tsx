@@ -16,7 +16,7 @@ interface InboundTransaction {
   product_name: string;
   product_part_number: string;
   quantity: number;
-  provider: string;
+  provider_name: string;
   expected_arrival_start: string;
   expected_arrival_end: string;
   status: 'Incoming' | 'Stored' | 'Outgoing';
@@ -201,7 +201,7 @@ export default function InboundTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Provider</p>
-                  <p className="font-medium">{transaction.provider}</p>
+                  <p className="font-medium">{transaction.provider_name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>

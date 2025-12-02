@@ -104,13 +104,15 @@ router.put("/departments/:id", authenticateJWT, async (req, res) => {
   try {
     // Check if department exists
     const existing = await pool.query(
-      'SELECT id FROM departments WHERE id = $1',
+      'SELECT id, name FROM departments WHERE id = $1',
       [id]
     );
 
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: "Department not found" });
     }
+
+    const oldName = existing.rows[0].name;
 
     // Check if another department with the same name already exists
     const nameCheck = await pool.query(
@@ -122,6 +124,7 @@ router.put("/departments/:id", authenticateJWT, async (req, res) => {
       return res.status(400).json({ error: "A department with this name already exists" });
     }
 
+    // Update the department name
     const result = await pool.query(
       'UPDATE departments SET name = $1, updated_at = NOW() WHERE id = $2 RETURNING id, name',
       [name, id]
@@ -130,6 +133,15 @@ router.put("/departments/:id", authenticateJWT, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Department not found" });
     }
+
+    // Also update all users with this department to reflect the new name
+    await pool.query(
+      'UPDATE users SET department = $1 WHERE department = $2',
+      [name, oldName]
+    );
+
+    // Log the change for auditing purposes
+    console.log(`Department renamed from '${oldName}' to '${name}'. Updated ${result.rowCount} department record and all associated users.`);
 
     res.json(result.rows[0]);
   } catch (err) {

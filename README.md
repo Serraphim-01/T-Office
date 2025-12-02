@@ -68,6 +68,10 @@ To run the database migration:
 ./db/run_migration.sh
 ```
 
+## Changelog
+
+For a detailed history of changes to the project, see [CHANGELOG.md](CHANGELOG.md).
+
 ## Project Structure
 
 ```
@@ -88,6 +92,7 @@ To run the database migration:
 - `npm run build` - Build the Next.js application
 - `npm start` - Start the production server
 - `npm run lint` - Run ESLint
+- `npm run changelog` - View the project changelog
 
 ## Docker Support
 

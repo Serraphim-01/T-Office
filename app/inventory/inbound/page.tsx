@@ -29,13 +29,18 @@ interface Product {
   part_number: string;
 }
 
+interface Provider {
+  id: number;
+  name: string;
+}
+
 interface InboundTransaction {
   id: number;
   product_id: number;
   product_name: string;
   product_part_number: string;
   quantity: number;
-  provider: string;
+  provider_name: string;
   expected_arrival_start: string;
   expected_arrival_end: string;
   status: 'Incoming' | 'Stored';
@@ -53,6 +58,8 @@ export default function InboundPage() {
 
 function InboundContent() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [inboundTransactions, setInboundTransactions] = useState<InboundTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -67,10 +74,10 @@ function InboundContent() {
   const [canMarkAsStored, setCanMarkAsStored] = useState(false);
   
   // Form state
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [serialNumbers, setSerialNumbers] = useState<string[]>(['']);
-  const [provider, setProvider] = useState('');
   const [expectedArrivalStart, setExpectedArrivalStart] = useState('');
   const [expectedArrivalEnd, setExpectedArrivalEnd] = useState('');
   
@@ -88,7 +95,7 @@ function InboundContent() {
     if (!user) return;
     
     // Check access to inventory inbound page
-    const inboundAccess = await hasPageAccess(user, 'inventory/inbound');
+    const inboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
     
     if (!inboundAccess) {
       // If no access to inventory inbound page, disable all features
@@ -101,11 +108,11 @@ function InboundContent() {
     }
     
     // Check access to specific inventory inbound features
-    const exportCSVAccess = await hasPageAccess(user, 'inventory/inbound/export-csv');
-    const addTransactionAccess = await hasPageAccess(user, 'inventory/inbound/add-transaction');
-    const editTransactionAccess = await hasPageAccess(user, 'inventory/inbound/edit-transaction');
-    const deleteTransactionAccess = await hasPageAccess(user, 'inventory/inbound/delete-transaction');
-    const markAsStoredAccess = await hasPageAccess(user, 'inventory/inbound/mark-as-stored');
+    const exportCSVAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound/export-csv');
+    const addTransactionAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound/add-transaction');
+    const editTransactionAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound/edit-transaction');
+    const deleteTransactionAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound/delete-transaction');
+    const markAsStoredAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound/mark-as-stored');
     
     setCanExportCSV(exportCSVAccess);
     setCanAddTransaction(addTransactionAccess);
@@ -114,9 +121,9 @@ function InboundContent() {
     setCanMarkAsStored(markAsStoredAccess);
   };
 
-    // Fetch products and inbound transactions
+  // Fetch providers, products and inbound transactions
   useEffect(() => {
-    Promise.all([fetchProducts(), fetchInboundTransactions()]);
+    Promise.all([fetchProviders(), fetchProducts(), fetchInboundTransactions()]);
   }, []);
 
   // Fetch single inbound transaction details
@@ -135,7 +142,27 @@ function InboundContent() {
       return data;
     } catch (error) {
       throw error;
-      }
+    }
+  };
+
+  const fetchProviders = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:4000/api/inventory/providers', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch providers');
+      const data = await response.json();
+      setProviders(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load providers',
+        variant: 'destructive',
+      });
+    }
   };
 
   const fetchProducts = async () => {
@@ -180,6 +207,36 @@ function InboundContent() {
     }
   };
 
+  // Filter products when provider is selected
+  useEffect(() => {
+    if (selectedProviderId) {
+      // Fetch products for this specific provider
+      fetchProductsByProvider(selectedProviderId);
+    } else {
+      setFilteredProducts([]);
+    }
+  }, [selectedProviderId]);
+
+  const fetchProductsByProvider = async (providerId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/products`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch products for provider');
+      const data = await response.json();
+      setFilteredProducts(data);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load products for selected provider',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleEdit = async (transaction: InboundTransaction) => {
     // Only allow edit if user has edit permission
     if (!canEditTransaction) {
@@ -205,12 +262,16 @@ function InboundContent() {
       const data = await response.json();
       
       setEditingTransactionId(transaction.id);
+      // Find provider by name
+      const provider = providers.find(p => p.name === transaction.provider_name);
+      if (provider) {
+        setSelectedProviderId(provider.id);
+      }
       setSelectedProductId(transaction.product_id);
       setQuantity(transaction.quantity);
       setSerialNumbers(data.serial_numbers && data.serial_numbers.length > 0 
         ? data.serial_numbers 
         : Array(transaction.quantity).fill(''));
-      setProvider(transaction.provider);
       setExpectedArrivalStart(transaction.expected_arrival_start.split('T')[0]);
       setExpectedArrivalEnd(transaction.expected_arrival_end.split('T')[0]);
       setIsEditing(true);
@@ -289,10 +350,32 @@ function InboundContent() {
     e.preventDefault();
     
     // Validate form
-    if (!selectedProductId || quantity <= 0 || !provider || !expectedArrivalStart || !expectedArrivalEnd) {
+    if (!selectedProviderId || !selectedProductId || quantity <= 0 || !expectedArrivalStart || !expectedArrivalEnd) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Get provider name
+    const provider = providers.find(p => p.id === selectedProviderId);
+    if (!provider) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a valid provider',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Get product
+    const product = products.find(p => p.id === selectedProductId);
+    if (!product) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a valid product',
         variant: 'destructive',
       });
       return;
@@ -326,7 +409,7 @@ function InboundContent() {
           product_id: selectedProductId,
           quantity,
           serial_numbers: serialNumbers,
-          provider,
+          provider_id: selectedProviderId,
           expected_arrival_start: expectedArrivalStart,
           expected_arrival_end: expectedArrivalEnd
         }),
@@ -340,10 +423,10 @@ function InboundContent() {
       });
       
       // Reset form
+      setSelectedProviderId(null);
       setSelectedProductId(null);
       setQuantity(1);
       setSerialNumbers(['']);
-      setProvider('');
       setExpectedArrivalStart('');
       setExpectedArrivalEnd('');
       setIsAdding(false);
@@ -400,10 +483,10 @@ function InboundContent() {
     setIsAdding(false);
     setIsEditing(false);
     setEditingTransactionId(null);
+    setSelectedProviderId(null);
     setSelectedProductId(null);
     setQuantity(1);
     setSerialNumbers(['']);
-    setProvider('');
     setExpectedArrivalStart('');
     setExpectedArrivalEnd('');
   };
@@ -466,16 +549,36 @@ function InboundContent() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
+                    <Label htmlFor="provider">Provider *</Label>
+                    <Select 
+                      value={selectedProviderId?.toString() || ''} 
+                      onValueChange={(value) => setSelectedProviderId(parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.map((provider) => (
+                          <SelectItem key={provider.id} value={provider.id.toString()}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="product">Product *</Label>
                     <Select 
                       value={selectedProductId?.toString() || ''} 
                       onValueChange={(value) => setSelectedProductId(parseInt(value))}
+                      disabled={!selectedProviderId}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a product" />
+                        <SelectValue placeholder={selectedProviderId ? "Select a product" : "Select a provider first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {products.map((product) => (
+                        {filteredProducts.map((product) => (
                           <SelectItem key={product.id} value={product.id.toString()}>
                             {product.name} ({product.part_number})
                           </SelectItem>
@@ -492,17 +595,6 @@ function InboundContent() {
                       min="1"
                       value={quantity}
                       onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="provider">Provider *</Label>
-                    <Input
-                      id="provider"
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                      placeholder="Enter provider name"
                       required
                     />
                   </div>
@@ -584,11 +676,26 @@ function InboundContent() {
                 </TableHeader>
                 <TableBody>
                   {inboundTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        <Link href={`/inventory/inbound/${transaction.id}`} className="font-medium hover:underline">
-                          {transaction.product_name}
-                        </Link>
+                    <TableRow 
+                      key={transaction.id}
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        // Check if the click was on the product name cell
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('.product-name-cell')) {
+                          // Navigate to transaction details page
+                          window.location.href = `/inventory/inbound/${transaction.id}`;
+                        }
+                      }}
+                    >
+                      <TableCell 
+                        className="font-medium hover:underline cursor-pointer product-name-cell"
+                        onClick={() => {
+                          // Navigate to product details page
+                          window.location.href = `/inventory/products/${transaction.product_id}`;
+                        }}
+                      >
+                        {transaction.product_name}
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
                       <TableCell>
@@ -612,7 +719,7 @@ function InboundContent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{transaction.provider}</TableCell>
+                      <TableCell>{transaction.provider_name}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4 text-muted-foreground" />

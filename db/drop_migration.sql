@@ -55,6 +55,7 @@ DROP TABLE IF EXISTS outbound_transactions CASCADE;
 DROP TABLE IF EXISTS inbound_serial_numbers CASCADE;
 DROP TABLE IF EXISTS inbound_transactions CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS providers CASCADE;
 
 -- Remove role_id column from users table (only if table exists)
 DO $$ BEGIN

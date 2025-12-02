@@ -11,15 +11,54 @@ const upload = multer({ dest: 'uploads/' });
 
 const router = express.Router();
 
-// Get all products
+// Get all products with provider information
 router.get('/products', authenticateJWT, async (req, res) => {
   try {
     const result = await req.pool.query(
-      'SELECT id, name, part_number, product_type FROM products ORDER BY name'
+      `SELECT p.id, p.name, p.part_number, p.product_type, 
+              pr.id as provider_id, 
+              pr.name as provider_name
+       FROM products p
+       LEFT JOIN providers pr ON p.provider_id = pr.id
+       ORDER BY p.name`
     );
+    
+    console.log('Products query result:', result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all providers
+router.get('/providers', authenticateJWT, async (req, res) => {
+  try {
+    const result = await req.pool.query(
+      'SELECT id, name, contact_person, email, phone, address FROM providers ORDER BY name'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching providers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get products by provider
+router.get('/providers/:providerId/products', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  
+  try {
+    const result = await req.pool.query(
+      `SELECT p.id, p.name, p.part_number, p.product_type
+       FROM products p
+       WHERE p.provider_id = $1
+       ORDER BY p.name`,
+      [providerId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching products by provider:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -30,7 +69,11 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
   
   try {
     const result = await req.pool.query(
-      'SELECT id, name, part_number, product_type, created_at, updated_at FROM products WHERE id = $1',
+      `SELECT p.id, p.name, p.part_number, p.product_type, p.created_at, p.updated_at,
+              pr.id as provider_id, pr.name as provider_name
+       FROM products p
+       LEFT JOIN providers pr ON p.provider_id = pr.id
+       WHERE p.id = $1`,
       [id]
     );
     
@@ -47,17 +90,27 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
 
 // Add a new product
 router.post('/products', authenticateJWT, async (req, res) => {
-  const { name, part_number, product_type } = req.body;
+  const { name, part_number, product_type, provider_id } = req.body;
   
   // Validate input
-  if (!name || !part_number || !product_type) {
-    return res.status(400).json({ error: 'Name, part number, and product type are required' });
+  if (!name || !part_number || !product_type || !provider_id) {
+    return res.status(400).json({ error: 'Name, part number, product type, and provider are required' });
   }
   
   try {
+    // Verify provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [provider_id]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(400).json({ error: 'Invalid provider ID' });
+    }
+    
     const result = await req.pool.query(
-      'INSERT INTO products (name, part_number, product_type) VALUES ($1, $2, $3) RETURNING id, name, part_number, product_type',
-      [name, part_number, product_type]
+      'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) RETURNING id, name, part_number, product_type',
+      [name, part_number, product_type, provider_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -73,17 +126,27 @@ router.post('/products', authenticateJWT, async (req, res) => {
 // Update a product
 router.put('/products/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { name, part_number, product_type } = req.body;
+  const { name, part_number, product_type, provider_id } = req.body;
   
   // Validate input
-  if (!name || !part_number || !product_type) {
-    return res.status(400).json({ error: 'Name, part number, and product type are required' });
+  if (!name || !part_number || !product_type || !provider_id) {
+    return res.status(400).json({ error: 'Name, part number, product type, and provider are required' });
   }
   
   try {
+    // Verify provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [provider_id]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(400).json({ error: 'Invalid provider ID' });
+    }
+    
     const result = await req.pool.query(
-      'UPDATE products SET name = $1, part_number = $2, product_type = $3, updated_at = NOW() WHERE id = $4 RETURNING id, name, part_number, product_type',
-      [name, part_number, product_type, id]
+      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, updated_at = NOW() WHERE id = $5 RETURNING id, name, part_number, product_type',
+      [name, part_number, product_type, provider_id, id]
     );
     
     if (result.rowCount === 0) {
@@ -142,21 +205,32 @@ router.post('/products/import', authenticateJWT, upload.single('file'), async (r
         for (const row of results) {
           try {
             // Extract required fields (case insensitive)
-            const name = row.name || row.Name || row['Product Name'] || '';
-            const partNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
-            const productType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+            const impName = row.name || row.Name || row['Product Name'] || '';
+            const impPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
+            const impProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+            const impProviderName = row.provider || row.Provider || '';
 
-            // Validate required fields
-            if (!name || !partNumber) {
+            // Get or create provider if specified
+            let impProviderId = null;
+            if (impProviderName) {
+              const providerResult = await req.pool.query(
+                'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                [impProviderName]
+              );
+              impProviderId = providerResult.rows[0].id;
+            }
+
+            // Validate required fields including provider
+            if (!impName || !impPartNumber || !impProviderId) {
               errorCount++;
-              errors.push(`Row missing required fields (Name: ${name || 'N/A'}, Part Number: ${partNumber || 'N/A'})`);
+              errors.push(`Row missing required fields (Name: ${impName || 'N/A'}, Part Number: ${impPartNumber || 'N/A'}, Provider: ${impProviderName || 'N/A'})`);
               continue;
             }
 
             // Insert product into database
             await req.pool.query(
-              'INSERT INTO products (name, part_number, product_type) VALUES ($1, $2, $3) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3',
-              [name, partNumber, productType]
+              'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
+              [impName, impPartNumber, impProductType, impProviderId]
             );
             successCount++;
           } catch (error) {
@@ -236,20 +310,31 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
               switch (recordType.toLowerCase()) {
                 case 'product':
                   // Process product record
-                  const productName = row.name || row.Name || row['Product Name'] || '';
-                  const partNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
-                  const productType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+                  const prodName = row.name || row.Name || row['Product Name'] || '';
+                  const prodPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
+                  const prodType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+                  const prodProviderName = row.provider || row.Provider || '';
 
-                  // Validate required fields
-                  if (!productName || !partNumber) {
+                  // Validate required fields including provider
+                  if (!prodName || !prodPartNumber || !prodProviderName) {
                     errorCount.products++;
-                    errors.push(`Product row missing required fields (Name: ${productName || 'N/A'}, Part Number: ${partNumber || 'N/A'})`);
+                    errors.push(`Product row missing required fields (Name: ${prodName || 'N/A'}, Part Number: ${prodPartNumber || 'N/A'}, Provider: ${prodProviderName || 'N/A'})`);
                     continue;
                   }
 
+                  // Get or create provider if specified
+                  let prodProviderId = null;
+                  if (prodProviderName) {
+                    const providerResult = await req.pool.query(
+                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                      [prodProviderName]
+                    );
+                    prodProviderId = providerResult.rows[0].id;
+                  }
+
                   await req.pool.query(
-                    'INSERT INTO products (name, part_number, product_type) VALUES ($1, $2, $3) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3',
-                    [productName, partNumber, productType]
+                    'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
+                    [prodName, prodPartNumber, prodType, prodProviderId]
                   );
                   successCount.products++;
                   break;
@@ -258,16 +343,26 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Process inbound transaction record
                   const inboundPartNumber = row.product_part_number || row['Product Part Number'] || '';
                   const inboundQuantity = parseInt(row.quantity || row.Quantity || '0');
-                  const provider = row.provider || row.Provider || '';
+                  const providerName = row.provider || row.Provider || '';
                   const expectedArrivalStart = row.expected_arrival_start || row['Expected Arrival Start'] || '';
                   const expectedArrivalEnd = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const inboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
 
                   // Validate required fields
-                  if (!inboundPartNumber || !inboundQuantity || !provider || !expectedArrivalStart || !expectedArrivalEnd) {
+                  if (!inboundPartNumber || !inboundQuantity || !providerName || !expectedArrivalStart || !expectedArrivalEnd) {
                     errorCount.inbound++;
                     errors.push(`Inbound row missing required fields`);
                     continue;
+                  }
+
+                  // Get or create provider
+                  let providerId = null;
+                  if (providerName) {
+                    const providerResult = await req.pool.query(
+                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                      [providerName]
+                    );
+                    providerId = providerResult.rows[0].id;
                   }
 
                   // Get product ID by part number
@@ -315,17 +410,27 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Process stored transaction record
                   const storedPartNumber = row.product_part_number || row['Product Part Number'] || '';
                   const storedQuantity = parseInt(row.quantity || row.Quantity || '0');
-                  const storedProvider = row.provider || row.Provider || '';
+                  const storedProviderName = row.provider || row.Provider || '';
                   const expectedArrivalStartStored = row.expected_arrival_start || row['Expected Arrival Start'] || '';
                   const expectedArrivalEndStored = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const arrivalDate = row.arrival_date || row['Arrival Date'] || '';
                   const storedSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
 
                   // Validate required fields
-                  if (!storedPartNumber || !storedQuantity || !storedProvider || !expectedArrivalStartStored || !expectedArrivalEndStored || !arrivalDate) {
+                  if (!storedPartNumber || !storedQuantity || !storedProviderName || !expectedArrivalStartStored || !expectedArrivalEndStored || !arrivalDate) {
                     errorCount.stored++;
                     errors.push(`Stored row missing required fields`);
                     continue;
+                  }
+
+                  // Get or create provider
+                  let storedProviderId = null;
+                  if (storedProviderName) {
+                    const providerResult = await req.pool.query(
+                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                      [storedProviderName]
+                    );
+                    storedProviderId = providerResult.rows[0].id;
                   }
 
                   // Get product ID by part number
@@ -345,10 +450,10 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Insert stored transaction
                   const storedResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
-                    (product_id, quantity, provider, expected_arrival_start, expected_arrival_end, arrival_date, status) 
+                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status) 
                     VALUES ($1, $2, $3, $4, $5, $6, $7) 
                     RETURNING id`,
-                    [storedProductId, storedQuantity, storedProvider, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored']
+                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored']
                   );
 
                   const storedId = storedResult.rows[0].id;
@@ -438,19 +543,31 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                 default:
                   // If no type is specified or type is unknown, treat as product (for backward compatibility)
                   if (row.name || row.part_number) {
-                    const name = row.name || row.Name || row['Product Name'] || '';
-                    const partNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
-                    const productType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+                    const defName = row.name || row.Name || row['Product Name'] || '';
+                    const defPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
+                    const defProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
+                    const defProviderName = row.provider || row.Provider || '';
 
-                    if (name && partNumber) {
+                    // Get or create provider if specified
+                    let defProviderId = null;
+                    if (defProviderName) {
+                      const providerResult = await req.pool.query(
+                        'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                        [defProviderName]
+                      );
+                      defProviderId = providerResult.rows[0].id;
+                    }
+
+                    // Validate required fields including provider
+                    if (defName && defPartNumber && defProviderId) {
                       await req.pool.query(
-                        'INSERT INTO products (name, part_number, product_type) VALUES ($1, $2, $3) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3',
-                        [name, partNumber, productType]
+                        'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
+                        [defName, defPartNumber, defProductType, defProviderId]
                       );
                       successCount.products++;
                     } else {
                       errorCount.products++;
-                      errors.push(`Row missing required fields (Name: ${name || 'N/A'}, Part Number: ${partNumber || 'N/A'})`);
+                      errors.push(`Row missing required fields (Name: ${defName || 'N/A'}, Part Number: ${defPartNumber || 'N/A'}, Provider: ${defProviderName || 'N/A'})`);
                     }
                   }
                   break;
@@ -637,6 +754,167 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error('Error exporting data:', error);
     res.status(500).json({ error: 'Internal server error during export' });
+  }
+});
+
+// Add a new provider
+router.post('/providers', authenticateJWT, async (req, res) => {
+  const { name, contact_person, email, phone, address } = req.body;
+  
+  // Validate input
+  if (!name) {
+    return res.status(400).json({ error: 'Provider name is required' });
+  }
+  
+  try {
+    const result = await req.pool.query(
+      'INSERT INTO providers (name, contact_person, email, phone, address) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, contact_person, email, phone, address',
+      [name, contact_person, email, phone, address]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error adding provider:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'A provider with this name already exists' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// Update a provider
+router.put('/providers/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { name, contact_person, email, phone, address } = req.body;
+  
+  // Validate input
+  if (!name) {
+    return res.status(400).json({ error: 'Provider name is required' });
+  }
+  
+  try {
+    const result = await req.pool.query(
+      'UPDATE providers SET name = $1, contact_person = $2, email = $3, phone = $4, address = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, contact_person, email, phone, address',
+      [name, contact_person, email, phone, address, id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating provider:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'A provider with this name already exists' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// Delete a provider
+router.delete('/providers/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Check if provider has any associated inbound transactions
+    const checkResult = await req.pool.query(
+      'SELECT COUNT(*) as count FROM inbound_transactions WHERE provider_id = $1',
+      [id]
+    );
+    
+    if (parseInt(checkResult.rows[0].count) > 0) {
+      return res.status(400).json({ error: 'Cannot delete provider with existing transactions. Please delete or reassign transactions first.' });
+    }
+    
+    const result = await req.pool.query('DELETE FROM providers WHERE id = $1', [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting provider:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a specific provider by ID
+router.get('/providers/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const result = await req.pool.query(
+      'SELECT id, name, contact_person, email, phone, address, created_at, updated_at FROM providers WHERE id = $1',
+      [id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching provider:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add a product to a specific provider
+router.post('/providers/:providerId/products', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  const { name, part_number, product_type } = req.body;
+  
+  // Validate input
+  if (!name || !part_number || !product_type) {
+    return res.status(400).json({ error: 'Name, part number, and product type are required' });
+  }
+  
+  try {
+    // Start transaction
+    await req.pool.query('BEGIN');
+    
+    // Check if provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id, name FROM providers WHERE id = $1',
+      [providerId]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    const provider = providerCheck.rows[0];
+    
+    // Insert product with provider_id
+    const productResult = await req.pool.query(
+      'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) RETURNING id, name, part_number, product_type',
+      [name, part_number, product_type, providerId]
+    );
+    
+    const product = productResult.rows[0];
+    
+    // Commit transaction
+    await req.pool.query('COMMIT');
+    
+    // Return the created product with provider info
+    res.status(201).json({
+      ...product,
+      provider_id: provider.id,
+      provider_name: provider.name
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    await req.pool.query('ROLLBACK');
+    console.error('Error adding product to provider:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'A product with this part number already exists' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 });
 

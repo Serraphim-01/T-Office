@@ -21,17 +21,58 @@ router.get('/', authenticateJWT, async (req, res) => {
         o.delivery_datetime,
         o.status,
         o.created_at,
+        pr.name as provider_name,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
       JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
-      GROUP BY o.id, i.product_id, p.name, p.part_number
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
       ORDER BY o.created_at DESC
     `);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching outbound transactions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get outbound transactions for a specific product
+router.get('/product/:productId', authenticateJWT, async (req, res) => {
+  const { productId } = req.params;
+  
+  try {
+    const result = await req.pool.query(`
+      SELECT 
+        o.id,
+        o.inbound_transaction_id,
+        i.product_id,
+        p.name as product_name,
+        p.part_number as product_part_number,
+        o.quantity,
+        o.receiver_address,
+        o.receiver_email,
+        o.receiver_phone,
+        o.dispatch_datetime,
+        o.delivery_datetime,
+        o.status,
+        o.created_at,
+        pr.name as provider_name,
+        ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
+      FROM outbound_transactions o
+      JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
+      LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
+      WHERE i.product_id = $1
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
+      ORDER BY o.created_at DESC
+    `, [productId]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching product outbound transactions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -222,13 +263,15 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         o.delivery_datetime,
         o.status,
         o.created_at,
+        pr.name as provider_name,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
       JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
       WHERE o.id = $1
-      GROUP BY o.id, i.product_id, p.name, p.part_number
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
     `, [id]);
     
     if (result.rowCount === 0) {

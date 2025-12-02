@@ -13,7 +13,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         p.name as product_name,
         p.part_number as product_part_number,
         i.quantity,
-        i.provider,
+        pr.name as provider_name,
         i.expected_arrival_start,
         i.expected_arrival_end,
         i.status,
@@ -21,9 +21,10 @@ router.get('/', authenticateJWT, async (req, res) => {
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.status = $1
-      GROUP BY i.id, p.name, p.part_number
+      GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.created_at DESC
     `, ['Incoming']);
     res.json(result.rows);
@@ -43,15 +44,16 @@ router.get('/store', authenticateJWT, async (req, res) => {
         p.name as product_name,
         p.part_number as product_part_number,
         i.quantity,
-        i.provider,
+        pr.name as provider_name,
         i.arrival_date,
         i.status,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.status = $1
-      GROUP BY i.id, p.name, p.part_number
+      GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.arrival_date DESC
     `, ['Stored']);
     
@@ -64,10 +66,10 @@ router.get('/store', authenticateJWT, async (req, res) => {
 
 // Add a new inbound transaction
 router.post('/', authenticateJWT, async (req, res) => {
-  const { product_id, quantity, serial_numbers, provider, expected_arrival_start, expected_arrival_end } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
   
   // Validate input
-  if (!product_id || !quantity || !provider || !expected_arrival_start || !expected_arrival_end) {
+  if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
     return res.status(400).json({ error: 'All fields are required' });
   }
   
@@ -75,13 +77,24 @@ router.post('/', authenticateJWT, async (req, res) => {
     // Start transaction
     await req.pool.query('BEGIN');
     
+    // Verify provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [provider_id]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid provider ID' });
+    }
+    
     // Insert inbound transaction
     const result = await req.pool.query(`
       INSERT INTO inbound_transactions 
-      (product_id, quantity, provider, expected_arrival_start, expected_arrival_end, status) 
+      (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status) 
       VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING id`,
-      [product_id, quantity, provider, expected_arrival_start, expected_arrival_end, 'Incoming']
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming']
     );
     
     const transactionId = result.rows[0].id;
@@ -119,17 +132,21 @@ router.get('/:id', authenticateJWT, async (req, res) => {
       SELECT 
         i.id,
         i.product_id,
+        p.name as product_name,
+        p.part_number as product_part_number,
         i.quantity,
-        i.provider,
+        pr.name as provider_name,
         i.expected_arrival_start,
         i.expected_arrival_end,
         i.status,
         i.created_at,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.id = $1
-      GROUP BY i.id
+      GROUP BY i.id, p.name, p.part_number, pr.name
     `, [id]);
     
     if (result.rowCount === 0) {
@@ -146,10 +163,10 @@ router.get('/:id', authenticateJWT, async (req, res) => {
 // Update an inbound transaction
 router.put('/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { product_id, quantity, serial_numbers, provider, expected_arrival_start, expected_arrival_end } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
   
   // Validate input
-  if (!product_id || !quantity || !provider || !expected_arrival_start || !expected_arrival_end) {
+  if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
     return res.status(400).json({ error: 'All fields are required' });
   }
   
@@ -157,13 +174,24 @@ router.put('/:id', authenticateJWT, async (req, res) => {
     // Start transaction
     await req.pool.query('BEGIN');
     
+    // Verify provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [provider_id]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid provider ID' });
+    }
+    
     // Update inbound transaction
     const result = await req.pool.query(`
       UPDATE inbound_transactions 
-      SET product_id = $1, quantity = $2, provider = $3, expected_arrival_start = $4, expected_arrival_end = $5, updated_at = NOW()
+      SET product_id = $1, quantity = $2, provider_id = $3, expected_arrival_start = $4, expected_arrival_end = $5, updated_at = NOW()
       WHERE id = $6 AND status = 'Incoming'
       RETURNING id`,
-      [product_id, quantity, provider, expected_arrival_start, expected_arrival_end, id]
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, id]
     );
     
     if (result.rowCount === 0) {
@@ -286,17 +314,21 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
       SELECT 
         i.id,
         i.product_id,
+        p.name as product_name,
+        p.part_number as product_part_number,
         i.quantity,
-        i.provider,
+        pr.name as provider,
         i.expected_arrival_start,
         i.expected_arrival_end,
         i.status,
         i.created_at,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1
-      GROUP BY i.id
+      GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.created_at DESC
     `, [productId]);
     
@@ -307,7 +339,76 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
   }
 });
 
-// Get all stored serial numbers for a specific product
+// Get stored transactions for a specific product
+router.get('/store/product/:productId', authenticateJWT, async (req, res) => {
+  const { productId } = req.params;
+  
+  try {
+    const result = await req.pool.query(`
+      SELECT 
+        i.id,
+        i.product_id,
+        p.name as product_name,
+        p.part_number as product_part_number,
+        i.quantity,
+        pr.name as provider_name,
+        i.arrival_date,
+        i.status,
+        i.created_at,
+        ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
+      FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
+      LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+      WHERE i.product_id = $1 AND i.status = $2
+      GROUP BY i.id, p.name, p.part_number, pr.name
+      ORDER BY i.arrival_date DESC
+    `, [productId, 'Stored']);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching product stored transactions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a specific stored transaction by ID
+router.get('/store/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const result = await req.pool.query(`
+      SELECT 
+        i.id,
+        i.product_id,
+        p.name as product_name,
+        p.part_number as product_part_number,
+        i.quantity,
+        pr.name as provider_name,
+        i.arrival_date,
+        i.status,
+        i.created_at,
+        ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
+      FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
+      LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+      WHERE i.id = $1 AND i.status = $2
+      GROUP BY i.id, p.name, p.part_number, pr.name
+    `, [id, 'Stored']);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Stored transaction not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching stored transaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get serial numbers for a specific product grouped by provider
 router.get('/store/product/:productId/serials', authenticateJWT, async (req, res) => {
   const { productId } = req.params;
   
@@ -315,18 +416,51 @@ router.get('/store/product/:productId/serials', authenticateJWT, async (req, res
     const result = await req.pool.query(`
       SELECT 
         i.id as transaction_id,
-        i.provider,
+        pr.name as provider_name,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1 AND i.status = $2
-      GROUP BY i.id, i.provider
-      ORDER BY i.arrival_date DESC
+      GROUP BY i.id, pr.name
+      ORDER BY pr.name
     `, [productId, 'Stored']);
     
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching product serial numbers:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get products by provider ID
+router.get('/providers/:providerId/products', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  
+  try {
+    // First verify the provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [providerId]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Get products associated with this provider through inbound transactions
+    const result = await req.pool.query(
+      `SELECT DISTINCT p.id, p.name, p.part_number
+       FROM products p
+       JOIN inbound_transactions it ON p.id = it.product_id
+       WHERE it.provider_id = $1
+       ORDER BY p.name`,
+      [providerId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching products by provider:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

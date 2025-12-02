@@ -41,6 +41,7 @@ interface StoredTransaction {
   arrival_date: string;
   serial_numbers: string[] | null;
   status: string;
+  provider_name: string; // Added provider_name to match backend
 }
 
 interface ProductSerialNumbers {
@@ -93,7 +94,7 @@ function StoreContent() {
     if (!user) return;
     
     // Check access to inventory store page
-    const storeAccess = await hasPageAccess(user, 'inventory/store');
+    const storeAccess = await hasPageAccess(user.id, 'inventory/store');
     
     if (!storeAccess) {
       // If no access to inventory store page, disable all features
@@ -103,8 +104,8 @@ function StoreContent() {
     }
     
     // Check access to specific inventory store features
-    const exportCSVAccess = await hasPageAccess(user, 'inventory/store/export-csv');
-    const createOutboundAccess = await hasPageAccess(user, 'inventory/store/create-outbound');
+    const exportCSVAccess = await hasPageAccess(user.id, 'inventory/store/export-csv');
+    const createOutboundAccess = await hasPageAccess(user.id, 'inventory/store/create-outbound');
     
     setCanExportCSV(exportCSVAccess);
     setCanCreateOutbound(createOutboundAccess);
@@ -368,7 +369,7 @@ function StoreContent() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                      <TableCell>{transaction.provider}</TableCell>
+                      <TableCell>{transaction.provider_name || transaction.provider || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4 text-muted-foreground" />

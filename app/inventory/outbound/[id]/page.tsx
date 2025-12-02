@@ -25,6 +25,7 @@ interface OutboundTransaction {
   status: 'Outgoing' | 'Dispatched' | 'Delivered';
   created_at: string;
   serial_numbers: string[] | null;
+  provider_name: string; // Added provider information
 }
 
 export default function OutboundTransactionDetailsPage() {
@@ -197,6 +198,10 @@ export default function OutboundTransactionDetailsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Quantity</p>
                   <p className="font-medium">{transaction.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Provider</p> {/* Added Provider information */}
+                  <p className="font-medium">{transaction.provider_name || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
