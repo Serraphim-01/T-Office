@@ -145,6 +145,142 @@ router.post('/', authenticateJWT, async (req, res) => {
   }
 });
 
+// Create a new outbound transaction from multiple stored transactions
+router.post('/multi', authenticateJWT, async (req, res) => {
+  const { 
+    product_id,
+    quantity, 
+    serial_numbers, 
+    receiver_address, 
+    receiver_email, 
+    receiver_phone, 
+    dispatch_datetime, 
+    delivery_datetime 
+  } = req.body;
+  
+  // Validate input
+  if (!product_id || !quantity || !serial_numbers || !Array.isArray(serial_numbers) || 
+      serial_numbers.length === 0 || !receiver_address || !receiver_email || !receiver_phone || 
+      !dispatch_datetime || !delivery_datetime) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+  
+  // Validate that the number of serial numbers matches the quantity
+  if (serial_numbers.length !== quantity) {
+    return res.status(400).json({ error: 'Number of serial numbers must match quantity' });
+  }
+  
+  try {
+    // Start transaction
+    await req.pool.query('BEGIN');
+    
+    // Find one of the inbound transactions that contains these serial numbers to use as the link
+    let inboundTransactionId = null;
+    if (serial_numbers.length > 0) {
+      const firstSerial = serial_numbers[0].trim();
+      const transactionResult = await req.pool.query(`
+        SELECT i.id as transaction_id
+        FROM inbound_transactions i
+        JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+        WHERE isn.serial_number = $1 AND i.status = 'Stored'`,
+        [firstSerial]
+      );
+      
+      if (transactionResult.rowCount > 0) {
+        inboundTransactionId = transactionResult.rows[0].transaction_id;
+      }
+    }
+    
+    // If we couldn't find a transaction, create a dummy one
+    if (!inboundTransactionId) {
+      const inboundResult = await req.pool.query(`
+        INSERT INTO inbound_transactions 
+        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status) 
+        SELECT $1, $2, provider_id, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, 'Outbound'
+        FROM products 
+        WHERE id = $1
+        RETURNING id`,
+        [product_id, quantity]
+      );
+      
+      inboundTransactionId = inboundResult.rows[0].id;
+    }
+    
+    // Insert outbound transaction
+    const result = await req.pool.query(`
+      INSERT INTO outbound_transactions 
+      (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING id`,
+      [inboundTransactionId, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, 'Outgoing']
+    );
+    
+    const outboundTransactionId = result.rows[0].id;
+    
+    // Insert serial numbers
+    for (const serial of serial_numbers) {
+      if (serial && serial.trim() !== '') {
+        await req.pool.query(
+          'INSERT INTO outbound_serial_numbers (outbound_transaction_id, serial_number) VALUES ($1, $2)',
+          [outboundTransactionId, serial.trim()]
+        );
+      }
+    }
+    
+    // Find and update the stored transactions that contained these serial numbers
+    // We need to remove the used serial numbers from their respective stored transactions
+    for (const serial of serial_numbers) {
+      if (serial && serial.trim() !== '') {
+        // Find the inbound transaction that contains this serial number
+        const transactionResult = await req.pool.query(`
+          SELECT i.id as transaction_id
+          FROM inbound_transactions i
+          JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+          WHERE isn.serial_number = $1 AND i.status = 'Stored'`,
+          [serial.trim()]
+        );
+        
+        if (transactionResult.rowCount > 0) {
+          const transactionId = transactionResult.rows[0].transaction_id;
+          
+          // Delete the serial number from the inbound transaction
+          await req.pool.query(
+            'DELETE FROM inbound_serial_numbers WHERE transaction_id = $1 AND serial_number = $2',
+            [transactionId, serial.trim()]
+          );
+          
+          // Check if the transaction has any serial numbers left
+          const countResult = await req.pool.query(
+            'SELECT COUNT(*) as count FROM inbound_serial_numbers WHERE transaction_id = $1',
+            [transactionId]
+          );
+          
+          // If no serial numbers left, delete the transaction
+          if (countResult.rows[0].count === '0') {
+            await req.pool.query('DELETE FROM inbound_transactions WHERE id = $1', [transactionId]);
+          } else {
+            // Update the quantity of the transaction
+            await req.pool.query(
+              'UPDATE inbound_transactions SET quantity = quantity - 1 WHERE id = $1',
+              [transactionId]
+            );
+          }
+        }
+      }
+    }
+    
+    // Commit transaction
+    await req.pool.query('COMMIT');
+    
+    res.status(201).json({ id: outboundTransactionId, message: 'Outbound transaction created successfully' });
+  } catch (error) {
+    // Rollback transaction on error
+    await req.pool.query('ROLLBACK');
+    console.error('Error adding outbound transaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Update outbound transaction status to Dispatched
 router.post('/:id/dispatched', authenticateJWT, async (req, res) => {
   const { id } = req.params;

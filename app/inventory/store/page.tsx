@@ -46,7 +46,7 @@ interface StoredTransaction {
 
 interface ProductSerialNumbers {
   transaction_id: number;
-  provider: string;
+  provider_name: string;
   serial_numbers: string[] | null;
 }
 
@@ -182,7 +182,7 @@ function StoreContent() {
     setDeliveryTime('');
     setSelectedSerialNumbers([]);
     
-    // Fetch all serial numbers for this product
+    // Fetch all serial numbers for this product from all stored transactions
     fetchProductSerialNumbers(productId);
   };
 
@@ -234,14 +234,14 @@ function StoreContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/outbound', {
+      const response = await fetch('http://localhost:4000/api/inventory/outbound/multi', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          inbound_transaction_id: selectedTransactionId,
+          product_id: selectedProductId,
           quantity: selectedSerialNumbers.length, // Automatically calculate quantity
           serial_numbers: selectedSerialNumbers,
           receiver_address: receiverAddress,
@@ -494,18 +494,18 @@ function StoreContent() {
                 <Label>Select Serial Numbers * (Selected: {selectedSerialNumbers.length})</Label>
                 <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
                   {getAllAvailableSerialNumbers().map((transaction, transactionIndex) => (
-                    <div key={transactionIndex} className="mb-3">
-                      <h4 className="font-medium text-sm mb-2">From {transaction.provider}:</h4>
+                    <div key={transaction.transaction_id} className="mb-3">
+                      <h4 className="font-medium text-sm mb-2">From Transaction #{transaction.transaction_id} ({transaction.provider_name}):</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
                           transaction.serial_numbers.map((serial, serialIndex) => (
                             <div key={serialIndex} className="flex items-center space-x-2">
                               <Checkbox
-                                id={`serial-${transactionIndex}-${serialIndex}`}
+                                id={`serial-${transaction.transaction_id}-${serialIndex}`}
                                 checked={selectedSerialNumbers.includes(serial)}
                                 onCheckedChange={() => handleSerialNumberToggle(serial)}
                               />
-                              <Label htmlFor={`serial-${transactionIndex}-${serialIndex}`} className="text-sm">
+                              <Label htmlFor={`serial-${transaction.transaction_id}-${serialIndex}`} className="text-sm">
                                 {serial}
                               </Label>
                             </div>
