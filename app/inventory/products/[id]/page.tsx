@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Package, Hash, Tag, Calendar, Clock, Truck, Save, X } from 'lucide-react';
+import { ArrowLeft, Package, Hash, Tag, Calendar, Clock, Truck, Save, X, Send, CheckCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -119,7 +119,9 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
       // Process outbound transactions
       if (outboundResponse.ok) {
         const outboundData = await outboundResponse.json();
-        allTransactions = [...allTransactions, ...outboundData.map((t: any) => ({ ...t, type: 'outbound' as const }))];
+        // Filter out outbound transactions with quantity 0
+        const filteredOutboundData = outboundData.filter((t: any) => t.quantity > 0);
+        allTransactions = [...allTransactions, ...filteredOutboundData.map((t: any) => ({ ...t, type: 'outbound' as const }))];
       }
 
       // Sort by creation date (newest first)
@@ -184,12 +186,38 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
       case 'outgoing':
         return 'outline';
       case 'dispatched':
-        return 'default';
+        return 'secondary';
       case 'delivered':
         return 'default';
       default:
         return 'secondary';
     }
+  };
+
+  // New helper function to format serial numbers display
+  const formatSerialNumbersDisplay = (serialNumbers: string[] | null) => {
+    if (!serialNumbers || serialNumbers.length === 0) {
+      return <span className="text-muted-foreground text-sm">No serial numbers</span>;
+    }
+
+    // Show first 3 serial numbers
+    const displayedSerials = serialNumbers.slice(0, 3);
+    const remainingCount = serialNumbers.length - 3;
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {displayedSerials.map((serial, index) => (
+          <Badge key={index} variant="outline" className="text-xs">
+            {serial}
+          </Badge>
+        ))}
+        {remainingCount > 0 && (
+          <Badge variant="secondary" className="text-xs">
+            +{remainingCount} more
+          </Badge>
+        )}
+      </div>
+    );
   };
 
   const getTypeDisplay = (type: string) => {
@@ -397,7 +425,20 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                 </TableHeader>
                 <TableBody>
                   {transactions.map((transaction) => (
-                    <TableRow key={`${transaction.type}-${transaction.id}`}>
+                    <TableRow 
+                      key={`${transaction.type}-${transaction.id}`}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        // Navigate to the appropriate transaction details page based on type
+                        if (transaction.type === 'inbound') {
+                          window.location.href = `/inventory/inbound/${transaction.id}`;
+                        } else if (transaction.type === 'stored') {
+                          window.location.href = `/inventory/store/${transaction.id}`;
+                        } else if (transaction.type === 'outbound') {
+                          window.location.href = `/inventory/outbound/${transaction.id}`;
+                        }
+                      }}
+                    >
                       <TableCell>{transaction.quantity}</TableCell>
                       <TableCell>
                         {transaction.provider || transaction.provider_name || 'N/A'}
@@ -412,22 +453,19 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                           : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(transaction.status)}>
-                          {transaction.status}
-                        </Badge>
+                        <div className="flex items-center">
+                          <Badge variant={getStatusBadgeVariant(transaction.status)} title={transaction.status}>
+                            {transaction.status.toLowerCase() === 'incoming' && <Truck className="h-5 w-5" />}
+                            {transaction.status.toLowerCase() === 'stored' && <Package className="h-5 w-5" />}
+                            {transaction.status.toLowerCase() === 'outgoing' && <Truck className="h-5 w-5" />}
+                            {transaction.status.toLowerCase() === 'dispatched' && <Send className="h-5 w-5" />}
+                            {transaction.status.toLowerCase() === 'delivered' && <CheckCircle className="h-5 w-5" />}
+                            <span className="sr-only">{transaction.status}</span>
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {transaction.serial_numbers.map((serial, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {serial}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">No serial numbers</span>
-                        )}
+                        {formatSerialNumbersDisplay(transaction.serial_numbers)}
                       </TableCell>
                     </TableRow>
                   ))}

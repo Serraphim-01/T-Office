@@ -205,15 +205,18 @@ export default function OutboundTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge 
-                    variant={transaction.status === 'Delivered' ? 'default' : 
-                           transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
-                  >
-                    {transaction.status === 'Outgoing' && <Truck className="h-3 w-3 mr-1" />}
-                    {transaction.status === 'Dispatched' && <Send className="h-3 w-3 mr-1" />}
-                    {transaction.status === 'Delivered' && <CheckCircle className="h-3 w-3 mr-1" />}
-                    {transaction.status}
-                  </Badge>
+                  <div className="flex items-center">
+                    <Badge 
+                      variant={transaction.status === 'Delivered' ? 'default' : 
+                             transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
+                      title={transaction.status}
+                    >
+                      {transaction.status === 'Outgoing' && <Truck className="h-5 w-5" />}
+                      {transaction.status === 'Dispatched' && <Send className="h-5 w-5" />}
+                      {transaction.status === 'Delivered' && <CheckCircle className="h-5 w-5" />}
+                      <span className="sr-only">{transaction.status}</span>
+                    </Badge>
+                  </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>

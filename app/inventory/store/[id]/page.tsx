@@ -17,6 +17,7 @@ interface StoredTransaction {
   product_part_number: string;
   quantity: number;
   provider: string;
+  provider_name: string;
   arrival_date: string;
   status: string;
   created_at: string;
@@ -129,7 +130,7 @@ export default function StoredTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Provider</p>
-                  <p className="font-medium">{transaction.provider}</p>
+                  <p className="font-medium">{transaction.provider_name || transaction.provider || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>

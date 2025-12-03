@@ -23,7 +23,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.status = $1
+      WHERE i.status = $1 AND i.quantity > 0
       GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.created_at DESC
     `, ['Incoming']);
@@ -52,7 +52,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.status = $1
+      WHERE i.status = $1 AND i.quantity > 0
       GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.arrival_date DESC
     `, ['Stored']);
@@ -327,7 +327,7 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.product_id = $1
+      WHERE i.product_id = $1 AND i.quantity > 0
       GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.created_at DESC
     `, [productId]);
@@ -360,7 +360,7 @@ router.get('/store/product/:productId', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.product_id = $1 AND i.status = $2
+      WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
       GROUP BY i.id, p.name, p.part_number, pr.name
       ORDER BY i.arrival_date DESC
     `, [productId, 'Stored']);
@@ -393,7 +393,7 @@ router.get('/store/:id', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.id = $1 AND i.status = $2
+      WHERE i.id = $1 AND i.status = $2 AND i.quantity > 0
       GROUP BY i.id, p.name, p.part_number, pr.name
     `, [id, 'Stored']);
     
@@ -422,7 +422,7 @@ router.get('/store/product/:productId/serials', authenticateJWT, async (req, res
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-      WHERE i.product_id = $1 AND i.status = $2
+      WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
       GROUP BY i.id, pr.name
       ORDER BY pr.name
     `, [productId, 'Stored']);

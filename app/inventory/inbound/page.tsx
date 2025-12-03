@@ -680,9 +680,9 @@ function InboundContent() {
                       key={transaction.id}
                       className="cursor-pointer"
                       onClick={(e) => {
-                        // Check if the click was on the product name cell
+                        // Check if the click was on the product name, status, or actions column
                         const target = e.target as HTMLElement;
-                        if (!target.closest('.product-name-cell')) {
+                        if (!target.closest('.product-name-cell') && !target.closest('.status-cell') && !target.closest('.actions-cell')) {
                           // Navigate to transaction details page
                           window.location.href = `/inventory/inbound/${transaction.id}`;
                         }
@@ -728,19 +728,22 @@ function InboundContent() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={transaction.status === 'Stored' ? 'default' : 'secondary'}
-                        >
-                          {transaction.status === 'Stored' ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : (
-                            <Truck className="h-3 w-3" />
-                          )}
-                          <span className="sr-only">{transaction.status}</span>
-                        </Badge>
+                      <TableCell className="status-cell">
+                        <div className="flex items-center">
+                          <Badge 
+                            variant={transaction.status === 'Stored' ? 'default' : 'secondary'}
+                            title={transaction.status}
+                          >
+                            {transaction.status === 'Stored' ? (
+                              <CheckCircle className="h-5 w-5" />
+                            ) : (
+                              <Truck className="h-5 w-5" />
+                            )}
+                            <span className="sr-only">{transaction.status}</span>
+                          </Badge>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="actions-cell">
                         <div className="flex space-x-2">
                           {transaction.status === 'Incoming' && (
                             <>

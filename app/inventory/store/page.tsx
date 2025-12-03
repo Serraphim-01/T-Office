@@ -341,11 +341,26 @@ function StoreContent() {
                 </TableHeader>
                 <TableBody>
                   {storedTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        <Link href={`/inventory/store/${transaction.id}`} className="font-medium hover:underline">
-                          {transaction.product_name}
-                        </Link>
+                    <TableRow 
+                      key={transaction.id}
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        // Check if the click was on the product name, status, or actions column
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('.product-name-cell') && !target.closest('.status-cell') && !target.closest('.actions-cell')) {
+                          // Navigate to stored transaction details page
+                          window.location.href = `/inventory/store/${transaction.id}`;
+                        }
+                      }}
+                    >
+                      <TableCell 
+                        className="font-medium hover:underline cursor-pointer product-name-cell"
+                        onClick={() => {
+                          // Navigate to product details page
+                          window.location.href = `/inventory/products/${transaction.product_id}`;
+                        }}
+                      >
+                        {transaction.product_name}
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
                       <TableCell>
@@ -378,19 +393,23 @@ function StoreContent() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="default">
-                          {transaction.status}
-                        </Badge>
+                      <TableCell className="status-cell">
+                        <div className="flex items-center">
+                          <Badge variant="default" title="Stored">
+                            <Package className="h-5 w-5" />
+                            <span className="sr-only">Stored</span>
+                          </Badge>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="actions-cell">
                         {canCreateOutbound && (
                           <Button 
                             size="sm" 
                             onClick={() => handleCreateOutbound(transaction.id, transaction.product_id)}
+                            className="p-2"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Outbound
+                            <Plus className="h-5 w-5" />
+                            <span className="sr-only">Create Outbound</span>
                           </Button>
                         )}
                       </TableCell>

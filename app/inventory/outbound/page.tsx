@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useToast } from '@/hooks/use-toast';
-import { Package, MapPin, Calendar, Truck, CheckCircle, Edit, Trash2, Send } from 'lucide-react';
+import { Package, MapPin, Calendar, Truck, CheckCircle, Edit, Trash2, Send, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
   Dialog,
@@ -386,40 +386,60 @@ function OutboundContent() {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Outbound Transactions</h1>
-          {canExportCSV && (
-            <Button
-              onClick={async () => {
-                try {
-                  const token = localStorage.getItem('token');
-                  const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
-                    headers: {
-                      'Authorization': `Bearer ${token}`
-                    }
-                  });
+          <div className="flex space-x-2">
+            {canExportCSV && (
+              <Button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
+                      headers: {
+                        'Authorization': `Bearer ${token}`
+                      }
+                    });
 
-                  if (!response.ok) throw new Error('Failed to export outbound transactions');
+                    if (!response.ok) throw new Error('Failed to export outbound transactions');
 
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'outbound_transactions_export.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                } catch (error) {
-                  toast({
-                    title: 'Error',
-                    description: 'Failed to export outbound transactions',
-                    variant: 'destructive',
-                  });
-                }
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'outbound_transactions_export.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (error) {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to export outbound transactions',
+                      variant: 'destructive',
+                    });
+                  }
+                }}
+              >
+                Export CSV
+              </Button>
+            )}
+            <Button 
+              onClick={() => {
+                setIsModalOpen(true);
+                // Reset form
+                setReceiverAddress('');
+                setReceiverEmail('');
+                setReceiverPhone('');
+                setDispatchDate('');
+                setDispatchTime('');
+                setDeliveryDate('');
+                setDeliveryTime('');
+                setSelectedSerialNumbers([]);
               }}
+              className="p-2"
             >
-              Export CSV
+              <Plus className="h-5 w-5" />
+              <span className="sr-only">Create Outbound</span>
             </Button>
-          )}
+          </div>
         </div>
 
         <Card>
@@ -445,11 +465,26 @@ function OutboundContent() {
                 </TableHeader>
                 <TableBody>
                   {outboundTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        <Link href={`/inventory/outbound/${transaction.id}`} className="font-medium hover:underline">
-                          {transaction.product_name}
-                        </Link>
+                    <TableRow 
+                      key={transaction.id}
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        // Check if the click was on the product name, status, or actions column
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('.product-name-cell') && !target.closest('.status-cell') && !target.closest('.actions-cell')) {
+                          // Navigate to outbound transaction details page
+                          window.location.href = `/inventory/outbound/${transaction.id}`;
+                        }
+                      }}
+                    >
+                      <TableCell 
+                        className="font-medium hover:underline cursor-pointer product-name-cell"
+                        onClick={() => {
+                          // Navigate to product details page
+                          window.location.href = `/inventory/products/${transaction.product_id}`;
+                        }}
+                      >
+                        {transaction.product_name}
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
                       <TableCell>{transaction.provider_name || 'N/A'}</TableCell> {/* Added Provider cell */}
@@ -460,18 +495,21 @@ function OutboundContent() {
                         </div>
                       </TableCell>
                       <TableCell>{transaction.quantity}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={transaction.status === 'Delivered' ? 'default' : 
-                                 transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
-                        >
-                          {transaction.status === 'Outgoing' && <Truck className="h-3 w-3 mr-1" />}
-                          {transaction.status === 'Dispatched' && <Send className="h-3 w-3 mr-1" />}
-                          {transaction.status === 'Delivered' && <CheckCircle className="h-3 w-3 mr-1" />}
-                          {transaction.status}
-                        </Badge>
+                      <TableCell className="status-cell">
+                        <div className="flex items-center">
+                          <Badge 
+                            variant={transaction.status === 'Delivered' ? 'default' : 
+                                   transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
+                            title={transaction.status}
+                          >
+                            {transaction.status === 'Outgoing' && <Truck className="h-5 w-5" />}
+                            {transaction.status === 'Dispatched' && <Send className="h-5 w-5" />}
+                            {transaction.status === 'Delivered' && <CheckCircle className="h-5 w-5" />}
+                            <span className="sr-only">{transaction.status}</span>
+                          </Badge>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="actions-cell">
                         <div className="flex space-x-2">
                           {canMarkAsDispatched && (
                             <Button 
@@ -479,8 +517,10 @@ function OutboundContent() {
                               variant="outline"
                               onClick={() => handleUpdateStatus(transaction.id, 'Dispatched')}
                               disabled={transaction.status !== 'Outgoing'}
+                              className="p-2"
                             >
-                              Mark as Dispatched
+                              <Send className="h-5 w-5" />
+                              <span className="sr-only">Mark as Dispatched</span>
                             </Button>
                           )}
                           {canMarkAsDelivered && (
@@ -489,8 +529,10 @@ function OutboundContent() {
                               variant="outline"
                               onClick={() => handleUpdateStatus(transaction.id, 'Delivered')}
                               disabled={transaction.status !== 'Dispatched'}
+                              className="p-2"
                             >
-                              Mark as Delivered
+                              <CheckCircle className="h-5 w-5" />
+                              <span className="sr-only">Mark as Delivered</span>
                             </Button>
                           )}
                           {canDeleteTransaction && (
@@ -498,8 +540,10 @@ function OutboundContent() {
                               size="sm" 
                               variant="outline"
                               onClick={() => handleDelete(transaction.id)}
+                              className="p-2"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
+                              <span className="sr-only">Delete</span>
                             </Button>
                           )}
                         </div>

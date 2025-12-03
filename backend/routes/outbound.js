@@ -28,6 +28,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
+      WHERE o.quantity > 0
       GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
       ORDER BY o.created_at DESC
     `);
@@ -65,7 +66,7 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
-      WHERE i.product_id = $1
+      WHERE i.product_id = $1 AND o.quantity > 0
       GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
       ORDER BY o.created_at DESC
     `, [productId]);
@@ -427,7 +428,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
-      WHERE o.id = $1
+      WHERE o.id = $1 AND o.quantity > 0
       GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
     `, [id]);
     
