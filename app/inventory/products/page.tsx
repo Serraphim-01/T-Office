@@ -57,7 +57,6 @@ function ProductsContent() {
   const [isProviderDetailsDialogOpen, setIsProviderDetailsDialogOpen] = useState(false);
   const [isProductDetailsDialogOpen, setIsProductDetailsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [viewingProvider, setViewingProvider] = useState<Provider | null>(null);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [providerName, setProviderName] = useState('');
@@ -613,10 +612,7 @@ function ProductsContent() {
     setIsProviderDetailsDialogOpen(true);
   };
 
-  const handleViewProduct = (product: Product) => {
-    setViewingProduct(product);
-    setIsProductDetailsDialogOpen(true);
-  };
+
 
   const handleEditProduct = (product: Product) => {
     // Only allow edit if user has permission
@@ -924,16 +920,7 @@ function ProductsContent() {
                             <Plus className="h-4 w-4" />
                           </Button>
                           
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProvider(provider);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          
                           
                           {canEditProvider && (
                             <Button 
@@ -976,11 +963,15 @@ function ProductsContent() {
                             <TableBody>
                               {providerProducts.length > 0 ? (
                                 providerProducts.map((product) => (
-                                  <TableRow key={product.id}>
-                                    <TableCell 
-                                      className="font-medium hover:underline cursor-pointer"
-                                      onClick={() => handleViewProduct(product)}
-                                    >
+                                  <TableRow 
+                                    key={product.id}
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                      // Navigate to the product details page
+                                      window.location.href = `/inventory/products/${product.id}`;
+                                    }}
+                                  >
+                                    <TableCell className="font-medium hover:underline">
                                       {product.name}
                                     </TableCell>
                                     <TableCell>{product.part_number}</TableCell>
@@ -990,7 +981,10 @@ function ProductsContent() {
                                           <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={() => handleEditProduct(product)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEditProduct(product);
+                                            }}
                                           >
                                             <Edit className="h-4 w-4" />
                                           </Button>
@@ -999,7 +993,10 @@ function ProductsContent() {
                                           <Button 
                                             size="sm" 
                                             variant="outline" 
-                                            onClick={() => handleDeleteProduct(product.id)}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteProduct(product.id);
+                                            }}
                                           >
                                             <Trash2 className="h-4 w-4" />
                                           </Button>
@@ -1058,11 +1055,15 @@ function ProductsContent() {
                             {products
                               .filter(product => !product.provider_id || !providers.some(p => p.id === product.provider_id))
                               .map((product) => (
-                                <TableRow key={product.id}>
-                                  <TableCell 
-                                    className="font-medium hover:underline cursor-pointer"
-                                    onClick={() => handleViewProduct(product)}
-                                  >
+                                <TableRow 
+                                  key={product.id}
+                                  className="cursor-pointer"
+                                  onClick={() => {
+                                    // Navigate to the product details page
+                                    window.location.href = `/inventory/products/${product.id}`;
+                                  }}
+                                >
+                                  <TableCell className="font-medium hover:underline">
                                     {product.name}
                                   </TableCell>
                                   <TableCell>{product.part_number}</TableCell>
@@ -1072,7 +1073,10 @@ function ProductsContent() {
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
-                                          onClick={() => handleEditProduct(product)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditProduct(product);
+                                          }}
                                         >
                                           <Edit className="h-4 w-4" />
                                         </Button>
@@ -1081,7 +1085,10 @@ function ProductsContent() {
                                         <Button 
                                           size="sm" 
                                           variant="outline" 
-                                          onClick={() => handleDeleteProduct(product.id)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteProduct(product.id);
+                                          }}
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1469,60 +1476,7 @@ function ProductsContent() {
               </DialogContent>
             </Dialog>
             
-            {/* Dialog for viewing product details */}
-            <Dialog open={isProductDetailsDialogOpen} onOpenChange={setIsProductDetailsDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Product Details</DialogTitle>
-                </DialogHeader>
-                {viewingProduct && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Name</Label>
-                        <p className="font-medium">{viewingProduct.name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Part Number</Label>
-                        <p className="font-medium">{viewingProduct.part_number}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Product Type</Label>
-                        <p className="font-medium">{viewingProduct.product_type}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Provider</Label>
-                        <p className="font-medium">{viewingProduct.provider_name || 'Unknown Provider'}</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setIsProductDetailsDialogOpen(false);
-                          // Navigate to the product details page
-                          window.location.href = `/inventory/products/${viewingProduct.id}`;
-                        }}
-                      >
-                        View Details
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setIsProductDetailsDialogOpen(false);
-                          handleEditProduct(viewingProduct);
-                        }}
-                      >
-                        Edit Product
-                      </Button>
-                      <Button onClick={() => setIsProductDetailsDialogOpen(false)}>
-                        Close
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
+
             
             {/* Dialog for viewing provider details */}
             <Dialog open={isProviderDetailsDialogOpen} onOpenChange={setIsProviderDetailsDialogOpen}>
@@ -1564,7 +1518,6 @@ function ProductsContent() {
                               <TableHead>Name</TableHead>
                               <TableHead>Part Number</TableHead>
                               <TableHead>Type</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1586,26 +1539,12 @@ function ProductsContent() {
                                   </TableCell>
                                   <TableCell>{product.part_number}</TableCell>
                                   <TableCell>{product.product_type}</TableCell>
-                                  <TableCell className="text-right">
-                                    <Button 
-                                      size="sm" 
-                                      variant="outline" 
-                                      onClick={() => {
-                                        setIsProviderDetailsDialogOpen(false);
-                                        setTimeout(() => {
-                                          window.location.href = `/inventory/products/${product.id}`;
-                                        }, 100);
-                                      }}
-                                    >
-                                      View Details
-                                    </Button>
-                                  </TableCell>
                                 </TableRow>
                               ))
                             }
                             {products.filter(product => product.provider_id === viewingProvider.id).length === 0 && (
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                <TableCell colSpan={3} className="text-center text-muted-foreground">
                                   No products found for this provider
                                 </TableCell>
                               </TableRow>

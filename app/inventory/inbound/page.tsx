@@ -733,11 +733,11 @@ function InboundContent() {
                           variant={transaction.status === 'Stored' ? 'default' : 'secondary'}
                         >
                           {transaction.status === 'Stored' ? (
-                            <CheckCircle className="h-3 w-3 mr-1" />
+                            <CheckCircle className="h-3 w-3" />
                           ) : (
-                            <Truck className="h-3 w-3 mr-1" />
+                            <Truck className="h-3 w-3" />
                           )}
-                          {transaction.status}
+                          <span className="sr-only">{transaction.status}</span>
                         </Badge>
                       </TableCell>
                       <TableCell>

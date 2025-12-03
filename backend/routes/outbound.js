@@ -177,13 +177,14 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     // Find one of the inbound transactions that contains these serial numbers to use as the link
     let inboundTransactionId = null;
     if (serial_numbers.length > 0) {
-      const firstSerial = serial_numbers[0].trim();
+      // Find any transaction that contains one of our serial numbers
       const transactionResult = await req.pool.query(`
-        SELECT i.id as transaction_id
+        SELECT DISTINCT i.id as transaction_id
         FROM inbound_transactions i
         JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
-        WHERE isn.serial_number = $1 AND i.status = 'Stored'`,
-        [firstSerial]
+        WHERE isn.serial_number = ANY($1) AND i.status = 'Stored'
+        LIMIT 1`,
+        [serial_numbers.map(s => s.trim())]
       );
       
       if (transactionResult.rowCount > 0) {
@@ -229,6 +230,9 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     
     // Find and update the stored transactions that contained these serial numbers
     // We need to remove the used serial numbers from their respective stored transactions
+    // Track which transactions we've processed to avoid duplicate updates
+    const processedTransactions = new Set();
+    
     for (const serial of serial_numbers) {
       if (serial && serial.trim() !== '') {
         // Find the inbound transaction that contains this serial number
@@ -243,27 +247,44 @@ router.post('/multi', authenticateJWT, async (req, res) => {
         if (transactionResult.rowCount > 0) {
           const transactionId = transactionResult.rows[0].transaction_id;
           
-          // Delete the serial number from the inbound transaction
-          await req.pool.query(
-            'DELETE FROM inbound_serial_numbers WHERE transaction_id = $1 AND serial_number = $2',
-            [transactionId, serial.trim()]
-          );
-          
-          // Check if the transaction has any serial numbers left
-          const countResult = await req.pool.query(
-            'SELECT COUNT(*) as count FROM inbound_serial_numbers WHERE transaction_id = $1',
-            [transactionId]
-          );
-          
-          // If no serial numbers left, delete the transaction
-          if (countResult.rows[0].count === '0') {
-            await req.pool.query('DELETE FROM inbound_transactions WHERE id = $1', [transactionId]);
-          } else {
-            // Update the quantity of the transaction
+          // Only process each transaction once
+          if (!processedTransactions.has(transactionId)) {
+            processedTransactions.add(transactionId);
+            
+            // Count how many of our serial numbers are in this transaction
+            const serialCountResult = await req.pool.query(
+              `SELECT COUNT(*) as count 
+               FROM inbound_serial_numbers 
+               WHERE transaction_id = $1 AND serial_number = ANY($2)`,
+              [transactionId, serial_numbers.map(s => s.trim())]
+            );
+            
+            const serialsInTransaction = parseInt(serialCountResult.rows[0].count);
+            
+            // Delete all our serial numbers from this transaction
             await req.pool.query(
-              'UPDATE inbound_transactions SET quantity = quantity - 1 WHERE id = $1',
+              'DELETE FROM inbound_serial_numbers WHERE transaction_id = $1 AND serial_number = ANY($2)',
+              [transactionId, serial_numbers.map(s => s.trim())]
+            );
+            
+            // Check if the transaction has any serial numbers left
+            const totalCountResult = await req.pool.query(
+              'SELECT COUNT(*) as count FROM inbound_serial_numbers WHERE transaction_id = $1',
               [transactionId]
             );
+            
+            const totalSerialsLeft = parseInt(totalCountResult.rows[0].count);
+            
+            // If no serial numbers left, update the transaction status to Outbound
+            if (totalSerialsLeft === 0) {
+              await req.pool.query('UPDATE inbound_transactions SET status = $1, quantity = 0 WHERE id = $2', ['Outbound', transactionId]);
+            } else {
+              // Update the quantity of the transaction
+              await req.pool.query(
+                'UPDATE inbound_transactions SET quantity = quantity - $1 WHERE id = $2',
+                [serialsInTransaction, transactionId]
+              );
+            }
           }
         }
       }
