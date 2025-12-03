@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { User, Mail, Building, FileText, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Mail, Building, FileText, Calendar, Clock, CheckCircle, AlertCircle, Link } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 interface User {
@@ -302,6 +302,20 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                               <span className="text-xs text-muted-foreground">
                                 Expires: {new Date(cert.expiry_date).toLocaleDateString()}
                               </span>
+                            </div>
+                          )}
+                          {/* Display verification URL if available */}
+                          {cert.file_url && (
+                            <div className="mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(cert.file_url, '_blank')}
+                                className="text-xs"
+                              >
+                                <Link className="h-3 w-3 mr-1" />
+                                Verify Certificate
+                              </Button>
                             </div>
                           )}
                           <div className="flex items-center space-x-2 mt-2">

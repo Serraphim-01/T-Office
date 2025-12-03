@@ -108,7 +108,7 @@ router.get("/queries", authenticateJWT, async (req, res) => {
       [userId]
     );
     
-    const maxQueriesBeforeAction = maxQueriesResult.rows.length > 0 ? maxQueriesResult.rows[0].query_count : 5;
+    const maxQueriesBeforeAction = maxQueriesResult.rows.length > 0 ? maxQueriesResult.rows[0].query_count : 3;
     
     // Get queries for this user with replies
     // First check if query_replies table exists
@@ -257,7 +257,7 @@ router.post("/query-types", authenticateJWT, async (req, res) => {
 router.post("/certifications", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const userId = req.user.userId;
-  const { title, issuer, file_data, file_name, file_type, expiry_date, has_expiry } = req.body;
+  const { title, issuer, file_data, file_name, file_type, expiry_date, has_expiry, file_url } = req.body;
 
   try {
     // Get current certifications
@@ -279,6 +279,7 @@ router.post("/certifications", authenticateJWT, async (req, res) => {
       file_data: file_data || null,
       file_name: file_name || null,
       file_type: file_type || null,
+      file_url: file_url || null, // Add this line
       expiry_date: expiry_date || null,
       has_expiry: has_expiry || false,
       status: 'pending',

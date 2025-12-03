@@ -5,7 +5,7 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Clock, FileText, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, Eye, Link } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
@@ -199,6 +199,20 @@ function ApprovalsContent() {
                         <p className="text-sm text-muted-foreground">
                           Expires: {new Date(cert.expiry_date).toLocaleDateString()}
                         </p>
+                      )}
+                      {/* Display verification URL if available */}
+                      {cert.file_url && (
+                        <div className="mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(cert.file_url, '_blank')}
+                            className="text-xs"
+                          >
+                            <Link className="h-3 w-3 mr-1" />
+                            Verify Certificate
+                          </Button>
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">

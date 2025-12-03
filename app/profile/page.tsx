@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare, Plus, Send } from 'lucide-react';
+import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare, Plus, Send, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,8 @@ export default function ProfilePage() {
     file_name: '',
     file_type: '',
     expiry_date: '',
-    has_expiry: false
+    has_expiry: false,
+    file_url: ''
   });
   const [dragActive, setDragActive] = useState(false);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -258,7 +259,8 @@ export default function ProfilePage() {
           file_name: '',
           file_type: '',
           expiry_date: '',
-          has_expiry: false
+          has_expiry: false,
+          file_url: ''
         });
         fetchProfile();
       } else {
@@ -280,13 +282,8 @@ export default function ProfilePage() {
   };
 
   const openCertification = (cert: Certification) => {
-    if (cert.file_data) {
-      // Create a data URL from the base64 data
-      const dataUrl = `data:${cert.file_type};base64,${cert.file_data}`;
-      window.open(dataUrl, '_blank');
-    } else if (cert.file_url) {
-      window.open(cert.file_url, '_blank');
-    }
+    setSelectedCert(cert);
+    setIsImageModalOpen(true);
   };
 
   const deleteCertification = async (certId: string) => {
@@ -427,11 +424,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {profile?.queries && profile.queries.length >= profile.max_queries_before_action && (
+        {profile?.queries && profile.queries.length > 0 && profile.queries.length >= profile.max_queries_before_action && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              You have reached the maximum number of queries. Please resolve some queries before submitting new ones.
+              You have reached the maximum number of queries.
             </AlertDescription>
           </Alert>
         )}
@@ -556,7 +553,7 @@ export default function ProfilePage() {
 
                       {/* File Upload */}
                       <div className="space-y-2">
-                        <Label>Certificate File</Label>
+                        <Label>Certificate File (Optional)</Label>
                         <div
                           className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
                             dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
@@ -584,6 +581,20 @@ export default function ProfilePage() {
                             <p className="text-xs text-green-600 mt-2">File uploaded successfully</p>
                           )}
                         </div>
+                      </div>
+
+                      {/* Certificate URL */}
+                      <div className="space-y-2">
+                        <Label htmlFor="cert-url">Certificate Verification URL (Optional)</Label>
+                        <Input
+                          id="cert-url"
+                          placeholder="https://example.com/certificate/verification"
+                          value={newCert.file_url}
+                          onChange={(e) => setNewCert({ ...newCert, file_url: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Add a URL where this certificate can be verified online
+                        </p>
                       </div>
 
                       {/* Expiry Section */}
@@ -640,6 +651,20 @@ export default function ProfilePage() {
                               <span className="text-xs text-muted-foreground">
                                 Expires: {new Date(cert.expiry_date).toLocaleDateString()}
                               </span>
+                            </div>
+                          )}
+                          {/* Display verification URL if available */}
+                          {cert.file_url && (
+                            <div className="mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(cert.file_url, '_blank')}
+                                className="text-xs"
+                              >
+                                <Link className="h-3 w-3 mr-1" />
+                                Verify Certificate
+                              </Button>
                             </div>
                           )}
                           <div className="flex items-center space-x-2 mt-2">
@@ -835,6 +860,51 @@ export default function ProfilePage() {
                 )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Image Modal */}
+        <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedCert?.title}</DialogTitle>
+              <DialogDescription>
+                Your certificate
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center">
+              {selectedCert?.file_data && selectedCert?.file_type ? (
+                <img
+                  src={`data:${selectedCert.file_type};base64,${selectedCert.file_data}`}
+                  alt={selectedCert.title}
+                  className="max-w-full max-h-[60vh] object-contain"
+                  onError={(e) => {
+                    console.error('Image failed to load:', e);
+                    e.currentTarget.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'Failed to load image';
+                    errorMsg.className = 'text-red-500 text-center';
+                    e.currentTarget.parentNode?.appendChild(errorMsg);
+                  }}
+                />
+              ) : selectedCert?.file_url ? (
+                <img
+                  src={selectedCert.file_url}
+                  alt={selectedCert.title}
+                  className="max-w-full max-h-[60vh] object-contain"
+                  onError={(e) => {
+                    console.error('Image failed to load from URL:', e);
+                    e.currentTarget.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'Failed to load image from URL';
+                    errorMsg.className = 'text-red-500 text-center';
+                    e.currentTarget.parentNode?.appendChild(errorMsg);
+                  }}
+                />
+              ) : (
+                <p className="text-muted-foreground">No image available</p>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
