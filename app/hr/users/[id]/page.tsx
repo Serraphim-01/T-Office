@@ -46,6 +46,7 @@ interface WikiCompletion {
   department: string;
   topic: string;
   completed_at: string | null;
+  comment: string | null;
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
@@ -446,6 +447,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                                   <TableHead>Topic</TableHead>
                                   <TableHead>Status</TableHead>
                                   <TableHead>Completed At</TableHead>
+                                  <TableHead>Comment</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -461,6 +463,9 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                                       {completion.completed_at 
                                         ? new Date(completion.completed_at).toLocaleDateString()
                                         : "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      {completion.comment || "-"}
                                     </TableCell>
                                   </TableRow>
                                 ))}

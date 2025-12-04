@@ -213,6 +213,16 @@ CREATE TABLE IF NOT EXISTS wiki_lesson_completions (
     UNIQUE(user_id, topic_id)
 );
 
+-- Wiki Comments Table
+CREATE TABLE IF NOT EXISTS wiki_comments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    topic_id INTEGER REFERENCES wiki_topics(id) ON DELETE CASCADE,
+    comment TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ===========================================
 -- LOCATION/GEOFENCING TABLES
 -- ===========================================
@@ -423,6 +433,8 @@ CREATE INDEX IF NOT EXISTS idx_wiki_topics_topic ON wiki_topics(topic);
 CREATE INDEX IF NOT EXISTS idx_wiki_questions_topic_id ON wiki_questions(topic_id);
 CREATE INDEX IF NOT EXISTS idx_wiki_completions_user_id ON wiki_lesson_completions(user_id);
 CREATE INDEX IF NOT EXISTS idx_wiki_completions_topic_id ON wiki_lesson_completions(topic_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_comments_user_id ON wiki_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_comments_topic_id ON wiki_comments(topic_id);
 
 -- Location indexes
 CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON user_locations(user_id);
@@ -476,6 +488,7 @@ CREATE TRIGGER update_user_locations_updated_at BEFORE UPDATE ON user_locations 
 CREATE TRIGGER update_compliance_documents_updated_at BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_crawled_sites_updated_at BEFORE UPDATE ON crawled_sites FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_wiki_comments_updated_at BEFORE UPDATE ON wiki_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_inbound_transactions_updated_at BEFORE UPDATE ON inbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_outbound_transactions_updated_at BEFORE UPDATE ON outbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

@@ -20,6 +20,7 @@ DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 DROP TRIGGER IF EXISTS update_inbound_transactions_updated_at ON inbound_transactions;
 DROP TRIGGER IF EXISTS update_outbound_transactions_updated_at ON outbound_transactions;
 DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
+DROP TRIGGER IF EXISTS update_wiki_comments_updated_at ON wiki_comments;
 
 -- Drop role-related indexes
 DROP INDEX IF EXISTS idx_roles_department_id;
@@ -27,6 +28,7 @@ DROP INDEX IF EXISTS idx_role_page_access_role_id;
 DROP INDEX IF EXISTS idx_users_role_id;
 
 -- Drop tables in reverse order of creation (due to foreign key constraints)
+DROP TABLE IF EXISTS wiki_comments CASCADE;
 DROP TABLE IF EXISTS wiki_lesson_completions CASCADE;
 DROP TABLE IF EXISTS wiki_questions CASCADE;
 DROP TABLE IF EXISTS wiki_topics CASCADE;

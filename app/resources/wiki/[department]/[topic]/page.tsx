@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, BookOpen, Clock, Edit, Trash2, CheckCircle, XCircle, Save, X, Plus, Bold, Italic, Underline, Type, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -128,7 +128,6 @@ function QuestionCard({ question, questionIndex, onAllCorrect }: QuestionProps &
     </div>
   );
 }
-
 interface WikiTopic {
   id: number;
   department: string;
@@ -155,6 +154,13 @@ interface NextLesson {
   department: string;
   topic: string;
   id: number;
+}
+
+interface Comment {
+  id: number;
+  comment: string;
+  created_at: string;
+  user_name: string;
 }
 
 const getYouTubeVideoId = (url: string) => {
@@ -204,6 +210,8 @@ export default function WikiLessonPage() {
       correct_answer: number;
     }>
   });
+  const [comment, setComment] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 
@@ -211,6 +219,7 @@ export default function WikiLessonPage() {
     fetchLesson();
     fetchCompletionStatus();
     fetchNextLesson();
+    fetchComments();
   }, [department, topic]);
 
   const fetchLesson = async () => {
@@ -264,6 +273,68 @@ export default function WikiLessonPage() {
       }
     } catch (err) {
       console.error('Failed to fetch next lesson:', err);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/comments`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data);
+      } else {
+        console.error('Failed to fetch comments:', response.status);
+      }
+    } catch (err) {
+      console.error('Failed to fetch comments:', err);
+    }
+  };
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!comment.trim()) return;
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ comment: comment.trim() }),
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        // Ensure the new comment includes user_name for display
+        const commentWithUser = {
+          ...newComment,
+          user_name: user?.full_name || 'Anonymous User'
+        };
+        setComments(prev => [commentWithUser, ...prev]);
+        setComment('');
+        toast({
+          title: "Success",
+          description: "Comment added successfully!",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add comment.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error('Failed to submit comment:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1006,6 +1077,52 @@ export default function WikiLessonPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Comments Section - Only show input box and button, not the comments themselves */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Comments</CardTitle>
+            <CardDescription>Share your thoughts about this lesson</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleSubmitComment} className="space-y-4">
+              <Textarea
+                placeholder="Impression about this lesson and whether they would like to have physical inductions regarding this topic."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={4}
+              />
+              <div className="flex justify-end">
+                <Button type="submit" disabled={!comment.trim()}>
+                  Add Comment
+                </Button>
+              </div>
+            </form>
+
+            {/* Hide all comments - don't display them */}
+            {/*
+            {comments.length > 0 ? (
+              <div className="space-y-4 mt-6">
+                {comments.map((c) => (
+                  <div key={c.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <p className="font-medium">{c.user_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(c.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-muted-foreground">{c.comment}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">
+                No comments yet. Be the first to share your thoughts!
+              </p>
+            )}
+            */}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

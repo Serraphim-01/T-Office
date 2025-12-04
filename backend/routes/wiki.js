@@ -268,4 +268,77 @@ router.get("/:department/:topic/next", authenticateJWT, async (req, res) => {
   }
 });
 
+// Add comment to a wiki lesson
+router.post("/:department/:topic/comment", authenticateJWT, async (req, res) => {
+  const { department, topic } = req.params;
+  const { comment } = req.body;
+
+  if (!comment || comment.trim().length === 0) {
+    return res.status(400).json({ error: "Comment is required" });
+  }
+
+  try {
+    // First get the topic ID
+    const topicResult = await req.pool.query(
+      'SELECT id FROM wiki_topics WHERE department = $1 AND topic = $2',
+      [department, topic]
+    );
+
+    if (topicResult.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    const topicId = topicResult.rows[0].id;
+
+    // Insert comment
+    const result = await req.pool.query(
+      'INSERT INTO wiki_comments (user_id, topic_id, comment) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.userId, topicId, comment.trim()]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error adding comment:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get comments for a wiki lesson
+router.get("/:department/:topic/comments", authenticateJWT, async (req, res) => {
+  const { department, topic } = req.params;
+
+  try {
+    // First get the topic ID
+    const topicResult = await req.pool.query(
+      'SELECT id FROM wiki_topics WHERE department = $1 AND topic = $2',
+      [department, topic]
+    );
+
+    if (topicResult.rows.length === 0) {
+      return res.status(404).json({ error: "Topic not found" });
+    }
+
+    const topicId = topicResult.rows[0].id;
+
+    // Get comments for this topic with user info
+    const commentsResult = await req.pool.query(`
+      SELECT 
+        wc.id,
+        wc.comment,
+        wc.created_at,
+        wc.updated_at,
+        u.full_name as user_name
+      FROM wiki_comments wc
+      JOIN users u ON wc.user_id = u.id
+      WHERE wc.topic_id = $1
+      ORDER BY wc.created_at DESC
+    `, [topicId]);
+
+    res.json(commentsResult.rows);
+  } catch (err) {
+    console.error('Error fetching comments:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

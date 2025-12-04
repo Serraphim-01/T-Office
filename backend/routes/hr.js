@@ -449,15 +449,17 @@ router.get("/wiki-completions/:userId", authenticateJWT, async (req, res) => {
   const { userId } = req.params;
 
   try {
-    // Get all wiki topics with completion status for the user
+    // Get all wiki topics with completion status and comments for the user
     const result = await pool.query(`
       SELECT 
         wt.id,
         wt.department,
         wt.topic,
-        wc.completed_at
+        wc.completed_at,
+        wcm.comment
       FROM wiki_topics wt
       LEFT JOIN wiki_lesson_completions wc ON wt.id = wc.topic_id AND wc.user_id = $1
+      LEFT JOIN wiki_comments wcm ON wt.id = wcm.topic_id AND wcm.user_id = $1
       ORDER BY wt.department, wt.topic
     `, [userId]);
     
