@@ -80,6 +80,21 @@ function HRQueriesContent() {
   const [queryReplies, setQueryReplies] = useState<Query[]>([]); // New state for query replies
   const [canSendQuery, setCanSendQuery] = useState(false);
   const [queryTypes, setQueryTypes] = useState<string[]>([]); // Added for query types
+  const [activeTab, setActiveTab] = useState('history');
+
+  // Fetch query replies when replies tab is activated
+  useEffect(() => {
+    if (activeTab === 'replies') {
+      fetchQueryReplies();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUsers();
+      // Don't fetch query replies here anymore, it will be fetched when the tab is active
+    }
+  }, [user]);
 
   // Form states
   const [newQuery, setNewQuery] = useState({ 
@@ -135,13 +150,6 @@ function HRQueriesContent() {
     
     setCanSendQuery(sendQueryAccess);
   };
-
-  useEffect(() => {
-    if (user) {
-      fetchUsers();
-      fetchQueryReplies(); // Fetch query replies on component mount
-    }
-  }, [user]);
 
   const fetchUsers = async () => {
     try {
@@ -248,9 +256,10 @@ function HRQueriesContent() {
   // Reply to a query
   const replyToQuery = async (queryId: number, replyText: string) => {
     try {
+      // Automatically lock the query when replying from Query Replies page
       const requestBody = { 
         reply_text: replyText,
-        is_locked: isLockedReply
+        is_locked: true
       };
       
       const response = await fetch(`http://localhost:4000/api/hr/queries/${queryId}/reply`, {
@@ -388,7 +397,7 @@ function HRQueriesContent() {
           <div className="text-sm text-muted-foreground">{user?.department}</div>
         </div>
 
-        <Tabs defaultValue="history" className="w-full">
+        <Tabs defaultValue="history" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="send">Send Query</TabsTrigger>
             <TabsTrigger value="history">Query History</TabsTrigger>
@@ -587,14 +596,7 @@ function HRQueriesContent() {
                                       value={replyText}
                                       onChange={(e) => setReplyText(e.target.value)}
                                     />
-                                    <div className="flex items-center space-x-2">
-                                      <Checkbox
-                                        id="reply-locked-history"
-                                        checked={isLockedReply}
-                                        onCheckedChange={(checked: boolean) => setIsLockedReply(checked)}
-                                      />
-                                      <Label htmlFor="reply-locked-history">Lock Query (No Further Replies)</Label>
-                                    </div>
+
                                     <div className="flex gap-2">
                                       <Button 
                                         size="sm" 
@@ -707,14 +709,7 @@ function HRQueriesContent() {
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
                               />
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id="reply-locked"
-                                  checked={isLockedReply}
-                                  onCheckedChange={(checked: boolean) => setIsLockedReply(checked)}
-                                />
-                                <Label htmlFor="reply-locked">Lock Query (No Further Replies)</Label>
-                              </div>
+                              
                               <div className="flex gap-2">
                                 <Button 
                                   size="sm" 

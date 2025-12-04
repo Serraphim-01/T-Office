@@ -136,7 +136,11 @@ router.get("/queries", authenticateJWT, async (req, res) => {
                 CASE 
                   WHEN lr.replied_by_department IN ('HR', 'Admin') THEN true
                   ELSE false
-                END as last_reply_from_authorized_user
+                END as last_reply_from_authorized_user,
+                CASE 
+                  WHEN EXISTS (SELECT 1 FROM query_replies qr WHERE qr.query_id = q.id AND qr.replied_by = $1) THEN true
+                  ELSE false
+                END as current_user_has_replied
          FROM hr_queries q
          LEFT JOIN query_replies r ON q.id = r.query_id
          LEFT JOIN users u ON r.replied_by = u.id
@@ -173,6 +177,7 @@ router.get("/queries", authenticateJWT, async (req, res) => {
           query_type: row.query_type,
           is_locked: row.is_locked,
           last_reply_from_authorized_user: row.last_reply_from_authorized_user || false,
+          current_user_has_replied: row.current_user_has_replied || false,
           replies: []
         });
       }

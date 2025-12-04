@@ -71,6 +71,7 @@ interface UserQuery {
   query_type?: string;
   is_locked?: boolean; // Added for locked queries
   last_reply_from_authorized_user?: boolean; // Added to track who last replied
+  current_user_has_replied?: boolean; // Added to track if current user has replied
   replies?: QueryReply[];
 }
 
@@ -331,6 +332,7 @@ export default function ProfilePage() {
     if (!selectedQuery || !replyText.trim()) return;
 
     try {
+      // Reply to query without locking it when user replies from profile
       const response = await fetch(`http://localhost:4000/api/hr/queries/${selectedQuery.id}/reply`, {
         method: 'POST',
         headers: {
@@ -349,6 +351,21 @@ export default function ProfilePage() {
         setReplyText('');
         // Refresh the profile to show the new reply
         fetchProfile();
+        
+        // Also refresh query replies in case this page is open in another tab
+        try {
+          const response = await fetch('http://localhost:4000/api/hr/queries-replies', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (response.ok) {
+            // We don't need to update state here since this is just to trigger a refresh
+            // The HR queries page will refresh when the user navigates to it
+          }
+        } catch (error) {
+          console.error('Failed to refresh query replies:', error);
+        }
       } else {
         const error = await response.json();
         toast({
@@ -820,11 +837,8 @@ export default function ProfilePage() {
                   </div>
                 )}
                 
-                {/* Reply form - only show if query is not locked and either:
-                     1. No replies yet, or 
-                     2. Last reply was from someone authorized (HR/Admin) */}
-                {selectedQuery && !selectedQuery.is_locked && (!selectedQuery.replies || selectedQuery.replies.length === 0 || 
-                  (selectedQuery.replies.length > 0 && selectedQuery.last_reply_from_authorized_user)) && (
+                {/* Reply form - only show if query is not locked and user hasn't replied yet */}
+                {selectedQuery && !selectedQuery.is_locked && !(selectedQuery.current_user_has_replied ?? false) && (
                   <div className="space-y-2 pt-2 border-t">
                     <Label htmlFor="reply-text">Your Reply</Label>
                     <Textarea
@@ -845,11 +859,10 @@ export default function ProfilePage() {
                   </div>
                 )}
                 
-                {/* Message when user needs to wait for authorized person to respond */}
-                {selectedQuery && !selectedQuery.is_locked && selectedQuery.replies && selectedQuery.replies.length > 0 && 
-                  !selectedQuery.last_reply_from_authorized_user && (
+                {/* Message when user has already replied */}
+                {selectedQuery && !selectedQuery.is_locked && (selectedQuery.current_user_has_replied ?? false) && (
                   <div className="pt-2 border-t text-sm text-muted-foreground">
-                    You have replied to this query. Please wait for an authorized person to respond before replying again.
+                    You have replied to this query. Please wait for an authorized person to respond in the Query Replies page.
                   </div>
                 )}
                 

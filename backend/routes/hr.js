@@ -298,7 +298,7 @@ router.get("/queries-replies", authenticateJWT, async (req, res) => {
   const pool = req.pool;
 
   try {
-    // Get all queries that have replies where the last reply was not from someone with HR queries access
+    // Get all queries that have replies
     const queriesResult = await pool.query(
       `WITH latest_replies AS (
          SELECT 
@@ -319,7 +319,7 @@ router.get("/queries-replies", authenticateJWT, async (req, res) => {
        JOIN query_replies r ON q.id = r.query_id
        JOIN users ur ON r.replied_by = ur.id
        LEFT JOIN latest_replies lr ON q.id = lr.query_id AND lr.rn = 1
-       WHERE lr.replied_by_department NOT IN ('HR', 'Admin') OR lr.replied_by_department IS NULL
+       WHERE q.is_locked = false
        ORDER BY q.created_at DESC, r.created_at ASC`
     );
 
