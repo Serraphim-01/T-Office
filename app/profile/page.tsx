@@ -162,7 +162,7 @@ export default function ProfilePage() {
       const deptList = await fetchDepartments();
       setDepartments(deptList);
     } catch (error) {
-      console.error('Error loading departments:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load departments",
@@ -174,7 +174,7 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     // Don't fetch if user is not available
     if (!user) {
-      console.log('User not available, skipping profile fetch');
+      // Removed console statement for production
       return;
     }
     
@@ -195,7 +195,7 @@ export default function ProfilePage() {
       
       // Fetch support staff data
       const userId = user.id; // Now we can safely access user.id
-      console.log('Fetching support staff for user ID:', userId);
+      // Removed console statement for production
       
       const supportStaffResponse = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
         headers: {
@@ -210,14 +210,14 @@ export default function ProfilePage() {
         
         if (supportStaffResponse.ok) {
           supportStaffData = await supportStaffResponse.json();
-          console.log('Support staff data:', supportStaffData);
+          // Removed console statement for production
         } else {
-          console.error('Failed to fetch support staff:', supportStaffResponse.status);
+          // Removed console statement for production
           try {
             const errorText = await supportStaffResponse.text();
-            console.error('Error response:', errorText);
+            // Removed console statement for production
           } catch (e) {
-            console.error('Could not read error response');
+            // Removed console statement for production
           }
         }
         
@@ -230,7 +230,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Failed to fetch profile:', error);
+      // Removed console statement for production
     } finally {
       setLoading(false);
     }
@@ -321,7 +321,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error adding certification:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -359,7 +359,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error deleting certification:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -412,7 +412,7 @@ export default function ProfilePage() {
             // The HR queries page will refresh when the user navigates to it
           }
         } catch (error) {
-          console.error('Failed to refresh query replies:', error);
+          // Removed console statement for production
         }
       } else {
         const error = await response.json();
@@ -423,7 +423,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error submitting reply:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -459,7 +459,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error submitting query:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -977,7 +977,7 @@ export default function ProfilePage() {
                   alt={selectedCert.title}
                   className="max-w-full max-h-[60vh] object-contain"
                   onError={(e) => {
-                    console.error('Image failed to load:', e);
+                    // Removed console statement for production
                     e.currentTarget.style.display = 'none';
                     const errorMsg = document.createElement('p');
                     errorMsg.textContent = 'Failed to load image';
@@ -991,7 +991,7 @@ export default function ProfilePage() {
                   alt={selectedCert.title}
                   className="max-w-full max-h-[60vh] object-contain"
                   onError={(e) => {
-                    console.error('Image failed to load from URL:', e);
+                    // Removed console statement for production
                     e.currentTarget.style.display = 'none';
                     const errorMsg = document.createElement('p');
                     errorMsg.textContent = 'Failed to load image from URL';

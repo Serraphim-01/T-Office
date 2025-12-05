@@ -61,7 +61,7 @@ function DepartmentsContent() {
   const fetchDepartments = async () => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Fetching departments with token:', token ? 'Present' : 'Missing');
+      // Removed console statement for production
       
       if (!token) {
         toast({
@@ -78,11 +78,11 @@ function DepartmentsContent() {
         },
       });
       
-      console.log('Departments API response status:', response.status);
+      // Removed console statement for production
       
       // Handle token expiration
       if (response.status === 403) {
-        console.log('Token expired, attempting to refresh...');
+        // Removed console statement for production
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
@@ -93,23 +93,23 @@ function DepartmentsContent() {
           });
           if (retryResponse.ok) {
             const data = await retryResponse.json();
-            console.log('Retried departments data:', data);
+            // Removed console statement for production
             setDepartments(data);
             return;
           } else {
             const errorText = await retryResponse.text();
-            console.error('Retry failed:', retryResponse.status, errorText);
+            // Removed console statement for production
           }
         }
       }
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Departments data:', data);
+        // Removed console statement for production
         setDepartments(data);
       } else {
         const errorText = await response.text();
-        console.error('Failed to fetch departments:', response.status, errorText);
+        // Removed console statement for production
         toast({
           title: "Error",
           description: `Failed to fetch departments: ${response.status} ${errorText}`,
@@ -117,7 +117,7 @@ function DepartmentsContent() {
         });
       }
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to connect to server. Please check your connection.",
@@ -152,7 +152,7 @@ function DepartmentsContent() {
         throw new Error(`Failed to load roles: ${response.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error loading roles:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load roles. Please check your connection.",
@@ -202,7 +202,7 @@ function DepartmentsContent() {
         });
       }
     } catch (error) {
-      console.error('Error adding department:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to connect to server",
@@ -256,7 +256,7 @@ function DepartmentsContent() {
         });
       }
     } catch (error) {
-      console.error('Error renaming department:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to connect to server",
@@ -316,7 +316,7 @@ function DepartmentsContent() {
         });
       }
     } catch (error) {
-      console.error('Error adding role:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to connect to server",
@@ -367,7 +367,7 @@ function DepartmentsContent() {
         });
       }
     } catch (error) {
-      console.error('Error renaming role:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to connect to server",

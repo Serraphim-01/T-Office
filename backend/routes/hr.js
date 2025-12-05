@@ -7,20 +7,57 @@ const router = express.Router();
 // Create a new user
 router.post("/users", authenticateJWT, async (req, res) => {
   const pool = req.pool;
-  const { name, email, department } = req.body;
+  const { name, email, department, role } = req.body;
 
-  console.log('User creation:', { name, email, department });
+  console.log('User creation:', { name, email, department, role });
 
   try {
     // Default password for new users
     const defaultPassword = 'TaskLtd@2025';
     const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
 
-    const result = await pool.query(
-      'INSERT INTO users (full_name, email, department, password_hash) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name, email, department, hashedPassword]
-    );
-    const userId = result.rows[0].id;
+    let userId;
+    
+    // If role is provided, get the role_id
+    if (role) {
+      // First get the department ID
+      const deptResult = await pool.query(
+        'SELECT id FROM departments WHERE name = $1',
+        [department]
+      );
+      
+      if (deptResult.rows.length === 0) {
+        return res.status(400).json({ error: "Invalid department" });
+      }
+      
+      const departmentId = deptResult.rows[0].id;
+      
+      // Then get the role ID
+      const roleResult = await pool.query(
+        'SELECT id FROM roles WHERE department_id = $1 AND name = $2',
+        [departmentId, role]
+      );
+      
+      if (roleResult.rows.length === 0) {
+        return res.status(400).json({ error: "Invalid role for department" });
+      }
+      
+      const roleId = roleResult.rows[0].id;
+      
+      // Create user with role_id
+      const result = await pool.query(
+        'INSERT INTO users (full_name, email, department, password_hash, role_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [name, email, department, hashedPassword, roleId]
+      );
+      userId = result.rows[0].id;
+    } else {
+      // Create user without role_id (backward compatibility)
+      const result = await pool.query(
+        'INSERT INTO users (full_name, email, department, password_hash) VALUES ($1, $2, $3, $4) RETURNING id',
+        [name, email, department, hashedPassword]
+      );
+      userId = result.rows[0].id;
+    }
 
     console.log('User created successfully with default password');
     res.status(201).json({
@@ -28,6 +65,7 @@ router.post("/users", authenticateJWT, async (req, res) => {
       full_name: name,
       email: email,
       department: department,
+      role: role,
       default_password: defaultPassword
     });
   } catch (err) {

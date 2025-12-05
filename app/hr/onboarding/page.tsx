@@ -14,7 +14,7 @@ import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { fetchDepartments } from '@/lib/departments';
+import { fetchDepartments, fetchRoles } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
@@ -25,6 +25,12 @@ interface User {
   department: string;
   created_at: string;
   other_details?: any;
+}
+
+interface Role {
+  id: number;
+  name: string;
+  is_default: boolean;
 }
 
 interface Induction {
@@ -60,9 +66,14 @@ function HROnboardingContent() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [canCreateUser, setCanCreateUser] = useState(false);
   const [canScheduleInductions, setCanScheduleInductions] = useState(false);
+  
+  // Add roles state
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   // Form states
-  const [newUser, setNewUser] = useState<{ name: string; email: string; department: string }>({ name: '', email: '', department: '' });
+  // Update newUser to include role
+  const [newUser, setNewUser] = useState<{ name: string; email: string; department: string; role: string }>({ name: '', email: '', department: '', role: '' });
   const [newInductions, setNewInductions] = useState<DepartmentInduction[]>([{ department: '', induction_time: '', attendees: [] }]);
 
   // Check feature access when user loads
@@ -76,7 +87,7 @@ function HROnboardingContent() {
     if (!user) return;
     
     // Check access to HR onboarding page
-    const onboardingAccess = await hasPageAccess(user, 'hr/onboarding');
+    const onboardingAccess = await hasPageAccess(user.id, 'hr/onboarding');
     
     if (!onboardingAccess) {
       // If no access to HR onboarding page, disable all features
@@ -86,8 +97,8 @@ function HROnboardingContent() {
     }
     
     // Check access to specific HR onboarding features
-    const createUserAccess = await hasPageAccess(user, 'hr/onboarding/create-user');
-    const scheduleInductionsAccess = await hasPageAccess(user, 'hr/onboarding/schedule-inductions');
+    const createUserAccess = await hasPageAccess(user.id, 'hr/onboarding/create-user');
+    const scheduleInductionsAccess = await hasPageAccess(user.id, 'hr/onboarding/schedule-inductions');
     
     setCanCreateUser(createUserAccess);
     setCanScheduleInductions(scheduleInductionsAccess);
@@ -106,12 +117,41 @@ function HROnboardingContent() {
       const deptList = await fetchDepartments();
       setDepartments(deptList);
     } catch (error) {
-      console.error('Error loading departments:', error);
       toast({
         title: "Error",
         description: "Failed to load departments",
         variant: "destructive",
       });
+    }
+  };
+
+  // Add function to load roles for a department
+  const loadRoles = async (departmentName: string) => {
+    if (!departmentName) {
+      setRoles([]);
+      return;
+    }
+    
+    setRolesLoading(true);
+    try {
+      const roleList = await fetchRoles(departmentName);
+      setRoles(roleList);
+      
+      // If there's only one role, auto-select it
+      if (roleList.length === 1) {
+        setNewUser(prev => ({ ...prev, role: roleList[0].name }));
+      } else {
+        // Clear role selection when department changes
+        setNewUser(prev => ({ ...prev, role: '' }));
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load roles",
+        variant: "destructive",
+      });
+    } finally {
+      setRolesLoading(false);
     }
   };
 
@@ -127,7 +167,11 @@ function HROnboardingContent() {
         setUsers(data);
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      });
     }
   };
 
@@ -143,7 +187,11 @@ function HROnboardingContent() {
         setInductions(data);
       }
     } catch (error) {
-      console.error('Failed to fetch inductions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch inductions",
+        variant: "destructive",
+      });
     }
   };
 
@@ -159,7 +207,8 @@ function HROnboardingContent() {
         body: JSON.stringify({
           name: newUser.name,
           email: newUser.email,
-          department: newUser.department
+          department: newUser.department,
+          role: newUser.role // Add role to the request
         }),
       });
 
@@ -169,7 +218,7 @@ function HROnboardingContent() {
           title: "Success",
           description: `User created successfully! Default password: ${data.default_password}`,
         });
-        setNewUser({ name: '', email: '', department: '' });
+        setNewUser({ name: '', email: '', department: '', role: '' }); // Reset role as well
         fetchUsers();
       } else {
         toast({
@@ -179,7 +228,6 @@ function HROnboardingContent() {
         });
       }
     } catch (error) {
-      console.error('Error creating user:', error);
       toast({
         title: "Error",
         description: "Error creating user",
@@ -256,7 +304,6 @@ function HROnboardingContent() {
         });
       }
     } catch (error) {
-      console.error('Error creating inductions:', error);
       toast({
         title: "Error",
         description: "Error creating inductions",
@@ -293,7 +340,6 @@ function HROnboardingContent() {
         });
       }
     } catch (error) {
-      console.error('Error deleting induction:', error);
       toast({
         title: "Error",
         description: "Error deleting induction",
@@ -354,7 +400,13 @@ function HROnboardingContent() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
-                  <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
+                  <Select 
+                    value={newUser.department} 
+                    onValueChange={(value) => {
+                      setNewUser({ ...newUser, department: value, role: '' }); // Reset role when department changes
+                      loadRoles(value); // Load roles for selected department
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
@@ -367,8 +419,36 @@ function HROnboardingContent() {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Add Role Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select 
+                    value={newUser.role} 
+                    onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+                    disabled={!newUser.department || rolesLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={rolesLoading ? "Loading roles..." : "Select role"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.name}>
+                          {role.name} {role.is_default ? '(Default)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!newUser.department && (
+                    <p className="text-sm text-muted-foreground">Please select a department first</p>
+                  )}
+                </div>
 
-                <Button onClick={createUser} disabled={loading} className="w-full">
+                <Button 
+                  onClick={createUser} 
+                  disabled={loading || !newUser.name || !newUser.email || !newUser.department || !newUser.role}
+                  className="w-full"
+                >
                   {loading ? 'Creating...' : 'Create User'}
                 </Button>
               </CardContent>

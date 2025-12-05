@@ -9,9 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { User, Mail, Building, FileText, Calendar, Clock, CheckCircle, AlertCircle, Link } from 'lucide-react';
+import { User, Mail, Building, FileText, Calendar, Clock, CheckCircle, AlertCircle, Link, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import {
   Select,
@@ -21,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: number;
@@ -64,11 +64,10 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [wikiCompletions, setWikiCompletions] = useState<WikiCompletion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeSection, setActiveSection] = useState('profile');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Support staff state
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedSupportStaffId, setSelectedSupportStaffId] = useState<string>('');
   const [supportStaffAssignments, setSupportStaffAssignments] = useState<any[]>([]);
   
   const { toast } = useToast();
@@ -78,7 +77,6 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       fetchUserDetails();
       fetchUserAttendance();
       fetchUserWikiCompletions();
-      fetchUsers(); // For support staff dropdown
       fetchSupportStaffAssignments(params.id); // For current support staff
     }
   }, [currentUser, params.id]);
@@ -94,10 +92,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         const userData = await response.json();
         setUser(userData);
       } else {
-        console.error('Failed to fetch user details - Status:', response.status, 'Response:', await response.text());
       }
     } catch (error) {
-      console.error('Failed to fetch user details:', error);
     } finally {
       setLoading(false);
     }
@@ -125,10 +121,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         }));
         setAttendance(mappedAttendance);
       } else {
-        console.error('Failed to fetch attendance - Status:', response.status, 'Response:', await response.text());
       }
     } catch (error) {
-      console.error('Failed to fetch attendance:', error);
     }
   };
 
@@ -143,26 +137,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         const data = await response.json();
         setWikiCompletions(data);
       } else {
-        console.error('Failed to fetch wiki completions - Status:', response.status, 'Response:', await response.text());
       }
     } catch (error) {
-      console.error('Failed to fetch wiki completions:', error);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('http://localhost:4000/api/hr/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
     }
   };
 
@@ -180,108 +156,6 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       const data = await response.json();
       setSupportStaffAssignments(data);
     } catch (error) {
-      console.error('Error fetching support staff assignments:', error);
-    }
-  };
-
-  const handleAssignSupportStaff = async () => {
-    if (!selectedSupportStaffId) {
-      toast({
-        title: 'Error',
-        description: 'Please select a support staff member',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Prevent assigning a user as their own support staff
-    if (params.id === selectedSupportStaffId) {
-      toast({
-        title: 'Error',
-        description: 'A user cannot be their own support staff',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${params.id}/assign-support`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ supportStaffId: parseInt(selectedSupportStaffId) }),
-      });
-
-      if (!response.ok) throw new Error('Failed to assign support staff');
-
-      toast({
-        title: 'Success',
-        description: 'Support staff assigned successfully',
-      });
-      
-      // Refresh assignments
-      fetchSupportStaffAssignments(params.id);
-      setSelectedSupportStaffId(''); // Reset selection
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to assign support staff',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleUnassignSupportStaff = async (supportStaffId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${params.id}/unassign-support/${supportStaffId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to unassign support staff');
-
-      toast({
-        title: 'Success',
-        description: 'Support staff unassigned successfully',
-      });
-      
-      // Refresh assignments
-      fetchSupportStaffAssignments(params.id);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to unassign support staff',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const updateUserDetails = async (details: any) => {
-    try {
-      const response = await fetch(`http://localhost:4000/api/hr/users/${params.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(details),
-      });
-
-      if (response.ok) {
-        alert('User details updated successfully!');
-        fetchUserDetails();
-      } else {
-        alert('Failed to update user details');
-      }
-    } catch (error) {
-      console.error('Error updating user details:', error);
-      alert('Error updating user details');
     }
   };
 
@@ -329,356 +203,340 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           <Button onClick={() => router.push('/hr')}>Back to HR Dashboard</Button>
         </div>
 
-        {/* User Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <div className="bg-secondary p-3 rounded-full">
-                <User className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span>{user.full_name}</span>
-                  <Badge variant="outline">{user.department}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Email</span>
-                <span className="text-sm font-medium">{user.email}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Building className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Department</span>
-                <span className="text-sm font-medium">{user.department}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Member Since</span>
-                <span className="text-sm font-medium">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Support Staff Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Support Staff</CardTitle>
-            <CardDescription>Manage support staff assignments for this user</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <Label htmlFor="supportStaffSelect">Assign Support Staff</Label>
-                  <Select value={selectedSupportStaffId} onValueChange={setSelectedSupportStaffId}>
-                    <SelectTrigger id="supportStaffSelect">
-                      <SelectValue placeholder="Select support staff" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users
-                        .filter(u => u.id.toString() !== params.id) // Exclude the current user
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.full_name} ({user.email})
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    onClick={handleAssignSupportStaff}
-                    disabled={!selectedSupportStaffId}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Collapsible Side Navigation - Styled like main sidenav */}
+          <div className={cn(
+            "flex-shrink-0 transition-all duration-300",
+            sidebarCollapsed ? "w-12" : "w-full lg:w-64"
+          )}>
+            <Card className="h-full">
+              <CardContent className="p-2">
+                <div className="flex items-center justify-between p-2 border-b">
+                  {!sidebarCollapsed && (
+                    <span className="text-sm font-medium">Navigation</span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="h-8 w-8 p-0"
                   >
-                    Assign
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform",
+                      sidebarCollapsed ? "rotate-180" : ""
+                    )} />
                   </Button>
                 </div>
-              </div>
+                <nav className="space-y-1 mt-2">
+                  <button
+                    onClick={() => setActiveSection('profile')}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      activeSection === 'profile'
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <User className="h-4 w-4" />
+                    {!sidebarCollapsed && <span>Profile</span>}
+                  </button>
+                  <button
+                    onClick={() => setActiveSection('attendance')}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      activeSection === 'attendance'
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <Clock className="h-4 w-4" />
+                    {!sidebarCollapsed && <span>Attendance</span>}
+                  </button>
+                  <button
+                    onClick={() => setActiveSection('wiki')}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      activeSection === 'wiki'
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <FileText className="h-4 w-4" />
+                    {!sidebarCollapsed && <span>Wiki Completions</span>}
+                  </button>
+                </nav>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div>
-                <h3 className="font-medium mb-2">Current Support Staff</h3>
-                {supportStaffAssignments.length > 0 ? (
-                  <div className="space-y-2">
-                    {supportStaffAssignments.map((assignment) => (
-                      <div key={assignment.id} className="flex justify-between items-center p-2 border rounded">
-                        <div>
-                          <p className="font-medium">{assignment.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{assignment.email}</p>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleUnassignSupportStaff(assignment.support_staff_id)}
-                        >
-                          Remove
-                        </Button>
+          {/* Main Content */}
+          <div className="flex-1">
+            {activeSection === 'profile' && (
+              <div className="space-y-6">
+                {/* Profile Overview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile Overview</CardTitle>
+                    <CardDescription>User's current profile information</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Full Name</span>
+                        <span className="text-sm font-medium text-foreground">{user?.full_name || 'User Name'}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No support staff assigned</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tabs for different sections */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-            <TabsTrigger value="wiki">Wiki Completions</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile" className="space-y-6">
-            {/* Profile Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Overview</CardTitle>
-                <CardDescription>User's current profile information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Full Name</span>
-                    <span className="text-sm font-medium text-foreground">{user?.full_name || 'User Name'}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Email</span>
-                    <span className="text-sm font-medium text-foreground break-all">{user?.email || 'user@example.com'}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Department</span>
-                    <span className="text-sm font-medium text-foreground">{user?.department || 'No Department'}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Role</span>
-                    <span className="text-sm font-medium text-foreground">{user?.department || 'No Role'}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Certifications - Full Width */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Certifications</CardTitle>
-                <CardDescription>User's professional certifications</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {user?.certifications && user.certifications.length > 0 ? (
-                  <div className="space-y-3">
-                    {user.certifications.map((cert: any) => (
-                      <div key={cert.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">{cert.title}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{cert.issuer}</p>
-                          {cert.has_expiry && cert.expiry_date && (
-                            <div className="flex items-center space-x-1 mt-1">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">
-                                Expires: {new Date(cert.expiry_date).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          {/* Display verification URL if available */}
-                          {cert.file_url && (
-                            <div className="mt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(cert.file_url, '_blank')}
-                                className="text-xs"
-                              >
-                                <Link className="h-3 w-3 mr-1" />
-                                Verify Certificate
-                              </Button>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-2 mt-2">
-                            <Badge
-                              variant={cert.status === 'approved' ? 'default' : cert.status === 'rejected' ? 'destructive' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {cert.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {cert.status === 'rejected' && <AlertCircle className="h-3 w-3 mr-1" />}
-                              {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
-                            </Badge>
-                          </div>
-                        </div>
+                      <div className="flex items-center space-x-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Email</span>
+                        <span className="text-sm font-medium text-foreground break-all">{user?.email || 'user@example.com'}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No certifications added yet.</p>
-                )}
-              </CardContent>
-            </Card>
+                      <div className="flex items-center space-x-3">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Department</span>
+                        <span className="text-sm font-medium text-foreground">{user?.department || 'No Department'}</span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Role</span>
+                        <span className="text-sm font-medium text-foreground">{user?.department || 'No Role'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Account Status - Single Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Account Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Account Type</span>
-                    <Badge variant="default">Active User</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Member Since</span>
-                    <span className="text-sm text-foreground">
-                      {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Query Count</span>
-                    <span className="text-sm text-foreground">{user?.query_count || 0}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                {/* Support Staff Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Support Staff</CardTitle>
+                    <CardDescription>Support staff assigned to this user</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {supportStaffAssignments.length > 0 ? (
+                      <div className="space-y-2">
+                        {supportStaffAssignments.map((assignment) => (
+                          <div key={assignment.id} className="flex justify-between items-center p-2 border rounded">
+                            <div>
+                              <p className="font-medium">{assignment.full_name}</p>
+                              <p className="text-sm text-muted-foreground">{assignment.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">No support staff assigned</p>
+                    )}
+                  </CardContent>
+                </Card>
 
-          <TabsContent value="attendance" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Records</CardTitle>
-                <CardDescription>Recent clock in/out records for this user</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {attendance.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Clock In</TableHead>
-                        <TableHead>Clock Out</TableHead>
-                        <TableHead>Total Hours</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {attendance.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell>
-                            {new Date(record.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            {record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {record.total_hours ? record.total_hours.toFixed(2) : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={record.status === 'present' ? 'default' : 'secondary'}>
-                              {record.status}
-                            </Badge>
-                          </TableCell>
+                {/* Certifications - Full Width */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Certifications</CardTitle>
+                    <CardDescription>User's professional certifications</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {user?.certifications && user.certifications.length > 0 ? (
+                      <div className="space-y-3">
+                        {user.certifications.map((cert: any) => (
+                          <div key={cert.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">{cert.title}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{cert.issuer}</p>
+                              {cert.has_expiry && cert.expiry_date && (
+                                <div className="flex items-center space-x-1 mt-1">
+                                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">
+                                    Expires: {new Date(cert.expiry_date).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Display verification URL if available */}
+                              {cert.file_url && (
+                                <div className="mt-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(cert.file_url, '_blank')}
+                                    className="text-xs"
+                                  >
+                                    <Link className="h-3 w-3 mr-1" />
+                                    Verify Certificate
+                                  </Button>
+                                </div>
+                              )}
+                              <div className="flex items-center space-x-2 mt-2">
+                                <Badge
+                                  variant={cert.status === 'approved' ? 'default' : cert.status === 'rejected' ? 'destructive' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {cert.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                                  {cert.status === 'rejected' && <AlertCircle className="h-3 w-3 mr-1" />}
+                                  {cert.status.charAt(0).toUpperCase() + cert.status.slice(1)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No certifications added yet.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Account Status - Single Card */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Account Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Account Type</span>
+                        <Badge variant="default">Active User</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Member Since</span>
+                        <span className="text-sm text-foreground">
+                          {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Query Count</span>
+                        <span className="text-sm text-foreground">{user?.query_count || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeSection === 'attendance' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Attendance Records</CardTitle>
+                  <CardDescription>Recent clock in/out records for this user</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {attendance.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Clock In</TableHead>
+                          <TableHead>Clock Out</TableHead>
+                          <TableHead>Total Hours</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-8">
-                    <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">No attendance records found</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </TableHeader>
+                      <TableBody>
+                        {attendance.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell>
+                              {new Date(record.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {record.total_hours ? record.total_hours.toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={record.status === 'present' ? 'default' : 'secondary'}>
+                                {record.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">No attendance records found</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-          <TabsContent value="wiki" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Wiki Completions</CardTitle>
-                <CardDescription>Completed and pending wiki lessons by department</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {wikiCompletions.length > 0 ? (
-                  <div className="space-y-6">
-                    {/* Group by department */}
-                    {Array.from(new Set(wikiCompletions.map(w => w.department))).map(department => {
-                      const departmentLessons = wikiCompletions.filter(w => w.department === department);
-                      const completedCount = departmentLessons.filter(l => l.completed_at !== null).length;
-                      const totalCount = departmentLessons.length;
-                      
-                      return (
-                        <div key={department} className="border rounded-lg">
-                          <div className="bg-secondary p-4 flex justify-between items-center">
-                            <h3 className="font-semibold">{department}</h3>
-                            <Badge variant="outline">
-                              {completedCount}/{totalCount} completed
-                            </Badge>
-                          </div>
-                          <div className="p-4">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Topic</TableHead>
-                                  <TableHead>Status</TableHead>
-                                  <TableHead>Completed At</TableHead>
-                                  <TableHead>Comment</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {departmentLessons.map((completion) => (
-                                  <TableRow key={completion.id}>
-                                    <TableCell className="font-medium">{completion.topic}</TableCell>
-                                    <TableCell>
-                                      <Badge variant={completion.completed_at ? "default" : "secondary"}>
-                                        {completion.completed_at ? "Completed" : "Pending"}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      {completion.completed_at 
-                                        ? new Date(completion.completed_at).toLocaleDateString()
-                                        : "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                      {completion.comment || "-"}
-                                    </TableCell>
+            {activeSection === 'wiki' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Wiki Completions</CardTitle>
+                  <CardDescription>Completed and pending wiki lessons by department</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {wikiCompletions.length > 0 ? (
+                    <div className="space-y-6">
+                      {/* Group by department */}
+                      {Array.from(new Set(wikiCompletions.map(w => w.department))).map(department => {
+                        const departmentLessons = wikiCompletions.filter(w => w.department === department);
+                        const completedCount = departmentLessons.filter(l => l.completed_at !== null).length;
+                        const totalCount = departmentLessons.length;
+                        
+                        return (
+                          <div key={department} className="border rounded-lg">
+                            <div className="bg-secondary p-4 flex justify-between items-center">
+                              <h3 className="font-semibold">{department}</h3>
+                              <Badge variant="outline">
+                                {completedCount}/{totalCount} completed
+                              </Badge>
+                            </div>
+                            <div className="p-4">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Topic</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Completed At</TableHead>
+                                    <TableHead>Comment</TableHead>
                                   </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
+                                </TableHeader>
+                                <TableBody>
+                                  {departmentLessons.map((completion) => (
+                                    <TableRow key={completion.id}>
+                                      <TableCell className="font-medium">{completion.topic}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={completion.completed_at ? "default" : "secondary"}>
+                                          {completion.completed_at ? "Completed" : "Pending"}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        {completion.completed_at 
+                                          ? new Date(completion.completed_at).toLocaleDateString()
+                                          : "-"}
+                                      </TableCell>
+                                      <TableCell>
+                                        {completion.comment || "-"}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">No wiki topics found</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">No wiki topics found</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

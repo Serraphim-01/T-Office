@@ -98,7 +98,7 @@ function FeaturesContent() {
         }
       }
     } catch (error) {
-      console.error('Error loading role:', error);
+      // Removed console statement for production
     }
   };
 
@@ -110,7 +110,7 @@ function FeaturesContent() {
   const loadDepartments = async () => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Fetching departments for features page with token:', token ? 'Present' : 'Missing');
+      // Removed console statement for production
       
       if (!token) {
         toast({
@@ -128,11 +128,11 @@ function FeaturesContent() {
         },
       });
       
-      console.log('Departments API response status:', response.status);
+      // Removed console statement for production
       
       // Handle token expiration
       if (response.status === 403) {
-        console.log('Token expired, attempting to refresh...');
+        // Removed console statement for production
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
@@ -143,12 +143,12 @@ function FeaturesContent() {
           });
           if (retryResponse.ok) {
             const data = await retryResponse.json();
-            console.log('Retried departments data:', data);
+            // Removed console statement for production
             setDepartments(data);
             return;
           } else {
             const errorText = await retryResponse.text();
-            console.error('Retry failed:', retryResponse.status, errorText);
+            // Removed console statement for production
             toast({
               title: "Error",
               description: `Failed to load departments: ${retryResponse.status} ${errorText}`,
@@ -160,11 +160,11 @@ function FeaturesContent() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Departments data:', data);
+        // Removed console statement for production
         setDepartments(data);
       } else {
         const errorText = await response.text();
-        console.error('Failed to load departments:', response.status, errorText);
+        // Removed console statement for production
         toast({
           title: "Error",
           description: `Failed to load departments: ${response.status} ${errorText}`,
@@ -172,7 +172,7 @@ function FeaturesContent() {
         });
       }
     } catch (error) {
-      console.error('Error loading departments:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load departments. Please check your connection.",
@@ -207,7 +207,7 @@ function FeaturesContent() {
         throw new Error(`Failed to load roles: ${response.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error loading roles:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load roles. Please check your connection.",
@@ -260,7 +260,7 @@ function FeaturesContent() {
         throw new Error(`Failed to load pages: ${response.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error loading pages:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load pages. Please check your connection.",
@@ -317,7 +317,7 @@ function FeaturesContent() {
         throw new Error(`Failed to load department pages: ${response.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error loading department pages:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load department pages. Please check your connection.",
@@ -356,7 +356,7 @@ function FeaturesContent() {
         throw new Error(`Failed to load role pages: ${response.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error loading role pages:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to load role pages. Please check your connection.",
@@ -547,7 +547,7 @@ function FeaturesContent() {
         throw new Error(`Failed to update feature access: ${response?.status} ${errorText}`);
       }
     } catch (error) {
-      console.error('Error updating feature access:', error);
+      // Removed console statement for production
       toast({
         title: "Error",
         description: "Failed to update feature access. Please check your connection.",

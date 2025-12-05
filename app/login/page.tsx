@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Building2, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const router = useRouter();
   const { user, setUser } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,17 +50,23 @@ export default function LoginPage() {
           full_name: data.user.full_name,
           avatar_url: '',
           department: data.user.department,
-          role: null,
           updated_at: new Date().toISOString()
         });
+        
+        // Show success toast
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${data.user.full_name}!`,
+        });
+        
         router.push('/dashboard');
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Login failed');
-        console.error('Login failed:', errorData);
+        // Removed console statement for production
       }
     } catch (err) {
-      console.error('Network error during login:', err);
+      // Removed console statement for production
       setError('Network error');
     } finally {
       setLoading(false);
@@ -74,7 +82,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Welcome to Task Office</CardTitle>
           <CardDescription>
-            Enter any email and password to continue
+            Enter your email and password to continue
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -130,9 +138,6 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Demo mode: Any credentials will work
-            </p>
             <p className="text-sm text-muted-foreground mt-2">
               Don't have an account?{' '}
               <Button

@@ -18,7 +18,8 @@ import {
   CheckCircle,
   Database,
   Building,
-  Key
+  Key,
+  ChevronRight
 } from 'lucide-react';
 
 const menuItems = [
@@ -183,8 +184,6 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
                   accessiblePaths.push(child.pagePath); // Log accessible child path
                 }
               } catch (childError) {
-                console.error(`Error checking access for child item ${child.pagePath}:`, childError);
-                // Continue with other children even if one fails
               }
             }
             
@@ -201,14 +200,9 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
           }
         }
       } catch (itemError) {
-        console.error(`Error checking access for item ${item.pagePath}:`, itemError);
-        // Continue with other items even if one fails
       }
     }
     
-    // Console log the accessible pages for debugging
-    console.log(`User "${user.full_name}" with role "${user.role || 'default'}" in department "${user.department}" has access to pages:`, accessiblePaths);
-
     setAccessibleItems(accessible);
 
     // Store the navigation data in localStorage for faster subsequent loads
@@ -216,7 +210,6 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
       localStorage.setItem(`nav-access-${user.id}`, JSON.stringify(accessiblePaths));
     }
   } catch (error) {
-    console.error('Error checking navigation access:', error);
     // Fallback to showing all items if there's an error
     setAccessibleItems(menuItems);
   } finally {
@@ -229,6 +222,7 @@ export function AccessControlledNav() {
   const { user, loading: authLoading } = useAuth();
   const [accessibleItems, setAccessibleItems] = useState<typeof menuItems>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   // Memoize the refresh function to prevent unnecessary re-renders
   const refreshNav = useCallback(async (forceRefresh = false) => {
@@ -260,14 +254,22 @@ export function AccessControlledNav() {
     }
   }, [refreshNav]);
 
-  // Remove the effect that was causing navigation refresh on route changes
-  // This was causing the sidenav to reload every time the route changed
-  // useEffect(() => {
-  //   // Don't refresh the entire navigation on route change, just update active state
-  //   // This prevents the flashing/loading issue when navigating between pages
-  // }, [pathname]);
+  const toggleExpand = (title: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(title)) {
+      newExpanded.delete(title);
+    } else {
+      newExpanded.add(title);
+    }
+    setExpandedItems(newExpanded);
+  };
 
   const isActive = (href: string) => {
+    // Special handling for HR parent item - it should not be active unless we're on a child page
+    if (href === '') { // HR parent has empty href
+      return false;
+    }
+    
     if (href === '/dashboard') {
       return pathname === href;
     }
@@ -297,19 +299,29 @@ export function AccessControlledNav() {
       {accessibleItems.map((item) => {
         const Icon = item.icon;
         const hasChildren = item.children && item.children.length > 0;
+        const isExpanded = expandedItems.has(item.title);
         
         return (
           <div key={item.href || item.title}>
             {hasChildren ? (
               // Parent items with children are not clickable, just toggle dropdown
               <div
+                onClick={() => toggleExpand(item.title)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary cursor-pointer",
+                  "flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary cursor-pointer",
                   isActive(item.href) && "bg-muted text-primary"
                 )}
               >
-                {Icon && <Icon className="h-4 w-4" />}
-                {item.title}
+                <div className="flex items-center gap-3">
+                  {Icon && <Icon className="h-4 w-4" />}
+                  {item.title}
+                </div>
+                <ChevronRight
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    isExpanded ? "rotate-90" : ""
+                  )}
+                />
               </div>
             ) : (
               // Items without children are clickable
@@ -325,7 +337,7 @@ export function AccessControlledNav() {
               </Link>
             )}
             
-            {hasChildren && (
+            {hasChildren && isExpanded && (
               <div className="ml-6 mt-1 space-y-1">
                 {item.children?.map((child) => {
                   const ChildIcon = child.icon || Icon;
