@@ -18,7 +18,7 @@ import {
 import { DashboardLayout } from '@/components/dashboard-layout';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { hasPageAccess } from '@/lib/page-access';
+import { hasPageAccess, clearPageAccessCache } from '@/lib/page-access';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
 
 interface Product {
@@ -106,10 +106,8 @@ function ProductsContent() {
   const [canAddProduct, setCanAddProduct] = useState(false);
   const [canAddProvider, setCanAddProvider] = useState(false);
   const [canViewDetails, setCanViewDetails] = useState(false);
-  const [canEditProduct, setCanEditProduct] = useState(false);
   const [canDeleteProduct, setCanDeleteProduct] = useState(false);
   const [canDeleteProvider, setCanDeleteProvider] = useState(false);
-  const [canEditProvider, setCanEditProvider] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
@@ -121,6 +119,22 @@ function ProductsContent() {
     if (user) {
       checkFeatureAccess();
     }
+    
+    // Listen for navigation refresh events to clear cache
+    const handleNavigationRefresh = () => {
+      // Clear the page access cache when navigation is refreshed
+      clearPageAccessCache();
+      // Recheck feature access
+      if (user) {
+        checkFeatureAccess();
+      }
+    };
+    
+    window.addEventListener('navigation-refresh', handleNavigationRefresh);
+    
+    return () => {
+      window.removeEventListener('navigation-refresh', handleNavigationRefresh);
+    };
   }, [user]);
 
   const checkFeatureAccess = async () => {
@@ -137,8 +151,6 @@ function ProductsContent() {
       setCanAddProduct(false);
       setCanAddProvider(false);
       setCanViewDetails(false);
-      setCanEditProduct(false);
-      setCanEditProvider(false);
       setCanDeleteProduct(false);
       setCanDeleteProvider(false);
       return;
@@ -148,24 +160,18 @@ function ProductsContent() {
     const importCSVAccess = await hasPageAccess(user.id.toString(), 'inventory/products/import-csv');
     const importAllDataAccess = await hasPageAccess(user.id.toString(), 'inventory/products/import-all-data');
     const exportCSVAccess = await hasPageAccess(user.id.toString(), 'inventory/products/export-csv');
-    const addProductAccess = await hasPageAccess(user.id.toString(), 'inventory/products/add-product');
     const addProviderAccess = await hasPageAccess(user.id.toString(), 'inventory/products/add-provider');
-    const viewDetailsAccess = await hasPageAccess(user.id.toString(), 'inventory/products/view-details');
-    const editProductAccess = await hasPageAccess(user.id.toString(), 'inventory/products/edit-product');
-    const editProviderAccess = await hasPageAccess(user.id.toString(), 'inventory/products/edit-provider');
-    const deleteProductAccess = await hasPageAccess(user.id.toString(), 'inventory/products/delete-product');
+    const addProductAccess = await hasPageAccess(user.id.toString(), 'inventory/products/add-product');
     const deleteProviderAccess = await hasPageAccess(user.id.toString(), 'inventory/products/delete-provider');
+    const deleteProductAccess = await hasPageAccess(user.id.toString(), 'inventory/products/delete-product');
     
     setCanImportCSV(importCSVAccess);
     setCanImportAllData(importAllDataAccess);
     setCanExportCSV(exportCSVAccess);
-    setCanAddProduct(addProductAccess);
     setCanAddProvider(addProviderAccess);
-    setCanViewDetails(viewDetailsAccess);
-    setCanEditProduct(editProductAccess);
-    setCanEditProvider(editProviderAccess);
-    setCanDeleteProduct(deleteProductAccess);
+    setCanAddProduct(addProductAccess);
     setCanDeleteProvider(deleteProviderAccess);
+    setCanDeleteProduct(deleteProductAccess);
   };
 
   // Fetch providers and products
@@ -648,70 +654,6 @@ const handleViewProvider = (provider: Provider) => {
   window.location.href = `/inventory/providers/${provider.id}`;
 };
 
-const handleEditProduct = (product: Product) => {
-  // Only allow edit if user has permission
-  if (!canEditProduct) {
-    toast({
-      title: 'Access Denied',
-      description: 'You do not have permission to edit products',
-      variant: 'destructive',
-    });
-    return;
-  }
-  
-  setEditingProduct(product);
-  setNewProductName(product.name);
-  setNewProductPartNumber(product.part_number);
-  setNewProductType(product.product_type);
-  setIsProductDialogOpen(true);
-};
-
-const handleUpdateProduct = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!editingProduct) return;
-  
-  // Validate provider is selected
-  if (!newProductProviderId) {
-    toast({
-      title: 'Error',
-      description: 'Please select a provider',
-      variant: 'destructive',
-    });
-    return;
-  }
-  
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:4000/api/inventory/products/${editingProduct.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ 
-        name: newProductName, 
-        part_number: newProductPartNumber, 
-        product_type: newProductType,
-        provider_id: newProductProviderId
-      }),
-    });
-
-    if (!response.ok) throw new Error('Failed to update product');
-
-    const updatedProduct = await response.json();
-    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    
-    toast({ title: 'Success', description: 'Product updated successfully' });
-    resetProductForm();
-  } catch (error) {
-    toast({
-      title: 'Error',
-      description: error instanceof Error ? error.message : 'An unknown error occurred',
-      variant: 'destructive',
-    });
-  }
-};
 
 const handleCreateProduct = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -925,14 +867,16 @@ useEffect(() => {
                 </Button>
               )}
               
-              <Button onClick={() => {
-                resetProviderForm();
-                setCurrentStep('provider');
-                setIsProviderDialogOpen(true);
-              }}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Provider
-              </Button>
+              {canAddProvider && (
+                <Button onClick={() => {
+                  resetProviderForm();
+                  setCurrentStep('provider');
+                  setIsProviderDialogOpen(true);
+                }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Provider
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -973,19 +917,21 @@ useEffect(() => {
                           </span>
                         </div>
                         <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Set up the provider for adding products
-                              setCreatedProviderId(provider.id);
-                              setProviderName(provider.name);
-                              setCurrentStep('products');
-                              setIsProviderDialogOpen(true);
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                          {canAddProduct && (
+                            <Button 
+                              size="sm" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Set up the provider for adding products
+                                setCreatedProviderId(provider.id);
+                                setProviderName(provider.name);
+                                setCurrentStep('products');
+                                setIsProviderDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          )}
                           
                           {canDeleteProvider && (
                             <Button 
@@ -1029,18 +975,6 @@ useEffect(() => {
                                     <TableCell>{product.part_number}</TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex justify-end space-x-1">
-                                        {canEditProduct && (
-                                          <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleEditProduct(product);
-                                            }}
-                                          >
-                                            <Edit className="h-4 w-4" />
-                                          </Button>
-                                        )}
                                         {canDeleteProduct && (
                                           <Button 
                                             size="sm" 
@@ -1121,18 +1055,6 @@ useEffect(() => {
                                   <TableCell>{product.part_number}</TableCell>
                                   <TableCell className="text-right">
                                     <div className="flex justify-end space-x-1">
-                                      {canEditProduct && (
-                                        <Button 
-                                          size="sm" 
-                                          variant="outline" 
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditProduct(product);
-                                          }}
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                      )}
                                       {canDeleteProduct && (
                                         <Button 
                                           size="sm" 
@@ -1477,77 +1399,6 @@ useEffect(() => {
               </DialogContent>
             </Dialog>
             
-            {/* Dialog for editing products */}
-            <Dialog open={isProductDialogOpen} onOpenChange={(open) => {
-              if (!open) {
-                resetProductForm();
-              } else {
-                setIsProductDialogOpen(true);
-              }
-            }}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Product</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleUpdateProduct} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="editProductName">Product Name *</Label>
-                    <Input
-                      id="editProductName"
-                      value={newProductName}
-                      onChange={(e) => setNewProductName(e.target.value)}
-                      placeholder="Enter product name"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editProductPartNumber">Part Number *</Label>
-                    <Input
-                      id="editProductPartNumber"
-                      value={newProductPartNumber}
-                      onChange={(e) => setNewProductPartNumber(e.target.value)}
-                      placeholder="Enter part number"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editProductType">Product Type *</Label>
-                    <Input
-                      id="editProductType"
-                      value={newProductType}
-                      onChange={(e) => setNewProductType(e.target.value)}
-                      placeholder="Enter product type"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="editProductProvider">Provider *</Label>
-                    <select
-                      id="editProductProvider"
-                      value={newProductProviderId || ''}
-                      onChange={(e) => setNewProductProviderId(Number(e.target.value))}
-                      className="w-full p-2 border rounded"
-                      required
-                    >
-                      <option value="">Select a provider</option>
-                      {providers.map(provider => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={resetProductForm}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Update Product
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
             
             {/* Dialog for creating products */}
             <Dialog open={isGeneralProductDialogOpen} onOpenChange={(open) => {
@@ -1620,8 +1471,6 @@ useEffect(() => {
                 </form>
               </DialogContent>
             </Dialog>
-            
-
             
             {/* Dialog for viewing provider details */}
             <Dialog open={isProviderDetailsDialogOpen} onOpenChange={setIsProviderDetailsDialogOpen}>

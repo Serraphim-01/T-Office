@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
 
 interface Provider {
   id: number;
@@ -80,9 +82,27 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
     organization_contact_email: '',
     organization_contact_phone: ''
   });
+  const [canEditProvider, setCanEditProvider] = useState(false); // Added feature access control
   
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Added user context
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to edit provider details
+    const editProviderDetailsAccess = await hasPageAccess(user.id.toString(), 'inventory/products/edit-provider-details');
+    
+    setCanEditProvider(editProviderDetailsAccess);
+  };
 
   useEffect(() => {
     fetchProvider();
@@ -363,7 +383,7 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
               <Button variant="outline" asChild>
                 <Link href="/inventory/products">Back to Products</Link>
               </Button>
-              {!isEditing && (
+              {!isEditing && canEditProvider && (
                 <Button onClick={handleEditClick}>Edit Provider</Button>
               )}
             </div>

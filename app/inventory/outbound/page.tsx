@@ -421,24 +421,6 @@ function OutboundContent() {
                 Export CSV
               </Button>
             )}
-            <Button 
-              onClick={() => {
-                setIsModalOpen(true);
-                // Reset form
-                setReceiverAddress('');
-                setReceiverEmail('');
-                setReceiverPhone('');
-                setDispatchDate('');
-                setDispatchTime('');
-                setDeliveryDate('');
-                setDeliveryTime('');
-                setSelectedSerialNumbers([]);
-              }}
-              className="p-2"
-            >
-              <Plus className="h-5 w-5" />
-              <span className="sr-only">Create Outbound</span>
-            </Button>
           </div>
         </div>
 

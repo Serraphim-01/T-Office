@@ -606,6 +606,12 @@ WHERE name = 'HR'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/query-replies'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'hr/users'
 FROM departments
 WHERE name = 'HR'
@@ -702,6 +708,12 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'hr/queries/send-query'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/query-replies'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -947,6 +959,12 @@ WHERE name = 'HR'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'hr/queries/query-replies'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'hr/users'
 FROM departments
 WHERE name = 'HR'
@@ -1093,7 +1111,7 @@ WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
-SELECT id, 'inventory/products/edit-provider'
+SELECT id, 'inventory/products/edit-provider-details'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -1295,7 +1313,7 @@ WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
-SELECT dpa.department_id, 'inventory/products/edit-provider'
+SELECT dpa.department_id, 'inventory/products/edit-provider-details'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/products'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -1310,6 +1328,19 @@ INSERT INTO department_page_access (department_id, page_name)
 SELECT dpa.department_id, 'inventory/products/delete-provider'
 FROM department_page_access dpa
 WHERE dpa.page_name = 'inventory/products'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Add HR queries page access for all departments that already have queries access
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'hr/queries/send-query'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'hr/queries'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT dpa.department_id, 'hr/queries/query-replies'
+FROM department_page_access dpa
+WHERE dpa.page_name = 'hr/queries'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 -- ===========================================

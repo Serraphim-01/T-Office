@@ -583,6 +583,7 @@ router.get("/pages", authenticateJWT, async (req, res) => {
       { name: 'hr/onboarding/schedule-inductions', title: 'HR Onboarding - Schedule Inductions' },
       { name: 'hr/queries', title: 'HR Queries' },
       { name: 'hr/queries/send-query', title: 'HR Queries - Send Query' },
+      { name: 'hr/queries/query-replies', title: 'HR Queries - Query Replies' },
       { name: 'hr/users', title: 'HR Users' },
       { name: 'hr/users/view-details', title: 'HR Users - View Details' },
       { name: 'inventory/inbound', title: 'Inventory Inbound' },
@@ -607,6 +608,9 @@ router.get("/pages", authenticateJWT, async (req, res) => {
       { name: 'inventory/products/view-details', title: 'Inventory Products - View Details' },
       { name: 'inventory/products/edit-product', title: 'Inventory Products - Edit Product' },
       { name: 'inventory/products/delete-product', title: 'Inventory Products - Delete Product' },
+      { name: 'inventory/products/add-provider', title: 'Inventory Products - Add Provider' },
+      { name: 'inventory/products/delete-provider', title: 'Inventory Products - Delete Provider' },
+      { name: 'inventory/products/edit-provider-details', title: 'Inventory Products - Edit Provider Details' },
       { name: 'resources/wiki', title: 'Resources Wiki' },
       { name: 'resources/wiki/create', title: 'Create Wiki Page' },
       { name: 'resources/wiki/create-topic', title: 'Create Wiki - Create Topic Button' }

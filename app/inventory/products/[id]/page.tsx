@@ -12,6 +12,8 @@ import { format, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
 
 interface Product {
   id: number;
@@ -50,8 +52,26 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     part_number: '',
     product_type: ''
   });
+  const [canEditProduct, setCanEditProduct] = useState(false); // Added feature access control
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Added user context
+
+  // Check feature access when user loads
+  useEffect(() => {
+    if (user) {
+      checkFeatureAccess();
+    }
+  }, [user]);
+
+  const checkFeatureAccess = async () => {
+    if (!user) return;
+    
+    // Check access to edit product details
+    const editProductDetailsAccess = await hasPageAccess(user.id.toString(), 'inventory/products/edit-product');
+    
+    setCanEditProduct(editProductDetailsAccess);
+  };
 
   // Fetch product details
   useEffect(() => {
@@ -282,7 +302,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Products
           </Button>
-          {!isEditing && (
+          {!isEditing && canEditProduct && (
             <Button 
               variant="outline" 
               onClick={() => setIsEditing(true)}

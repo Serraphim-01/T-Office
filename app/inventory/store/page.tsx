@@ -407,6 +407,7 @@ function StoreContent() {
                             size="sm" 
                             onClick={() => handleCreateOutbound(transaction.id, transaction.product_id)}
                             className="p-2"
+                            title="Create Outbound Transaction"
                           >
                             <Plus className="h-5 w-5" />
                             <span className="sr-only">Create Outbound</span>

@@ -613,6 +613,7 @@ Important: HR Onboarding features are dependent on the main HR Onboarding page a
 
 ##### HR Queries Features
 - **hr/queries/send-query** - Allows users to send queries in the queries section
+- **hr/queries/query-replies** - Allows users to view and respond to query replies in the queries section
 
 Important: HR Queries features are dependent on the main HR Queries page access. When the main HR Queries page (`hr/queries`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Queries page is enabled, individual HR Queries features can be selectively enabled or disabled.
 

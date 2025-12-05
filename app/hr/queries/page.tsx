@@ -79,6 +79,7 @@ function HRQueriesContent() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [queryReplies, setQueryReplies] = useState<Query[]>([]); // New state for query replies
   const [canSendQuery, setCanSendQuery] = useState(false);
+  const [canViewQueryReplies, setCanViewQueryReplies] = useState(false); // Added for query replies access control
   const [queryTypes, setQueryTypes] = useState<string[]>([]); // Added for query types
   const [activeTab, setActiveTab] = useState('history');
 
@@ -142,13 +143,16 @@ function HRQueriesContent() {
     if (!queriesAccess) {
       // If no access to HR queries page, disable all features
       setCanSendQuery(false);
+      setCanViewQueryReplies(false); // Also disable query replies access
       return;
     }
     
     // Check access to specific HR queries features
     const sendQueryAccess = await hasPageAccess(user.id, 'hr/queries/send-query');
+    const queryRepliesAccess = await hasPageAccess(user.id, 'hr/queries/query-replies'); // Added Query replies feature
     
     setCanSendQuery(sendQueryAccess);
+    setCanViewQueryReplies(queryRepliesAccess); // Set the query replies access
   };
 
   const fetchUsers = async () => {
@@ -398,10 +402,12 @@ function HRQueriesContent() {
         </div>
 
         <Tabs defaultValue="history" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${canViewQueryReplies ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="send">Send Query</TabsTrigger>
             <TabsTrigger value="history">Query History</TabsTrigger>
-            <TabsTrigger value="replies">Query Replies</TabsTrigger>
+            {canViewQueryReplies && (
+              <TabsTrigger value="replies">Query Replies</TabsTrigger>
+            )}
           </TabsList>
           
           {/* Send Query Tab */}
@@ -632,114 +638,116 @@ function HRQueriesContent() {
           </TabsContent>
           
           {/* Query Replies Tab */}
-          <TabsContent value="replies">
-            <div className="grid grid-cols-1 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    Query Replies
-                  </CardTitle>
-                  <CardDescription>All queries that have received replies</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {queryReplies.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No query replies found</p>
-                    ) : (
-                      queryReplies.map((query) => (
-                        <div key={query.id} className="border rounded p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Badge variant={query.status === 'pending' ? 'secondary' : 'default'}>
-                                {query.status}
-                              </Badge>
-                              <span className="ml-2 text-sm font-medium">{query.user_name}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(query.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          {query.query_type && (
-                            <Badge variant="outline" className="text-xs">
-                              {query.query_type}
-                            </Badge>
-                          )}
-                          <p className="text-sm"><strong>Subject:</strong> {query.subject}</p>
-                          <p className="text-sm"><strong>Description:</strong> {query.description}</p>
-                          
-                          {/* Display query replies */}
-                          {query.replies && query.replies.length > 0 && (
-                            <div className="mt-2 p-2 bg-muted rounded">
-                              <h4 className="font-medium text-sm mb-2">Replies:</h4>
-                              {query.replies.map((reply) => (
-                                <div key={reply.id} className="mb-2 last:mb-0">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="font-medium">{reply.replied_by_name}</span>
-                                    <span>{new Date(reply.created_at).toLocaleString()}</span>
-                                  </div>
-                                  <p className="text-sm mt-1">{reply.reply_text}</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedQueryId(query.id);
-                              }}
-                            >
-                              Respond
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive" 
-                              onClick={() => deleteQuery(query.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          
-                          {selectedQueryId === query.id && (
-                            <div className="mt-2 space-y-2">
-                              <Textarea
-                                placeholder="Enter your response..."
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                              />
-                              
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => replyToQuery(query.id, replyText)}
-                                  disabled={!replyText.trim()}
-                                >
-                                  Send Reply
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedQueryId(null);
-                                    setReplyText('');
-                                    setIsLockedReply(false);
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
+          {canViewQueryReplies && (
+            <TabsContent value="replies">
+              <div className="grid grid-cols-1 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <MessageSquare className="mr-2 h-5 w-5" />
+                      Query Replies
+                    </CardTitle>
+                    <CardDescription>All queries that have received replies</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {queryReplies.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No query replies found</p>
+                      ) : (
+                        queryReplies.map((query) => (
+                          <div key={query.id} className="border rounded p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Badge variant={query.status === 'pending' ? 'secondary' : 'default'}>
+                                  {query.status}
+                                </Badge>
+                                <span className="ml-2 text-sm font-medium">{query.user_name}</span>
                               </div>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(query.created_at).toLocaleDateString()}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                            {query.query_type && (
+                              <Badge variant="outline" className="text-xs">
+                                {query.query_type}
+                              </Badge>
+                            )}
+                            <p className="text-sm"><strong>Subject:</strong> {query.subject}</p>
+                            <p className="text-sm"><strong>Description:</strong> {query.description}</p>
+                            
+                            {/* Display query replies */}
+                            {query.replies && query.replies.length > 0 && (
+                              <div className="mt-2 p-2 bg-muted rounded">
+                                <h4 className="font-medium text-sm mb-2">Replies:</h4>
+                                {query.replies.map((reply) => (
+                                  <div key={reply.id} className="mb-2 last:mb-0">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="font-medium">{reply.replied_by_name}</span>
+                                      <span>{new Date(reply.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <p className="text-sm mt-1">{reply.reply_text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                onClick={() => {
+                                  setSelectedQueryId(query.id);
+                                }}
+                              >
+                                Respond
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive" 
+                                onClick={() => deleteQuery(query.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            
+                            {selectedQueryId === query.id && (
+                              <div className="mt-2 space-y-2">
+                                <Textarea
+                                  placeholder="Enter your response..."
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                />
+                                
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => replyToQuery(query.id, replyText)}
+                                    disabled={!replyText.trim()}
+                                  >
+                                    Send Reply
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedQueryId(null);
+                                      setReplyText('');
+                                      setIsLockedReply(false);
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
