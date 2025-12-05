@@ -13,6 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { User, Mail, Building, FileText, Calendar, Clock, CheckCircle, AlertCircle, Link } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: number;
@@ -57,12 +65,21 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   const [wikiCompletions, setWikiCompletions] = useState<WikiCompletion[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
+  
+  // Support staff state
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedSupportStaffId, setSelectedSupportStaffId] = useState<string>('');
+  const [supportStaffAssignments, setSupportStaffAssignments] = useState<any[]>([]);
+  
+  const { toast } = useToast();
 
   useEffect(() => {
     if (currentUser && params.id) {
       fetchUserDetails();
       fetchUserAttendance();
       fetchUserWikiCompletions();
+      fetchUsers(); // For support staff dropdown
+      fetchSupportStaffAssignments(params.id); // For current support staff
     }
   }, [currentUser, params.id]);
 
@@ -130,6 +147,118 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
       }
     } catch (error) {
       console.error('Failed to fetch wiki completions:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/api/hr/users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const fetchSupportStaffAssignments = async (userId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch support staff assignments');
+      
+      const data = await response.json();
+      setSupportStaffAssignments(data);
+    } catch (error) {
+      console.error('Error fetching support staff assignments:', error);
+    }
+  };
+
+  const handleAssignSupportStaff = async () => {
+    if (!selectedSupportStaffId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a support staff member',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prevent assigning a user as their own support staff
+    if (params.id === selectedSupportStaffId) {
+      toast({
+        title: 'Error',
+        description: 'A user cannot be their own support staff',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/users/${params.id}/assign-support`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ supportStaffId: parseInt(selectedSupportStaffId) }),
+      });
+
+      if (!response.ok) throw new Error('Failed to assign support staff');
+
+      toast({
+        title: 'Success',
+        description: 'Support staff assigned successfully',
+      });
+      
+      // Refresh assignments
+      fetchSupportStaffAssignments(params.id);
+      setSelectedSupportStaffId(''); // Reset selection
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to assign support staff',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnassignSupportStaff = async (supportStaffId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/users/${params.id}/unassign-support/${supportStaffId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to unassign support staff');
+
+      toast({
+        title: 'Success',
+        description: 'Support staff unassigned successfully',
+      });
+      
+      // Refresh assignments
+      fetchSupportStaffAssignments(params.id);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to unassign support staff',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -234,6 +363,70 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                 <span className="text-sm font-medium">
                   {new Date(user.created_at).toLocaleDateString()}
                 </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Support Staff Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Support Staff</CardTitle>
+            <CardDescription>Manage support staff assignments for this user</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="supportStaffSelect">Assign Support Staff</Label>
+                  <Select value={selectedSupportStaffId} onValueChange={setSelectedSupportStaffId}>
+                    <SelectTrigger id="supportStaffSelect">
+                      <SelectValue placeholder="Select support staff" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users
+                        .filter(u => u.id.toString() !== params.id) // Exclude the current user
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id.toString()}>
+                            {user.full_name} ({user.email})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleAssignSupportStaff}
+                    disabled={!selectedSupportStaffId}
+                  >
+                    Assign
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-medium mb-2">Current Support Staff</h3>
+                {supportStaffAssignments.length > 0 ? (
+                  <div className="space-y-2">
+                    {supportStaffAssignments.map((assignment) => (
+                      <div key={assignment.id} className="flex justify-between items-center p-2 border rounded">
+                        <div>
+                          <p className="font-medium">{assignment.full_name}</p>
+                          <p className="text-sm text-muted-foreground">{assignment.email}</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleUnassignSupportStaff(assignment.support_staff_id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">No support staff assigned</p>
+                )}
               </div>
             </div>
           </CardContent>

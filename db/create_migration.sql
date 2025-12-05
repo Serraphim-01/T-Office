@@ -330,12 +330,38 @@ CREATE TABLE IF NOT EXISTS crawled_sites (
 CREATE TABLE IF NOT EXISTS providers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
-    contact_person VARCHAR(255),
     email VARCHAR(255),
     phone VARCHAR(20),
     address TEXT,
+    official_contact_name VARCHAR(255),
+    official_contact_email VARCHAR(255),
+    official_contact_phone VARCHAR(20),
+    organization_contact_name VARCHAR(255),
+    organization_contact_email VARCHAR(255),
+    organization_contact_phone VARCHAR(20),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Provider-User Assignment Table
+CREATE TABLE IF NOT EXISTS provider_user_assignments (
+    id SERIAL PRIMARY KEY,
+    provider_id INTEGER REFERENCES providers(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    assignment_type VARCHAR(50) DEFAULT 'attached_staff', -- 'attached_staff', 'support_staff', etc.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(provider_id, user_id, assignment_type)
+);
+
+-- User Support Staff Assignment Table
+CREATE TABLE IF NOT EXISTS user_support_assignments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    support_staff_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, support_staff_id)
 );
 
 -- Products table
@@ -462,6 +488,10 @@ CREATE INDEX IF NOT EXISTS idx_outbound_transactions_inbound_id ON outbound_tran
 CREATE INDEX IF NOT EXISTS idx_outbound_transactions_status ON outbound_transactions(status);
 CREATE INDEX IF NOT EXISTS idx_outbound_serial_numbers_transaction_id ON outbound_serial_numbers(outbound_transaction_id);
 
+-- User Support Staff Assignment indexes
+CREATE INDEX IF NOT EXISTS idx_user_support_assignments_user_id ON user_support_assignments(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_support_assignments_support_staff_id ON user_support_assignments(support_staff_id);
+
 -- ===========================================
 -- TRIGGERS FOR UPDATED_AT
 -- ===========================================
@@ -491,6 +521,12 @@ CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW
 CREATE TRIGGER update_wiki_comments_updated_at BEFORE UPDATE ON wiki_comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_inbound_transactions_updated_at BEFORE UPDATE ON inbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_outbound_transactions_updated_at BEFORE UPDATE ON outbound_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Apply trigger to user_support_assignments table
+CREATE TRIGGER update_user_support_assignments_updated_at BEFORE UPDATE ON user_support_assignments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Apply trigger to provider_user_assignments table
+CREATE TRIGGER update_provider_user_assignments_updated_at BEFORE UPDATE ON provider_user_assignments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ===========================================
 -- INITIAL DATA POPULATION

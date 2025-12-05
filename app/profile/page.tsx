@@ -50,6 +50,22 @@ interface Profile {
   inductions?: Induction[];
 }
 
+interface SupportStaff {
+  id: number;
+  support_staff_id: number;
+  full_name: string;
+  email: string;
+  department: string;
+  created_at: string;
+}
+
+interface ProfileWithQueries extends Profile {
+  queries: UserQuery[];
+  max_queries_before_action: number;
+  role?: string;
+  supportStaff?: SupportStaff[]; // Add support staff to the profile interface
+}
+
 interface Induction {
   id: number;
   department: string;
@@ -84,12 +100,6 @@ interface QueryReply {
   created_at: string;
 }
 
-interface ProfileWithQueries extends Profile {
-  queries: UserQuery[];
-  max_queries_before_action: number;
-  role?: string;
-}
-
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -119,26 +129,33 @@ export default function ProfilePage() {
 
   // Fetch profile data
   useEffect(() => {
-    fetchProfile();
+    // Only fetch profile if user is available
+    if (user) {
+      fetchProfile();
+    }
     loadDepartments();
 
     // Add event listener for window focus to refetch profile
     const handleFocus = () => {
-      fetchProfile();
+      if (user) {
+        fetchProfile();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
 
     // Add polling for real-time updates every 10 seconds
     const interval = setInterval(() => {
-      fetchProfile();
+      if (user) {
+        fetchProfile();
+      }
     }, 10000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
       clearInterval(interval);
     };
-  }, []);
+  }, [user]); // Add user as dependency
 
   const loadDepartments = async () => {
     try {
@@ -155,6 +172,12 @@ export default function ProfilePage() {
   };
 
   const fetchProfile = async () => {
+    // Don't fetch if user is not available
+    if (!user) {
+      console.log('User not available, skipping profile fetch');
+      return;
+    }
+    
     try {
       // Fetch profile data
       const profileResponse = await fetch('http://localhost:4000/api/profile', {
@@ -170,15 +193,40 @@ export default function ProfilePage() {
         }
       });
       
+      // Fetch support staff data
+      const userId = user.id; // Now we can safely access user.id
+      console.log('Fetching support staff for user ID:', userId);
+      
+      const supportStaffResponse = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
       if (profileResponse.ok && queriesResponse.ok) {
         const profileData = await profileResponse.json();
         const queriesData = await queriesResponse.json();
+        let supportStaffData = [];
+        
+        if (supportStaffResponse.ok) {
+          supportStaffData = await supportStaffResponse.json();
+          console.log('Support staff data:', supportStaffData);
+        } else {
+          console.error('Failed to fetch support staff:', supportStaffResponse.status);
+          try {
+            const errorText = await supportStaffResponse.text();
+            console.error('Error response:', errorText);
+          } catch (e) {
+            console.error('Could not read error response');
+          }
+        }
         
         // Combine the data
         setProfile({
           ...profileData,
           queries: queriesData.queries,
-          max_queries_before_action: queriesData.max_queries_before_action
+          max_queries_before_action: queriesData.max_queries_before_action,
+          supportStaff: supportStaffData // Add support staff to the profile data
         });
       }
     } catch (error) {
@@ -420,7 +468,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -487,6 +535,43 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Support Staff Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Support Staff</CardTitle>
+                <CardDescription>Your assigned support team members</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {profile?.supportStaff ? (
+                  profile.supportStaff.length > 0 ? (
+                    <div className="space-y-3">
+                      {profile.supportStaff.map((staff) => (
+                        <div key={staff.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarFallback>{staff.full_name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="text-sm font-medium">{staff.full_name}</p>
+                              <p className="text-xs text-muted-foreground">{staff.email}</p>
+                              <p className="text-xs text-muted-foreground">{staff.department}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">You have no assigned support staff.</p>
+                  )
+                ) : (
+                  <p className="text-muted-foreground">Loading support staff information...</p>
+                )}
+              </CardContent>
+            </Card>
+            {profile && profile.supportStaff && (
+              <div>{/* Debug: Support staff array length: {profile.supportStaff.length} */}</div>
+            )}
 
             {/* Inductions Section */}
             {profile?.inductions && profile.inductions.length > 0 && (

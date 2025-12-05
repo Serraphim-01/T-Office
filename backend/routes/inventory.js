@@ -35,7 +35,10 @@ router.get('/products', authenticateJWT, async (req, res) => {
 router.get('/providers', authenticateJWT, async (req, res) => {
   try {
     const result = await req.pool.query(
-      'SELECT id, name, contact_person, email, phone, address FROM providers ORDER BY name'
+      `SELECT id, name, email, phone, address,
+              official_contact_name, official_contact_email, official_contact_phone,
+              organization_contact_name, organization_contact_email, organization_contact_phone
+       FROM providers ORDER BY name`
     );
     res.json(result.rows);
   } catch (error) {
@@ -759,17 +762,32 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
 
 // Add a new provider
 router.post('/providers', authenticateJWT, async (req, res) => {
-  const { name, contact_person, email, phone, address } = req.body;
+  const { name, email, phone, address, 
+          official_contact_name, official_contact_email, official_contact_phone,
+          organization_contact_name, organization_contact_email, organization_contact_phone } = req.body;
   
   // Validate input
   if (!name) {
     return res.status(400).json({ error: 'Provider name is required' });
   }
   
+  // Validate official contact (required fields)
+  if (!official_contact_name || !official_contact_email || !official_contact_phone) {
+    return res.status(400).json({ error: 'Official contact name, email, and phone are required' });
+  }
+  
   try {
     const result = await req.pool.query(
-      'INSERT INTO providers (name, contact_person, email, phone, address) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, contact_person, email, phone, address',
-      [name, contact_person, email, phone, address]
+      `INSERT INTO providers (name, email, phone, address,
+                             official_contact_name, official_contact_email, official_contact_phone,
+                             organization_contact_name, organization_contact_email, organization_contact_phone) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+       RETURNING id, name, email, phone, address,
+                 official_contact_name, official_contact_email, official_contact_phone,
+                 organization_contact_name, organization_contact_email, organization_contact_phone`,
+      [name, email, phone, address,
+       official_contact_name, official_contact_email, official_contact_phone,
+       organization_contact_name, organization_contact_email, organization_contact_phone]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -785,17 +803,35 @@ router.post('/providers', authenticateJWT, async (req, res) => {
 // Update a provider
 router.put('/providers/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { name, contact_person, email, phone, address } = req.body;
+  const { name, email, phone, address,
+          official_contact_name, official_contact_email, official_contact_phone,
+          organization_contact_name, organization_contact_email, organization_contact_phone } = req.body;
   
   // Validate input
   if (!name) {
     return res.status(400).json({ error: 'Provider name is required' });
   }
   
+  // Validate official contact (required fields)
+  if (!official_contact_name || !official_contact_email || !official_contact_phone) {
+    return res.status(400).json({ error: 'Official contact name, email, and phone are required' });
+  }
+  
   try {
     const result = await req.pool.query(
-      'UPDATE providers SET name = $1, contact_person = $2, email = $3, phone = $4, address = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, contact_person, email, phone, address',
-      [name, contact_person, email, phone, address, id]
+      `UPDATE providers 
+       SET name = $1, email = $2, phone = $3, address = $4,
+           official_contact_name = $5, official_contact_email = $6, official_contact_phone = $7,
+           organization_contact_name = $8, organization_contact_email = $9, organization_contact_phone = $10,
+           updated_at = NOW() 
+       WHERE id = $11 
+       RETURNING id, name, email, phone, address,
+                 official_contact_name, official_contact_email, official_contact_phone,
+                 organization_contact_name, organization_contact_email, organization_contact_phone`,
+      [name, email, phone, address,
+       official_contact_name, official_contact_email, official_contact_phone,
+       organization_contact_name, organization_contact_email, organization_contact_phone,
+       id]
     );
     
     if (result.rowCount === 0) {
@@ -847,7 +883,10 @@ router.get('/providers/:id', authenticateJWT, async (req, res) => {
   
   try {
     const result = await req.pool.query(
-      'SELECT id, name, contact_person, email, phone, address, created_at, updated_at FROM providers WHERE id = $1',
+      `SELECT id, name, email, phone, address, created_at, updated_at,
+              official_contact_name, official_contact_email, official_contact_phone,
+              organization_contact_name, organization_contact_email, organization_contact_phone
+       FROM providers WHERE id = $1`,
       [id]
     );
     
@@ -915,6 +954,93 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
     } else {
       res.status(500).json({ error: 'Internal server error' });
     }
+  }
+});
+
+// Add user to provider assignment
+router.post('/providers/:providerId/assign-user', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  const { userId, assignmentType = 'attached_staff' } = req.body;
+  
+  try {
+    // Check if provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [providerId]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Check if user exists
+    const userCheck = await req.pool.query(
+      'SELECT id FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Create assignment
+    const result = await req.pool.query(
+      `INSERT INTO provider_user_assignments (provider_id, user_id, assignment_type) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (provider_id, user_id, assignment_type) 
+       DO UPDATE SET updated_at = NOW()
+       RETURNING id, provider_id, user_id, assignment_type, created_at, updated_at`,
+      [providerId, userId, assignmentType]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error assigning user to provider:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Remove user from provider assignment
+router.delete('/providers/:providerId/unassign-user/:userId', authenticateJWT, async (req, res) => {
+  const { providerId, userId } = req.params;
+  const { assignmentType = 'attached_staff' } = req.query;
+  
+  try {
+    const result = await req.pool.query(
+      'DELETE FROM provider_user_assignments WHERE provider_id = $1 AND user_id = $2 AND assignment_type = $3',
+      [providerId, userId, assignmentType]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error unassigning user from provider:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get users assigned to a provider
+router.get('/providers/:providerId/assigned-users', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  
+  try {
+    const result = await req.pool.query(
+      `SELECT pua.id, pua.assignment_type, pua.created_at, pua.updated_at,
+              u.id as user_id, u.full_name, u.email, u.department
+       FROM provider_user_assignments pua
+       JOIN users u ON pua.user_id = u.id
+       WHERE pua.provider_id = $1
+       ORDER BY pua.assignment_type, u.full_name`,
+      [providerId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching assigned users:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

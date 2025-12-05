@@ -94,7 +94,7 @@ T-Office is a full-stack internal office management platform designed to streaml
 
 ### High-Level Architecture
 
-```mermaid
+```
 graph TD
     A[Client Browser] --> B[Next.js Frontend]
     B --> C[Express Backend API]
@@ -162,7 +162,7 @@ The frontend is built with Next.js 13.5.1 using the App Router pattern. It follo
 
 #### Key Components
 
-```mermaid
+```
 graph TD
     A[Root Layout] --> B[Navbar]
     A --> C[Page Content]
@@ -198,7 +198,7 @@ graph TD
 
 #### Authentication Flow
 
-```mermaid
+```
 sequenceDiagram
     participant U as User
     participant F as Frontend
@@ -220,7 +220,7 @@ The backend is a standalone Node.js + Express server that exposes RESTful endpoi
 
 #### API Structure
 
-```mermaid
+```
 graph TD
     A[Express Server] --> B[Middleware]
     A --> C[Route Handlers]
@@ -256,7 +256,7 @@ graph TD
 
 #### Database Schema
 
-```mermaid
+```
 erDiagram
     USERS ||--o{ HR_RECORDS : has
     USERS ||--o{ INVENTORY_ITEMS : manages
@@ -305,7 +305,7 @@ erDiagram
 
 ### Data Flow
 
-```mermaid
+```
 flowchart LR
     A[User Action] --> B[Frontend Component]
     B --> C[API Request]
@@ -414,13 +414,13 @@ The `run_sql.js` script has been enhanced to properly handle PostgreSQL dollar-q
 #### Migration Execution
 
 ##### Using the Node.js Script (Recommended)
-```bash
+``bash
 # From the project root directory
 node db/run_sql.js db/create_migration.sql
 ```
 
 ##### Using the Shell Script
-```bash
+``bash
 # From the project root directory
 ./db/run_migration.sh
 ```
@@ -450,7 +450,7 @@ All access control is managed through a single unified system using the `departm
 The system uses a single table in the database to store all access information:
 
 ##### Page and Feature Access Table
-```sql
+```
 CREATE TABLE department_page_access (
     department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE,
     page_name VARCHAR(255) NOT NULL,
@@ -621,6 +621,12 @@ Important: HR Queries features are dependent on the main HR Queries page access.
 
 Important: HR Users features are dependent on the main HR Users page access. When the main HR Users page (`hr/users`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Users page is enabled, individual HR Users features can be selectively enabled or disabled.
 
+##### Support Staff Features
+- **hr/users/assign-support-staff** - Allows users to assign support staff to other users for offboarding scenarios
+- **hr/users/view-support-staff** - Allows users to view support staff assignments for users
+
+Important: Support Staff features are dependent on the main HR Users page access. When the main HR Users page (`hr/users`) is disabled for a department, all related sub-features are automatically inaccessible. When the main HR Users page is enabled, individual Support Staff features can be selectively enabled or disabled.
+
 #### Wiki Features
 The following wiki features can be controlled per department:
 - **resources/wiki/create** - Allows users to access the create wiki page
@@ -752,6 +758,8 @@ When a department does not have access to a feature, the corresponding UI elemen
 - **View Inductions**: View all scheduled Inductions
 - **Delete Inductions**: Delete scheduled Inductions
 - **View User Details**: View All users and their details
+- **Assign Support Staff**: Assign support staff to users for offboarding scenarios
+- **View Support Staff Assignments**: View support staff assignments for users
 - **Send Queries**: Send queries to users
 - **View Query History**: View All queries to a particular user
 
@@ -914,7 +922,7 @@ This script will:
 #### Method 2: Manual execution using Node.js
 From the project root directory, you can run the migrations manually:
 
-```bash
+```
 # Drop existing schema
 node db/run_sql.js db/drop_migration.sql
 

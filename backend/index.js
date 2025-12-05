@@ -20,6 +20,7 @@ import locationRoutes from "./routes/locations.js";
 import inventoryRoutes from "./routes/inventory.js";
 import inboundRoutes from "./routes/inbound.js"; 
 import outboundRoutes from "./routes/outbound.js"; 
+import userRoutes from "./routes/users.js"; 
 
 // Load environment variables
 dotenv.config({ path: ".env.local" });
@@ -308,6 +309,7 @@ app.use("/api", locationRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/inventory/inbound", inboundRoutes);
 app.use("/api/inventory/outbound", outboundRoutes);
+app.use("/api/users", userRoutes);
 
 // Public endpoint to get roles for a department during signup
 app.get("/api/public/roles/:departmentId", async (req, res) => {

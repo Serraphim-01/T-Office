@@ -33,10 +33,22 @@ interface Product {
 interface Provider {
   id: number;
   name: string;
-  contact_person?: string;
   email?: string;
   phone?: string;
   address?: string;
+  official_contact_name?: string;
+  official_contact_email?: string;
+  official_contact_phone?: string;
+  organization_contact_name?: string;
+  organization_contact_email?: string;
+  organization_contact_phone?: string;
+}
+
+interface User {
+  id: number;
+  full_name: string;
+  email: string;
+  department: string;
 }
 
 export default function ProductsPage() {
@@ -58,12 +70,22 @@ function ProductsContent() {
   const [isProductDetailsDialogOpen, setIsProductDetailsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [viewingProvider, setViewingProvider] = useState<Provider | null>(null);
-  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [providerName, setProviderName] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  
+  // Official Contact (required)
+  const [officialContactName, setOfficialContactName] = useState('');
+  const [officialContactEmail, setOfficialContactEmail] = useState('');
+  const [officialContactPhone, setOfficialContactPhone] = useState('');
+  
+  // Organization Contact (optional)
+  const [orgContactName, setOrgContactName] = useState('');
+  const [orgContactEmail, setOrgContactEmail] = useState('');
+  const [orgContactPhone, setOrgContactPhone] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState<number | null>(null); // Add this state for user assignment
+  const [users, setUsers] = useState<User[]>([]); // Add this state for available users
   const [newProductName, setNewProductName] = useState('');
   const [newProductPartNumber, setNewProductPartNumber] = useState('');
   const [newProductType, setNewProductType] = useState('');
@@ -85,9 +107,9 @@ function ProductsContent() {
   const [canAddProvider, setCanAddProvider] = useState(false);
   const [canViewDetails, setCanViewDetails] = useState(false);
   const [canEditProduct, setCanEditProduct] = useState(false);
-  const [canEditProvider, setCanEditProvider] = useState(false);
   const [canDeleteProduct, setCanDeleteProduct] = useState(false);
   const [canDeleteProvider, setCanDeleteProvider] = useState(false);
+  const [canEditProvider, setCanEditProvider] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
@@ -326,12 +348,20 @@ function ProductsContent() {
   const handleSubmitProvider = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate official contact (required fields)
+    if (!officialContactName || !officialContactEmail || !officialContactPhone) {
+      toast({
+        title: 'Error',
+        description: 'Official contact name, email, and phone are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const token = localStorage.getItem('token');
-      const method = editingProvider ? 'PUT' : 'POST';
-      const url = editingProvider 
-        ? `http://localhost:4000/api/inventory/providers/${editingProvider.id}` 
-        : 'http://localhost:4000/api/inventory/providers';
+      const method = 'POST';
+      const url = 'http://localhost:4000/api/inventory/providers';
       
       const response = await fetch(url, {
         method,
@@ -341,27 +371,53 @@ function ProductsContent() {
         },
         body: JSON.stringify({ 
           name: providerName, 
-          contact_person: contactPerson, 
           email, 
           phone, 
-          address 
+          address,
+          official_contact_name: officialContactName,
+          official_contact_email: officialContactEmail,
+          official_contact_phone: officialContactPhone,
+          organization_contact_name: orgContactName,
+          organization_contact_email: orgContactEmail,
+          organization_contact_phone: orgContactPhone
         }),
       });
 
-      if (!response.ok) throw new Error(editingProvider ? 'Failed to update provider' : 'Failed to add provider');
+      if (!response.ok) throw new Error('Failed to add provider');
 
       const provider = await response.json();
       
-      if (editingProvider) {
-        setProviders(providers.map(p => p.id === provider.id ? provider : p));
-        toast({ title: 'Success', description: 'Provider updated successfully' });
-        resetProviderForm();
-      } else {
-        setProviders([...providers, provider]);
-        setCreatedProviderId(provider.id);
-        setCurrentStep('products');
-        toast({ title: 'Success', description: 'Provider added successfully. Now add products.' });
+      // Assign user to provider if selected
+      if (assignedUserId) {
+        try {
+          const assignResponse = await fetch(`http://localhost:4000/api/inventory/providers/${provider.id}/assign-user`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+              userId: assignedUserId,
+              assignmentType: 'attached_staff'
+            }),
+          });
+          
+          if (!assignResponse.ok) {
+            throw new Error('Failed to assign user to provider');
+          }
+        } catch (assignError) {
+          toast({
+            title: 'Warning',
+            description: 'Provider created but failed to assign user: ' + (assignError instanceof Error ? assignError.message : 'Unknown error'),
+            variant: 'destructive',
+          });
+        }
       }
+      
+      setProviders([...providers, provider]);
+      setCreatedProviderId(provider.id);
+      setCurrentStep('products');
+      toast({ title: 'Success', description: 'Provider added successfully. Now add products.' });
     } catch (error) {
       toast({
         title: 'Error',
@@ -585,198 +641,209 @@ function ProductsContent() {
         variant: 'destructive',
       });
     }
-  };
+};
 
-  const handleEditProvider = (provider: Provider) => {
-    // Only allow edit if user has permission
-    if (!canEditProvider) {
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to edit providers',
-        variant: 'destructive',
-      });
-      return;
-    }
+const handleViewProvider = (provider: Provider) => {
+  // Navigate to the provider details page
+  window.location.href = `/inventory/providers/${provider.id}`;
+};
+
+const handleEditProduct = (product: Product) => {
+  // Only allow edit if user has permission
+  if (!canEditProduct) {
+    toast({
+      title: 'Access Denied',
+      description: 'You do not have permission to edit products',
+      variant: 'destructive',
+    });
+    return;
+  }
+  
+  setEditingProduct(product);
+  setNewProductName(product.name);
+  setNewProductPartNumber(product.part_number);
+  setNewProductType(product.product_type);
+  setIsProductDialogOpen(true);
+};
+
+const handleUpdateProduct = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (!editingProduct) return;
+  
+  // Validate provider is selected
+  if (!newProductProviderId) {
+    toast({
+      title: 'Error',
+      description: 'Please select a provider',
+      variant: 'destructive',
+    });
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`http://localhost:4000/api/inventory/products/${editingProduct.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        name: newProductName, 
+        part_number: newProductPartNumber, 
+        product_type: newProductType,
+        provider_id: newProductProviderId
+      }),
+    });
+
+    if (!response.ok) throw new Error('Failed to update product');
+
+    const updatedProduct = await response.json();
+    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
     
-    setEditingProvider(provider);
-    setProviderName(provider.name);
-    setContactPerson(provider.contact_person || '');
-    setEmail(provider.email || '');
-    setPhone(provider.phone || '');
-    setAddress(provider.address || '');
-    setIsProviderDialogOpen(true);
-  };
+    toast({ title: 'Success', description: 'Product updated successfully' });
+    resetProductForm();
+  } catch (error) {
+    toast({
+      title: 'Error',
+      description: error instanceof Error ? error.message : 'An unknown error occurred',
+      variant: 'destructive',
+    });
+  }
+};
 
-  const handleViewProvider = (provider: Provider) => {
-    setViewingProvider(provider);
-    setIsProviderDetailsDialogOpen(true);
-  };
+const handleCreateProduct = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Validate provider is selected
+  if (!newProductProviderId) {
+    toast({
+      title: 'Error',
+      description: 'Please select a provider',
+      variant: 'destructive',
+    });
+    return;
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:4000/api/inventory/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        name: newProductName, 
+        part_number: newProductPartNumber, 
+        product_type: newProductType,
+        provider_id: newProductProviderId
+      }),
+    });
 
+    if (!response.ok) throw new Error('Failed to create product');
 
-
-  const handleEditProduct = (product: Product) => {
-    // Only allow edit if user has permission
-    if (!canEditProduct) {
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to edit products',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const newProduct = await response.json();
+    setProducts([...products, newProduct]);
     
-    setEditingProduct(product);
-    setNewProductName(product.name);
-    setNewProductPartNumber(product.part_number);
-    setNewProductType(product.product_type);
-    setIsProductDialogOpen(true);
-  };
-
-  const handleUpdateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!editingProduct) return;
-    
-    // Validate provider is selected
-    if (!newProductProviderId) {
-      toast({
-        title: 'Error',
-        description: 'Please select a provider',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/products/${editingProduct.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          name: newProductName, 
-          part_number: newProductPartNumber, 
-          product_type: newProductType,
-          provider_id: newProductProviderId
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update product');
-
-      const updatedProduct = await response.json();
-      setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-      
-      toast({ title: 'Success', description: 'Product updated successfully' });
-      resetProductForm();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate provider is selected
-    if (!newProductProviderId) {
-      toast({
-        title: 'Error',
-        description: 'Please select a provider',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          name: newProductName, 
-          part_number: newProductPartNumber, 
-          product_type: newProductType,
-          provider_id: newProductProviderId
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create product');
-
-      const newProduct = await response.json();
-      setProducts([...products, newProduct]);
-      
-      toast({ title: 'Success', description: 'Product created successfully' });
-      resetProductForm();
-      setIsGeneralProductDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const resetProviderForm = () => {
-    setIsProviderDialogOpen(false);
-    setEditingProvider(null);
-    setProviderName('');
-    setContactPerson('');
-    setEmail('');
-    setPhone('');
-    setAddress('');
-    setNewProductName('');
-    setNewProductPartNumber('');
-    setNewProductType('');
-    setBatchProducts([]);
-    setProviderProducts([]);
-    setCurrentStep('provider');
-    setCreatedProviderId(null);
-  };
-
-  const resetProductForm = () => {
-    setIsProductDialogOpen(false);
+    toast({ title: 'Success', description: 'Product created successfully' });
+    resetProductForm();
     setIsGeneralProductDialogOpen(false);
-    setEditingProduct(null);
-    setNewProductName('');
-    setNewProductPartNumber('');
-    setNewProductType('');
-    setNewProductProviderId(null);
+  } catch (error) {
+    toast({
+      title: 'Error',
+      description: error instanceof Error ? error.message : 'An unknown error occurred',
+      variant: 'destructive',
+    });
+  }
+};
+
+const resetProviderForm = () => {
+  setIsProviderDialogOpen(false);
+  setProviderName('');
+  setEmail('');
+  setPhone('');
+  setAddress('');
+  
+  // Reset official contact fields
+  setOfficialContactName('');
+  setOfficialContactEmail('');
+  setOfficialContactPhone('');
+  
+  // Reset organization contact fields
+  setOrgContactName('');
+  setOrgContactEmail('');
+  setOrgContactPhone('');
+  
+  // Reset user assignment
+  setAssignedUserId(null);
+  
+  setNewProductName('');
+  setNewProductPartNumber('');
+  setNewProductType('');
+  setBatchProducts([]);
+  setProviderProducts([]);
+  setCurrentStep('provider');
+  setCreatedProviderId(null);
+};
+
+const resetProductForm = () => {
+  setIsProductDialogOpen(false);
+  setIsGeneralProductDialogOpen(false);
+  setEditingProduct(null);
+  setNewProductName('');
+  setNewProductPartNumber('');
+  setNewProductType('');
+  setNewProductProviderId(null);
+};
+
+// Group products by provider
+const groupProductsByProvider = () => {
+  const grouped: { [key: string]: Product[] } = {};
+  
+  // Initialize with all providers
+  providers.forEach(provider => {
+    grouped[provider.name] = [];
+  });
+  
+  // Add products without providers to "Unknown Provider" group
+  grouped['Unknown Provider'] = [];
+  
+  // Group products
+  products.forEach(product => {
+    const providerName = product.provider_name || 'Unknown Provider';
+    if (!grouped[providerName]) {
+      grouped[providerName] = [];
+    }
+    grouped[providerName].push(product);
+  });
+  
+  return grouped;
+};
+
+const groupedProducts = groupProductsByProvider();
+
+// Fetch users for assignment dropdown
+useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:4000/api/hr/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
   };
 
-  // Group products by provider
-  const groupProductsByProvider = () => {
-    const grouped: { [key: string]: Product[] } = {};
-    
-    // Initialize with all providers
-    providers.forEach(provider => {
-      grouped[provider.name] = [];
-    });
-    
-    // Add products without providers to "Unknown Provider" group
-    grouped['Unknown Provider'] = [];
-    
-    // Group products
-    products.forEach(product => {
-      const providerName = product.provider_name || 'Unknown Provider';
-      if (!grouped[providerName]) {
-        grouped[providerName] = [];
-      }
-      grouped[providerName].push(product);
-    });
-    
-    return grouped;
-  };
-
-  const groupedProducts = groupProductsByProvider();
+  fetchUsers();
+}, []);
 
   return (
     <DashboardLayout>
@@ -919,21 +986,6 @@ function ProductsContent() {
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
-                          
-                          
-                          
-                          {canEditProvider && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditProvider(provider);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
                           
                           {canDeleteProvider && (
                             <Button 
@@ -1108,7 +1160,7 @@ function ProductsContent() {
             )}
             
             {/* Dialog for adding providers */}
-            <Dialog open={isProviderDialogOpen && currentStep === 'provider' && !editingProvider} onOpenChange={(open) => {
+            <Dialog open={isProviderDialogOpen && currentStep === 'provider'} onOpenChange={(open) => {
               if (!open) {
                 resetProviderForm();
               } else {
@@ -1119,60 +1171,153 @@ function ProductsContent() {
                 <DialogHeader>
                   <DialogTitle>Add Provider</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmitProvider} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="providerName">Provider Name *</Label>
-                    <Input
-                      id="providerName"
-                      value={providerName}
-                      onChange={(e) => setProviderName(e.target.value)}
-                      placeholder="Enter provider name"
-                      required
-                    />
+                <form onSubmit={handleSubmitProvider} className="space-y-6">
+                  {/* Basic Provider Information */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Basic Provider Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="providerName">Provider Name *</Label>
+                        <Input
+                          id="providerName"
+                          value={providerName}
+                          onChange={(e) => setProviderName(e.target.value)}
+                          placeholder="Enter provider name"
+                          required
+                        />
+                      </div>
+                      <div></div> {/* Empty div to maintain grid structure */}
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Organization Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="Enter organization email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Organization Call Line</Label>
+                        <Input
+                          id="phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="Enter organization call line"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Enter address"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPerson">Contact Person</Label>
-                    <Input
-                      id="contactPerson"
-                      value={contactPerson}
-                      onChange={(e) => setContactPerson(e.target.value)}
-                      placeholder="Enter contact person"
-                    />
+
+                  {/* Official Contact Section (Required) */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Official Contact *</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="officialContactName">Name *</Label>
+                        <Input
+                          id="officialContactName"
+                          value={officialContactName}
+                          onChange={(e) => setOfficialContactName(e.target.value)}
+                          placeholder="Enter official contact name"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="officialContactEmail">Email *</Label>
+                        <Input
+                          id="officialContactEmail"
+                          type="email"
+                          value={officialContactEmail}
+                          onChange={(e) => setOfficialContactEmail(e.target.value)}
+                          placeholder="Enter official contact email"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="officialContactPhone">Phone *</Label>
+                        <Input
+                          id="officialContactPhone"
+                          value={officialContactPhone}
+                          onChange={(e) => setOfficialContactPhone(e.target.value)}
+                          placeholder="Enter official contact phone"
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter email"
-                    />
+
+                  {/* Organization Contact Section (Optional) */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Organization Contact (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="orgContactName">Name</Label>
+                        <Input
+                          id="orgContactName"
+                          value={orgContactName}
+                          onChange={(e) => setOrgContactName(e.target.value)}
+                          placeholder="Enter organization contact name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="orgContactEmail">Email</Label>
+                        <Input
+                          id="orgContactEmail"
+                          type="email"
+                          value={orgContactEmail}
+                          onChange={(e) => setOrgContactEmail(e.target.value)}
+                          placeholder="Enter organization contact email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="orgContactPhone">Phone</Label>
+                        <Input
+                          id="orgContactPhone"
+                          value={orgContactPhone}
+                          onChange={(e) => setOrgContactPhone(e.target.value)}
+                          placeholder="Enter organization contact phone"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Enter phone number"
-                    />
+
+                  {/* Assign User Section */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Assign User (Optional)</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="assignedUser">Attach Staff Member</Label>
+                      <select
+                        id="assignedUser"
+                        value={assignedUserId ? assignedUserId.toString() : ''}
+                        onChange={(e) => setAssignedUserId(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="">Select a user (optional)</option>
+                        {users.map(user => (
+                          <option key={user.id} value={user.id}>
+                            {user.full_name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Enter address"
-                    />
-                  </div>
+
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={resetProviderForm}>
                       Cancel
                     </Button>
                     <Button type="submit">
-                      {editingProvider ? 'Update Provider' : 'Next: Add Products'}
+                      Next: Add Products
                     </Button>
                   </div>
                 </form>
@@ -1486,28 +1631,68 @@ function ProductsContent() {
                 </DialogHeader>
                 {viewingProvider && (
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Provider Name</Label>
-                        <p className="font-medium">{viewingProvider.name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Contact Person</Label>
-                        <p className="font-medium">{viewingProvider.contact_person || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Email</Label>
-                        <p className="font-medium">{viewingProvider.email || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Phone</Label>
-                        <p className="font-medium">{viewingProvider.phone || 'N/A'}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-muted-foreground">Address</Label>
-                        <p className="font-medium">{viewingProvider.address || 'N/A'}</p>
+                    {/* Basic Provider Information */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="text-lg font-semibold mb-4">Basic Provider Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Provider Name</Label>
+                          <p className="font-medium">{viewingProvider.name}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Email</Label>
+                          <p className="font-medium">{viewingProvider.email || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Phone</Label>
+                          <p className="font-medium">{viewingProvider.phone || 'N/A'}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label className="text-muted-foreground">Address</Label>
+                          <p className="font-medium">{viewingProvider.address || 'N/A'}</p>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Official Contact Section */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="text-lg font-semibold mb-4">Official Contact</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-muted-foreground">Name</Label>
+                          <p className="font-medium">{viewingProvider.official_contact_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Email</Label>
+                          <p className="font-medium">{viewingProvider.official_contact_email || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground">Phone</Label>
+                          <p className="font-medium">{viewingProvider.official_contact_phone || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Organization Contact Section */}
+                    {(viewingProvider.organization_contact_name || viewingProvider.organization_contact_email || viewingProvider.organization_contact_phone) && (
+                      <div className="border rounded-lg p-4">
+                        <h3 className="text-lg font-semibold mb-4">Organization Contact</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label className="text-muted-foreground">Name</Label>
+                            <p className="font-medium">{viewingProvider.organization_contact_name || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Email</Label>
+                            <p className="font-medium">{viewingProvider.organization_contact_email || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-muted-foreground">Phone</Label>
+                            <p className="font-medium">{viewingProvider.organization_contact_phone || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     <div>
                       <h3 className="text-lg font-semibold mb-2">Products</h3>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
-import { Users, MessageSquare, UserPlus, FileText } from 'lucide-react';
+import { Users, MessageSquare, UserPlus, FileText, UserCheck } from 'lucide-react';
 
 export default function HRDashboardPage() {
   return (
@@ -76,13 +76,13 @@ function HRDashboardContent() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Users className="mr-2 h-5 w-5" />
-                Users
+                Users & Support
               </CardTitle>
-              <CardDescription>User management</CardDescription>
+              <CardDescription>User management and support staff</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                View user details, manage accounts, and track employee information.
+                View user details, manage accounts, and assign support staff for offboarding.
               </p>
             </CardContent>
           </Card>
