@@ -36,7 +36,7 @@ export const authenticateJWT = async (req, res, next) => {
       // Handle cases where role_id might be null or role might not exist
       console.log('Fetching user data from database for user ID:', req.user.userId);
       const userResult = await req.pool.query(
-        `SELECT u.department, COALESCE(r.name, 'default') as role 
+        `SELECT u.department, u.active, COALESCE(r.name, 'default') as role 
          FROM users u 
          LEFT JOIN roles r ON u.role_id = r.id 
          WHERE u.id = $1`,
@@ -45,6 +45,12 @@ export const authenticateJWT = async (req, res, next) => {
       console.log('Database query result:', userResult);
       
       if (userResult.rows.length > 0) {
+        // Check if user account is active
+        if (userResult.rows[0].active === false) {
+          console.log(`User ${req.user.userId} account is deactivated`);
+          return res.status(403).json({ error: "Account deactivated", message: "User account has been deactivated" });
+        }
+        
         req.user.department = userResult.rows[0].department;
         req.user.role = userResult.rows[0].role || 'default';
         console.log(`User ${req.user.userId} department/role updated from DB: department=${req.user.department}, role=${req.user.role}`);

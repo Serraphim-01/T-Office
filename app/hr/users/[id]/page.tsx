@@ -28,14 +28,16 @@ interface User {
   email: string;
   department: string;
   created_at: string;
-  certifications?: any[];
-  cv?: string;
-  portfolio?: string;
-  job_description?: string;
-  contract?: string;
-  query_count?: number;
-  attendance?: any[];
-  other_details?: any;
+  certifications: any[];
+  cv: string | null;
+  portfolio: string | null;
+  job_description: string | null;
+  contract: string | null;
+  query_count: number;
+  attendance: any[];
+  other_details: any;
+  active: boolean;
+  role_name?: string; // Add role_name property
 }
 
 interface AttendanceRecord {
@@ -200,7 +202,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             <h1 className="text-3xl font-bold">User Details</h1>
             <p className="text-muted-foreground">View and manage user information</p>
           </div>
-          <Button onClick={() => router.push('/hr')}>Back to HR Dashboard</Button>
+          <Button onClick={() => router.back()}>Back</Button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -231,37 +233,46 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                   <button
                     onClick={() => setActiveSection('profile')}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      "w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors",
                       activeSection === 'profile'
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
                     )}
                   >
-                    <User className="h-4 w-4" />
+                    <User className={cn(
+                      "h-5 w-5 transition-all duration-300",
+                      sidebarCollapsed ? "mx-auto" : ""
+                    )} />
                     {!sidebarCollapsed && <span>Profile</span>}
                   </button>
                   <button
                     onClick={() => setActiveSection('attendance')}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      "w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors",
                       activeSection === 'attendance'
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
                     )}
                   >
-                    <Clock className="h-4 w-4" />
+                    <Clock className={cn(
+                      "h-5 w-5 transition-all duration-300",
+                      sidebarCollapsed ? "mx-auto" : ""
+                    )} />
                     {!sidebarCollapsed && <span>Attendance</span>}
                   </button>
                   <button
                     onClick={() => setActiveSection('wiki')}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors",
+                      "w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors",
                       activeSection === 'wiki'
                         ? "bg-primary text-primary-foreground"
                         : "hover:bg-muted"
                     )}
                   >
-                    <FileText className="h-4 w-4" />
+                    <FileText className={cn(
+                      "h-5 w-5 transition-all duration-300",
+                      sidebarCollapsed ? "mx-auto" : ""
+                    )} />
                     {!sidebarCollapsed && <span>Wiki Completions</span>}
                   </button>
                 </nav>
@@ -299,7 +310,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                       <div className="flex items-center space-x-3">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Role</span>
-                        <span className="text-sm font-medium text-foreground">{user?.department || 'No Role'}</span>
+                        <span className="text-sm font-medium text-foreground">{user?.role_name || user?.department || 'No Role'}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -397,7 +408,9 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Account Type</span>
-                        <Badge variant="default">Active User</Badge>
+                        <Badge variant={user?.active ? "default" : "destructive"}>
+                          {user?.active ? "Active User" : "Offboarded"}
+                        </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Member Since</span>

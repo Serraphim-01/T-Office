@@ -1025,3 +1025,65 @@ When adding new database features:
 2. Update `db/drop_migration.sql` with corresponding drop statements
 3. Run migrations to apply changes
 4. Test the new functionality
+
+## 7. OFFBOARDING SYSTEM
+
+### Overview
+The offboarding system provides a structured way to deactivate user accounts while ensuring continuity of operations by transferring responsibilities to designated support staff.
+
+### Key Features
+1. **User Deactivation**: Mark user accounts as inactive to prevent further login or actions
+2. **Responsibility Transfer**: Automatically transfer user responsibilities to their assigned support staff
+3. **Provider Attachment Transfer**: Move provider attachments from offboarded users to their support staff
+4. **Support Staff Chain Update**: If an offboarded user was acting as support staff for others, their own support staff takes over
+5. **Irreversible Process**: Once offboarded, accounts cannot be reactivated
+
+### Offboarding Workflow
+
+#### Prerequisites
+Before offboarding a user, ensure they have at least one support staff member assigned. This can be done through the HR Users management interface.
+
+#### Offboarding Process
+1. Navigate to HR → Users in the admin panel
+2. Select the user to be offboarded
+3. Click the "Offboard User" button
+4. Confirm the offboarding action in the confirmation dialog
+
+#### What Happens During Offboarding
+When a user is offboarded, the system performs the following actions:
+
+1. **Provider Attachments Transfer**:
+   - All provider attachments where the offboarded user was listed as "attached_staff" are transferred to their support staff
+   - This ensures continuity of vendor/provider relationships
+
+2. **Support Staff Chain Update**:
+   - If the offboarded user was assigned as support staff to other users, those assignments are updated
+   - The offboarded user's own support staff becomes the new support staff for those users
+
+3. **Account Deactivation**:
+   - The user's account is marked as inactive in the database
+   - The `active` field in the users table is set to `false`
+   - Inactive users cannot log in or perform any actions in the system
+
+#### Technical Implementation
+
+##### Database Changes
+- Added `active` boolean column to the `users` table (defaults to `true`)
+- Created migration script `002_add_active_to_users.sql` for existing installations
+
+##### API Endpoints
+- `POST /api/users/:userId/offboard` - Offboards a user and transfers their responsibilities
+
+##### Frontend Components
+- Added "Offboard User" button to HR Users management page
+- Added account status indicators to user detail views
+- Added confirmation dialogs for offboarding actions
+
+##### Authentication Updates
+- Modified authentication middleware to check user active status
+- Users with `active = false` are denied access with a 403 error
+
+### Limitations
+- Offboarding is irreversible - once an account is deactivated, it cannot be reactivated
+- All responsibilities are transferred automatically - there is no option for selective transfer
+- Only one support staff member is considered during offboarding - if multiple support staff exist, only the first one is used for transfers

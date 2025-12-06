@@ -44,6 +44,15 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+echo "Running additional migrations..."
+cd backend
+node ../db/run_additional_migrations.js
+
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to run additional migrations"
+  exit 1
+fi
+
 echo "Database migration completed successfully!"
 echo ""
 echo "To verify the migration worked correctly:"

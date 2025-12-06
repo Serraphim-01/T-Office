@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "db:init": "node db-init.js"
+    "db:init": "node db-init.js",
+    "db:migrate:additions": "node ../db/run_additional_migrations.js"
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",

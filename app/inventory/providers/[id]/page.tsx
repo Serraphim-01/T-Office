@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
+import { ArrowLeft, Edit } from 'lucide-react';
 
 interface Provider {
   id: number;
@@ -360,9 +361,10 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
               <p className="text-muted-foreground">Provider not found</p>
               <Button 
                 className="mt-4" 
-                onClick={() => router.push('/inventory/products')}
+                variant="outline" 
+                onClick={() => router.back()}
               >
-                Back to Products
+                <ArrowLeft className="h-5 w-5 mr-2" /> Back
               </Button>
             </CardContent>
           </Card>
@@ -380,11 +382,18 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
               {isEditing ? 'Edit Provider' : 'Provider Details'}
             </CardTitle>
             <div className="flex space-x-2">
-              <Button variant="outline" asChild>
-                <Link href="/inventory/products">Back to Products</Link>
+              <Button variant="outline" onClick={() => router.back()}>
+                <ArrowLeft className="h-5 w-5" />
               </Button>
               {!isEditing && canEditProvider && (
-                <Button onClick={handleEditClick}>Edit Provider</Button>
+                <Button 
+                  onClick={handleEditClick}
+                  variant="outline"
+                  className="p-2"
+                  title="Edit Provider"
+                >
+                  <Edit className="h-5 w-5" />
+                </Button>
               )}
             </div>
           </CardHeader>

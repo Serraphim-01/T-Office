@@ -84,7 +84,7 @@ router.get("/users", authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        u.id, u.full_name, u.email, u.department, u.created_at,
+        u.id, u.full_name, u.email, u.department, u.created_at, u.active,
         ud.certifications, ud.cv, ud.portfolio, ud.job_description, ud.contract,
         ud.query_count, ud.attendance, ud.other_details
       FROM users u
@@ -106,11 +106,13 @@ router.get("/users/:id", authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        u.id, u.full_name, u.email, u.department, u.created_at,
+        u.id, u.full_name, u.email, u.department, u.created_at, u.active, u.role_id,
+        r.name as role_name,
         ud.certifications, ud.cv, ud.portfolio, ud.job_description, ud.contract,
         ud.query_count, ud.attendance, ud.other_details
       FROM users u
       LEFT JOIN user_details ud ON u.id = ud.user_id
+      LEFT JOIN roles r ON u.role_id = r.id
       WHERE u.id = $1
     `, [id]);
     

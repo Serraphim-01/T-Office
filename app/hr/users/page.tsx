@@ -28,6 +28,7 @@ interface User {
   department: string;
   created_at: string;
   query_count?: number;
+  active: boolean; // Add active status
 }
 
 export default function HRUsersPage() {
@@ -210,6 +211,56 @@ function HRUsersContent() {
     }
   };
 
+  const handleOffboardUser = async () => {
+    if (!selectedUserId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a user to offboard',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Confirm offboarding
+    if (!confirm('Are you sure you want to offboard this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/users/${selectedUserId}/offboard`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to offboard user');
+
+      const data = await response.json();
+      
+      toast({
+        title: 'Success',
+        description: 'User offboarded successfully',
+      });
+      
+      // Refresh user list
+      fetchUsers();
+      
+      // Clear selections
+      setSelectedUserId('');
+      setSelectedSupportStaffId('');
+      setSupportStaffAssignments([]);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to offboard user',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleUserSelect = (userId: string) => {
     setSelectedUserId(userId);
     if (userId) {
@@ -248,55 +299,117 @@ function HRUsersContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Users List Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="mr-2 h-5 w-5" />
-                All Users
-              </CardTitle>
-              <CardDescription>View and manage all user accounts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Query Count</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.full_name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{user.department}</Badge>
-                      </TableCell>
-                      <TableCell>{user.query_count || 0}</TableCell>
-                      <TableCell>
-                        {/* Only show View Details button if user has view details access */}
-                        {canViewDetails && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => router.push(`/hr/users/${user.id}`)}
-                          >
-                            View Details
-                          </Button>
-                        )}
-                      </TableCell>
+          {/* Left Column - Users List and Offboard Section */}
+          <div className="space-y-6">
+            {/* Users List Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  All Users
+                </CardTitle>
+                <CardDescription>View and manage all user accounts</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Query Count</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className={user.active ? "" : "text-red-600 line-through"}>
+                            {user.full_name}
+                            {!user.active && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Offboarded</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{user.department}</Badge>
+                        </TableCell>
+                        <TableCell>{user.query_count || 0}</TableCell>
+                        <TableCell>
+                          {/* Only show View Details button if user has view details access */}
+                          {canViewDetails && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => router.push(`/hr/users/${user.id}`)}
+                            >
+                              View Details
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
 
-          {/* Support Staff Management Section */}
+            {/* Offboard User Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Offboard User</CardTitle>
+                <CardDescription>Deactivate user account and transfer responsibilities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="offboardUserSelect">Select User to Offboard</Label>
+                    <Select value={selectedUserId} onValueChange={handleUserSelect}>
+                      <SelectTrigger id="offboardUserSelect">
+                        <SelectValue placeholder="Select a user" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users
+                          .filter(user => user.active) // Only show active users
+                          .map((user) => (
+                          <SelectItem key={user.id} value={user.id.toString()}>
+                            {user.full_name} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleOffboardUser}
+                    disabled={!selectedUserId}
+                  >
+                    Offboard User
+                  </Button>
+
+                  {selectedUserId && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <h3 className="font-medium text-yellow-800 mb-2">⚠️ Offboarding Notice</h3>
+                      <p className="text-sm text-yellow-700">
+                        Offboarding this user will:
+                      </p>
+                      <ul className="list-disc list-inside text-sm text-yellow-700 mt-2 space-y-1">
+                        <li>Transfer all provider attachments to their support staff</li>
+                        <li>Reassign any users they support to their support staff</li>
+                        <li>Deactivate their account permanently</li>
+                      </ul>
+                      <p className="text-sm text-yellow-700 mt-2">
+                        This action cannot be undone.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Support Staff Management Sections */}
           <div className="space-y-6">
             {/* Assign Support Staff Section */}
             <Card>
@@ -313,7 +426,9 @@ function HRUsersContent() {
                         <SelectValue placeholder="Select a user" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map((user) => (
+                        {users
+                          .filter(user => user.active) // Only show active users
+                          .map((user) => (
                           <SelectItem key={user.id} value={user.id.toString()}>
                             {user.full_name} ({user.email})
                           </SelectItem>
@@ -330,7 +445,7 @@ function HRUsersContent() {
                       </SelectTrigger>
                       <SelectContent>
                         {users
-                          .filter(user => user.id.toString() !== selectedUserId) // Exclude the selected user
+                          .filter(user => user.active && user.id.toString() !== selectedUserId) // Exclude the selected user and offboarded users
                           .map((user) => (
                             <SelectItem key={user.id} value={user.id.toString()}>
                               {user.full_name} ({user.email})
@@ -392,7 +507,9 @@ function HRUsersContent() {
                         <SelectValue placeholder="Select support staff" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map((user) => (
+                        {users
+                          .filter(user => user.active) // Only show active users
+                          .map((user) => (
                           <SelectItem key={user.id} value={user.id.toString()}>
                             {user.full_name} ({user.email})
                           </SelectItem>

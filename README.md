@@ -14,6 +14,7 @@ T-Office is a full-stack internal office management platform designed to streaml
 - **Clock & Profile**: Time tracking and personal profile settings
 - **Offline Support**: PWA-enabled fallback page
 - **Role-Based Access Control**: Fine-grained permission system with roles and departments
+- **User Offboarding**: Automated transfer of responsibilities to support staff
 
 ## Technology Stack
 
@@ -67,6 +68,29 @@ To run the database migration:
 ```bash
 ./db/run_migration.sh
 ```
+
+## User Offboarding
+
+The T-Office platform includes a comprehensive user offboarding system:
+
+1. **Support Staff Assignment**: Assign support staff to users in preparation for offboarding
+2. **Automated Responsibility Transfer**: When a user is offboarded:
+   - Their support staff takes over as attached contacts for providers
+   - If the offboarded user was a support staff for other users, their support staff becomes the new support staff for those users
+   - The offboarded user's account is deactivated
+3. **Irreversible Process**: Once offboarded, user accounts cannot be reactivated
+
+### Offboarding Process
+
+1. Navigate to the HR Users section
+2. Select the user to be offboarded
+3. Click the "Offboard User" button
+4. Confirm the offboarding action
+
+The system will automatically:
+- Transfer provider attachments to the user's support staff
+- Reassign any users who had the offboarded user as their support staff
+- Deactivate the user's account
 
 ## Changelog
 

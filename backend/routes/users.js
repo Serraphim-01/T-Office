@@ -111,4 +111,65 @@ router.get('/:supportStaffId/supported-users', authenticateJWT, async (req, res)
   }
 });
 
+// Offboard a user
+router.post('/:userId/offboard', authenticateJWT, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    // Start transaction
+    await req.pool.query('BEGIN');
+    
+    // Get the offboarded user's support staff
+    const supportStaffResult = await req.pool.query(
+      `SELECT usa.support_staff_id, u.full_name as support_staff_name
+       FROM user_support_assignments usa
+       JOIN users u ON usa.support_staff_id = u.id
+       WHERE usa.user_id = $1`,
+      [userId]
+    );
+    
+    // If the user has support staff, transfer responsibilities
+    if (supportStaffResult.rows.length > 0) {
+      const supportStaffId = supportStaffResult.rows[0].support_staff_id;
+      
+      // 1. Transfer provider attachments from offboarded user to support staff
+      await req.pool.query(
+        `UPDATE provider_user_assignments 
+         SET user_id = $1 
+         WHERE user_id = $2 AND assignment_type = 'attached_staff'`,
+        [supportStaffId, userId]
+      );
+      
+      // 2. If the offboarded user was a support staff to other users, 
+      //    replace them with their own support staff
+      await req.pool.query(
+        `UPDATE user_support_assignments 
+         SET support_staff_id = $1 
+         WHERE support_staff_id = $2`,
+        [supportStaffId, userId]
+      );
+    }
+    
+    // Deactivate the user account
+    await req.pool.query(
+      'UPDATE users SET active = false WHERE id = $1',
+      [userId]
+    );
+    
+    // Commit transaction
+    await req.pool.query('COMMIT');
+    
+    res.json({ 
+      success: true, 
+      message: 'User offboarded successfully',
+      supportStaff: supportStaffResult.rows.length > 0 ? supportStaffResult.rows[0] : null
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    await req.pool.query('ROLLBACK');
+    console.error('Error offboarding user:', error);
+    res.status(500).json({ error: 'Internal server error during offboarding' });
+  }
+});
+
 export default router;
