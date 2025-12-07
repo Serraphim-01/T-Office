@@ -11,11 +11,13 @@ import {
   Building2,
   LogOut,
   Menu,
-  X
+  X,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback,} from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { NotificationPanel } from './notification-panel';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,6 +28,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -53,6 +56,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="h-screen flex bg-background">
+      {/* Notification Panel */}
+      <NotificationPanel 
+        isOpen={notificationPanelOpen} 
+        onClose={() => setNotificationPanelOpen(false)} 
+      />
+
       {/* Sidebar */}
       <div className={cn(
         "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
@@ -123,10 +132,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Menu className="h-6 w-6" />
             </Button>
-            <h1 className="text-lg font-semibold text-foreground">
-              Task Office
-            </h1>
-            <div className="w-10"></div>
+            <div className="flex-1"></div> {/* Spacer to push notification to the right */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setNotificationPanelOpen(true)}
+              className="relative ml-auto"
+            >
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-0 right-0 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            </Button>
           </div>
         </header>
 
