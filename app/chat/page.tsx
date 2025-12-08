@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Send, Users, MessageCircle, Shield, Clock, FileText, ChevronDown, Pause, Play, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { useNotification } from '@/lib/notification-context';
 import { hasPageAccess } from '@/lib/page-access';
 
 interface Message {
@@ -30,6 +31,7 @@ interface GlobalPauseStatus {
 
 export default function ChatPage() {
   const { user, loading } = useAuth();
+  const { notifications, markAsRead } = useNotification();
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -48,7 +50,9 @@ export default function ChatPage() {
   const [canUseSummarizer, setCanUseSummarizer] = useState(false);
   const [canClearChat, setCanClearChat] = useState(false);
   const [showGuidelines, setShowGuidelines] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessageIdRef = useRef<number>(0);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -74,6 +78,35 @@ export default function ChatPage() {
       }
     }
   }, [user, canUseChat]);
+
+  // Track unread messages
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      // Find the highest message ID
+      const maxMessageId = Math.max(...messages.map(m => m.id));
+      
+      // If this is the first load or we have new messages
+      if (maxMessageId > lastMessageIdRef.current) {
+        // Count unread messages (messages newer than last seen)
+        const newUnreadCount = messages.filter(m => m.id > lastMessageIdRef.current).length;
+        setUnreadMessageCount(newUnreadCount);
+        lastMessageIdRef.current = maxMessageId;
+      }
+    }
+  }, [messages, user]);
+
+  // Mark chat notifications as read when entering the chat page
+  useEffect(() => {
+    if (user) {
+      // Filter chat notifications and mark them as read
+      notifications
+        .filter(n => n.type === 'chat_message' && !n.read)
+        .forEach(n => markAsRead(n.id));
+        
+      // Reset unread count when entering chat
+      setUnreadMessageCount(0);
+    }
+  }, [user, notifications, markAsRead]);
 
   const checkFeatureAccess = async () => {
     if (!user) return;
@@ -418,6 +451,11 @@ export default function ChatPage() {
               <h1 className="text-2xl font-bold text-foreground flex items-center">
                 <MessageCircle className="mr-3 h-6 w-6 text-primary" />
                 Anonymous Chat
+                {unreadMessageCount > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {unreadMessageCount} unread
+                  </Badge>
+                )}
               </h1>
               <p className="text-muted-foreground mt-1">
                 Open communication space for honest feedback and discussions

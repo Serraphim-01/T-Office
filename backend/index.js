@@ -26,7 +26,6 @@ import userRoutes from "./routes/users.js";
 dotenv.config({ path: ".env.local" });
 
 const app = express();
-const PORT = process.env.PORT || 4000;
 
 // ------------------------
 // Enable CORS for frontend
@@ -65,6 +64,55 @@ app.use((req, res, next) => {
   req.pool = pool;
   next();
 });
+
+// Add WebSocket support
+import http from 'http';
+import { Server } from 'socket.io';
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Store connected clients
+const connectedClients = new Map();
+
+// Handle WebSocket connections
+io.on('connection', (socket) => {
+  console.log('New client connected:', socket.id);
+  
+  // Register user with their socket
+  socket.on('register_user', (userId) => {
+    connectedClients.set(userId, socket.id);
+    console.log(`User ${userId} registered with socket ${socket.id}`);
+  });
+  
+  // Handle disconnections
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    // Remove client from connected clients
+    for (let [userId, socketId] of connectedClients.entries()) {
+      if (socketId === socket.id) {
+        connectedClients.delete(userId);
+        break;
+      }
+    }
+  });
+});
+
+// Export function to send notifications
+export const sendNotification = (userId, notification) => {
+  const socketId = connectedClients.get(userId);
+  if (socketId) {
+    io.to(socketId).emit('notification', notification);
+  }
+};
 
 // Refresh token route
 app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
@@ -401,6 +449,8 @@ app.post("/api/log-activity", authenticateJWT, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on port ${PORT}`);
+// Change app.listen to server.listen
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

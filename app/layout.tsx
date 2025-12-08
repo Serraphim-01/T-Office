@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { UIProvider } from '@/lib/ui-context';
+import { NotificationProvider } from '@/lib/notification-context'; // Import our notification provider
 import { Toaster } from '@/components/ui/toaster';
 import { PWAProvider } from '@/components/pwa-provider';
 import '@/lib/theme-utils'; // Import theme utilities for early theme application
@@ -34,10 +35,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <UIProvider>
           <AuthProvider>
-            <PWAProvider>
-              {children}
-              <Toaster />
-            </PWAProvider>
+            <NotificationProvider> {/* Wrap with our notification provider */}
+              <PWAProvider>
+                {children}
+                <Toaster />
+              </PWAProvider>
+            </NotificationProvider>
           </AuthProvider>
         </UIProvider>
       </body>

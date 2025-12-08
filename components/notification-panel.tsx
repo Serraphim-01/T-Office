@@ -1,55 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { useNotification } from '@/lib/notification-context';
+import { useRouter } from 'next/navigation';
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-}
-
-export function NotificationPanel({ isOpen, onClose }: { 
+interface NotificationPanelProps {
   isOpen: boolean; 
   onClose: () => void; 
-}) {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'New Message',
-      message: 'You have a new message from John Doe',
-      timestamp: '2 minutes ago',
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Task Completed',
-      message: 'Your task "Update documentation" has been completed',
-      timestamp: '1 hour ago',
-      read: true
-    },
-    {
-      id: '3',
-      title: 'System Update',
-      message: 'System maintenance scheduled for tonight',
-      timestamp: '3 hours ago',
-      read: false
+}
+
+export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
+  const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotification();
+  const router = useRouter();
+
+  const handleNotificationClick = (notification: any) => {
+    markAsRead(notification.id);
+    
+    // Navigate to chat page if it's a chat message notification
+    if (notification.type === 'chat_message') {
+      router.push('/chat');
     }
-  ]);
-
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(notification => 
-      notification.id === id ? { ...notification, read: true } : notification
-    ));
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notification => ({ ...notification, read: true })));
+    
+    onClose();
   };
 
   // Close panel when pressing Escape key
@@ -114,22 +90,46 @@ export function NotificationPanel({ isOpen, onClose }: {
                     <li 
                       key={notification.id} 
                       className={`p-4 hover:bg-accent cursor-pointer ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
-                      onClick={() => markAsRead(notification.id)}
+                      onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex justify-between">
-                        <h3 className="font-medium text-foreground">{notification.title}</h3>
+                        <h3 className="font-medium text-foreground flex items-center">
+                          {notification.type === 'chat_message' ? (
+                            <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
+                          ) : notification.type === 'success' ? (
+                            <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 mr-2 text-yellow-500" />
+                          )}
+                          {notification.title}
+                        </h3>
                         {!notification.read && (
                           <span className="flex h-2 w-2 rounded-full bg-blue-600 mt-1.5"></span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                      <p className="text-xs text-muted-foreground mt-2">{notification.timestamp}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(notification.timestamp).toLocaleString()}
+                      </p>
                     </li>
                   ))}
                 </ul>
               )}
             </CardContent>
           </ScrollArea>
+          
+          {notifications.length > 0 && (
+            <div className="p-4 border-t border-border">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={clearNotifications}
+                className="w-full"
+              >
+                Clear all notifications
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </>

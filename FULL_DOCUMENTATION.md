@@ -1087,3 +1087,26 @@ When a user is offboarded, the system performs the following actions:
 - Offboarding is irreversible - once an account is deactivated, it cannot be reactivated
 - All responsibilities are transferred automatically - there is no option for selective transfer
 - Only one support staff member is considered during offboarding - if multiple support staff exist, only the first one is used for transfers
+
+## 11. Notification System
+
+The T-Office application includes a comprehensive notification system that provides real-time updates to users. This system enhances user engagement by delivering timely information about important events and activities.
+
+### Features
+
+- **Real-time Notifications**: Instant delivery of notifications using WebSocket technology
+- **Persistent Storage**: Notifications are saved across sessions using localStorage
+- **Multiple Notification Types**: Support for different categories (chat, system, success, warnings)
+- **Visual Indicators**: Unread notification counts and status indicators
+- **User-friendly Interface**: Notification panel with history and management options
+- **Automatic Read Status**: Smart handling of read/unread notifications
+
+### Technical Implementation
+
+The notification system is built with:
+- **Socket.IO** for real-time communication
+- **React Context API** for state management
+- **localStorage** for persistence
+- **Tailwind CSS** for responsive UI components
+
+For detailed implementation information, see [NOTIFICATION_SYSTEM.md](NOTIFICATION_SYSTEM.md).

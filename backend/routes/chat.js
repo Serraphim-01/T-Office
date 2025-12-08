@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateJWT } from "./auth.js";
 import { checkToxicity, summarizeChat, cleanupOldMessages } from "../utils/helpers.js";
+import { sendNotification } from '../index.js'; // Import our notification function
 import axios from "axios";
 
 const router = express.Router();
@@ -189,6 +190,26 @@ router.post("/messages", authenticateJWT, async (req, res) => {
       'INSERT INTO chat_messages (user_id, text, is_bot, is_moderator) VALUES ($1, $2, $3, $4) RETURNING *',
       [user_id, text.trim(), false, is_moderator || false]
     );
+
+    // Notify all other connected users about the new message
+    const newMessage = result.rows[0];
+    
+    // Get all users except the sender
+    const usersResult = await pool.query(
+      'SELECT id FROM users WHERE id != $1',
+      [user_id]
+    );
+    
+    // Send notification to all other users
+    for (const user of usersResult.rows) {
+      sendNotification(user.id, {
+        type: 'chat_message',
+        title: 'New Chat Message',
+        message: 'You have a new message in the chat',
+        messageId: newMessage.id,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Check if auto-summarization should be triggered
     const autoSummarySettings = await pool.query(

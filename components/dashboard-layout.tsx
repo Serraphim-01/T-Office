@@ -2,9 +2,9 @@
 
 import { type ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useNotification } from '@/lib/notification-context'; // Import our notification context
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useUI } from '@/lib/ui-context';
 import { usePathname } from 'next/navigation';
 import AccessControlledNav from '@/components/access-controlled-nav';
 import {
@@ -25,6 +25,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, loading, setUser } = useAuth();
+  const { unreadCount } = useNotification(); // Use our notification context
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -140,10 +141,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               className="relative ml-auto"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute top-0 right-0 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              )}
             </Button>
           </div>
         </header>
