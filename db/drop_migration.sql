@@ -23,6 +23,7 @@ DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
 DROP TRIGGER IF EXISTS update_wiki_comments_updated_at ON wiki_comments;
 DROP TRIGGER IF EXISTS update_user_support_assignments_updated_at ON user_support_assignments;
 DROP TRIGGER IF EXISTS update_provider_user_assignments_updated_at ON provider_user_assignments;
+DROP TRIGGER IF EXISTS update_user_notifications_updated_at ON user_notifications; -- Add this line
 
 -- Drop role-related indexes
 DROP INDEX IF EXISTS idx_roles_department_id;
@@ -62,6 +63,7 @@ DROP TABLE IF EXISTS user_support_assignments CASCADE;
 DROP TABLE IF EXISTS provider_user_assignments CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS providers CASCADE;
+DROP TABLE IF EXISTS user_notifications CASCADE; -- Add this line
 
 -- Remove role_id column from users table (only if table exists)
 DO $$ BEGIN

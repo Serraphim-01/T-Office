@@ -106,13 +106,156 @@ io.on('connection', (socket) => {
   });
 });
 
+// Function to save notification to database
+const saveNotificationToDB = async (userId, notification) => {
+  try {
+    const result = await pool.query(
+      `INSERT INTO user_notifications (user_id, type, title, message, timestamp, message_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [
+        userId,
+        notification.type,
+        notification.title,
+        notification.message,
+        notification.timestamp,
+        notification.messageId
+      ]
+    );
+    return result.rows[0];
+  } catch (err) {
+    console.error('Error saving notification to database:', err);
+    return null;
+  }
+};
+
+// Function to fetch user notifications from database
+const fetchUserNotifications = async (userId) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, type, title, message, timestamp, read, message_id as "messageId"
+       FROM user_notifications
+       WHERE user_id = $1
+       ORDER BY timestamp DESC
+       LIMIT 100`,
+      [userId]
+    );
+    return result.rows;
+  } catch (err) {
+    console.error('Error fetching notifications from database:', err);
+    return [];
+  }
+};
+
+// Function to mark notification as read in database
+const markNotificationAsReadInDB = async (notificationId, userId) => {
+  try {
+    await pool.query(
+      `UPDATE user_notifications
+       SET read = true, updated_at = NOW()
+       WHERE id = $1 AND user_id = $2`,
+      [notificationId, userId]
+    );
+  } catch (err) {
+    console.error('Error marking notification as read in database:', err);
+  }
+};
+
+// Function to mark all notifications as read in database
+const markAllNotificationsAsReadInDB = async (userId) => {
+  try {
+    await pool.query(
+      `UPDATE user_notifications
+       SET read = true, updated_at = NOW()
+       WHERE user_id = $1 AND read = false`,
+      [userId]
+    );
+  } catch (err) {
+    console.error('Error marking all notifications as read in database:', err);
+  }
+};
+
+// Function to clear read notifications from database
+const clearReadNotificationsFromDB = async (userId) => {
+  try {
+    await pool.query(
+      `DELETE FROM user_notifications
+       WHERE user_id = $1 AND read = true`,
+      [userId]
+    );
+  } catch (err) {
+    console.error('Error clearing read notifications from database:', err);
+  }
+};
+
 // Export function to send notifications
-export const sendNotification = (userId, notification) => {
+export const sendNotification = async (userId, notification) => {
+  // Save notification to database
+  await saveNotificationToDB(userId, notification);
+  
+  // Send notification via WebSocket if user is connected
   const socketId = connectedClients.get(userId);
   if (socketId) {
     io.to(socketId).emit('notification', notification);
   }
 };
+
+// Add endpoint to fetch user notifications
+app.get("/api/notifications/:userId", authenticateJWT, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // Verify that the user can only fetch their own notifications
+    if (req.user.userId != userId) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    
+    const notifications = await fetchUserNotifications(userId);
+    res.json(notifications);
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add endpoint to mark notification as read
+app.put("/api/notifications/:notificationId/read", authenticateJWT, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user.userId;
+    
+    await markNotificationAsReadInDB(notificationId, userId);
+    res.json({ message: "Notification marked as read" });
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add endpoint to mark all notifications as read
+app.put("/api/notifications/read-all", authenticateJWT, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    await markAllNotificationsAsReadInDB(userId);
+    res.json({ message: "All notifications marked as read" });
+  } catch (err) {
+    console.error('Error marking all notifications as read:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add endpoint to clear read notifications
+app.delete("/api/notifications/read", authenticateJWT, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    await clearReadNotificationsFromDB(userId);
+    res.json({ message: "Read notifications cleared" });
+  } catch (err) {
+    console.error('Error clearing read notifications:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Refresh token route
 app.post("/api/refresh-token", authenticateJWT, async (req, res) => {

@@ -1427,3 +1427,25 @@ INSERT INTO query_types (name) VALUES
 ('Equipment Issue'),
 ('Other')
 ON CONFLICT (name) DO NOTHING;
+
+-- Add notifications table for persistent notification storage
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    read BOOLEAN DEFAULT false,
+    message_id INTEGER, -- For chat messages
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_read ON user_notifications(read);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_timestamp ON user_notifications(timestamp DESC);
+
+-- Apply trigger to user_notifications table
+CREATE TRIGGER update_user_notifications_updated_at BEFORE UPDATE ON user_notifications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

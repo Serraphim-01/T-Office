@@ -139,7 +139,7 @@ router.put("/global-pause", authenticateJWT, async (req, res) => {
         for (const user of usersResult.rows) {
           // Don't notify the user who initiated the action
           if (user.id != userId) {
-            sendNotification(user.id, {
+            await sendNotification(user.id, {
               type: 'chat_status',
               title: isPausing ? 'Chat Paused' : 'Chat Resumed',
               message: isPausing 
@@ -167,7 +167,7 @@ router.put("/global-pause", authenticateJWT, async (req, res) => {
       for (const user of usersResult.rows) {
         // Don't notify the user who initiated the action
         if (user.id != userId) {
-          sendNotification(user.id, {
+          await sendNotification(user.id, {
             type: 'chat_status',
             title: isPausing ? 'Chat Paused' : 'Chat Resumed',
             message: isPausing 
@@ -254,7 +254,7 @@ router.post("/messages", authenticateJWT, async (req, res) => {
     
     // Send notification to all other users
     for (const user of usersResult.rows) {
-      sendNotification(user.id, {
+      await sendNotification(user.id, {
         type: 'chat_message',
         title: 'New Chat Message',
         message: 'You have a new message in the chat',

@@ -14,9 +14,16 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
-  const { notifications, markAsRead, markAllAsRead, clearReadNotifications } = useNotification();
+  const { notifications, markAsRead, markAllAsRead, clearReadNotifications, fetchNotifications } = useNotification();
   const router = useRouter();
   const hasReadNotifications = notifications.some(n => n.read);
+
+  // Fetch notifications when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+    }
+  }, [isOpen, fetchNotifications]);
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
