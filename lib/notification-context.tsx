@@ -21,6 +21,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
+  clearReadNotifications: () => void; // Add this method
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -109,6 +110,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications([]);
   };
 
+  // New method to clear only read notifications
+  const clearReadNotifications = () => {
+    setNotifications(prev => prev.filter(notification => !notification.read));
+  };
+
   return (
     <NotificationContext.Provider value={{ 
       notifications, 
@@ -116,7 +122,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       addNotification, 
       markAsRead, 
       markAllAsRead,
-      clearNotifications
+      clearNotifications,
+      clearReadNotifications
     }}>
       {children}
     </NotificationContext.Provider>

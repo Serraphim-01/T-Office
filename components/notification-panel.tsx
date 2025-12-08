@@ -14,8 +14,9 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
-  const { notifications, markAsRead, markAllAsRead, clearNotifications } = useNotification();
+  const { notifications, markAsRead, markAllAsRead, clearReadNotifications } = useNotification();
   const router = useRouter();
+  const hasReadNotifications = notifications.some(n => n.read);
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
@@ -119,14 +120,15 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
           </ScrollArea>
           
           {notifications.length > 0 && (
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-border flex justify-between">
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={clearNotifications}
-                className="w-full"
+                onClick={clearReadNotifications}
+                disabled={!hasReadNotifications}
+                className={hasReadNotifications ? "" : "opacity-50"}
               >
-                Clear all notifications
+                Clear read notifications
               </Button>
             </div>
           )}

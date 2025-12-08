@@ -52,7 +52,7 @@ export default function ChatPage() {
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastMessageIdRef = useRef<number>(0);
+  const hasInitialized = useRef(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -79,21 +79,61 @@ export default function ChatPage() {
     }
   }, [user, canUseChat]);
 
-  // Track unread messages
+  // Load last read message ID from localStorage
+  const getLastReadMessageId = () => {
+    if (typeof window !== 'undefined' && user) {
+      const lastReadId = localStorage.getItem(`lastReadMessageId_${user.id}`);
+      return lastReadId ? parseInt(lastReadId, 10) : 0;
+    }
+    return 0;
+  };
+
+  // Save last read message ID to localStorage
+  const saveLastReadMessageId = (messageId: number) => {
+    if (typeof window !== 'undefined' && user) {
+      localStorage.setItem(`lastReadMessageId_${user.id}`, messageId.toString());
+    }
+  };
+
+  // Track unread messages based on last read message ID
   useEffect(() => {
-    if (user && messages.length > 0) {
-      // Find the highest message ID
-      const maxMessageId = Math.max(...messages.map(m => m.id));
+    if (user && messages.length > 0 && !hasInitialized.current) {
+      const lastReadMessageId = getLastReadMessageId();
+      const newUnreadCount = messages.filter(m => m.id > lastReadMessageId).length;
+      setUnreadMessageCount(newUnreadCount);
       
-      // If this is the first load or we have new messages
-      if (maxMessageId > lastMessageIdRef.current) {
-        // Count unread messages (messages newer than last seen)
-        const newUnreadCount = messages.filter(m => m.id > lastMessageIdRef.current).length;
-        setUnreadMessageCount(newUnreadCount);
-        lastMessageIdRef.current = maxMessageId;
+      // If we have new messages, scroll to the first unread message
+      if (newUnreadCount > 0) {
+        // Find the first unread message
+        const firstUnreadMessage = messages.find(m => m.id > lastReadMessageId);
+        if (firstUnreadMessage) {
+          // Scroll to the first unread message after a short delay to ensure DOM is ready
+          setTimeout(() => {
+            const element = document.getElementById(`message-${firstUnreadMessage.id}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 100);
+        }
       }
+      
+      hasInitialized.current = true;
     }
   }, [messages, user]);
+
+  // Update last read message ID when user sends a message or when they view the chat
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      // Get the latest message ID
+      const latestMessageId = Math.max(...messages.map(m => m.id));
+      
+      // Save it as the last read message ID
+      saveLastReadMessageId(latestMessageId);
+      
+      // Update unread count to 0
+      setUnreadMessageCount(0);
+    }
+  }, [user, messages]);
 
   // Mark chat notifications as read when entering the chat page
   useEffect(() => {
@@ -102,9 +142,6 @@ export default function ChatPage() {
       notifications
         .filter(n => n.type === 'chat_message' && !n.read)
         .forEach(n => markAsRead(n.id));
-        
-      // Reset unread count when entering chat
-      setUnreadMessageCount(0);
     }
   }, [user, notifications, markAsRead]);
 
@@ -160,9 +197,23 @@ export default function ChatPage() {
     return () => clearInterval(interval);
   }, [user, canUseChat]);
 
-  // Auto scroll to bottom when new messages arrive
+  // Auto scroll to bottom when new messages arrive (only if user is at the bottom)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only scroll automatically if user is near the bottom
+    const handleAutoScroll = () => {
+      const container = document.querySelector('.overflow-y-auto');
+      if (container) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+        
+        if (isNearBottom) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    };
+    
+    // Delay slightly to ensure DOM is updated
+    setTimeout(handleAutoScroll, 100);
   }, [messages]);
 
   if (loading) {
@@ -317,6 +368,10 @@ export default function ChatPage() {
         }]);
         setNewMessage('');
         setToxicityWarning(null);
+        
+        // Update last read message ID since user sent a message
+        saveLastReadMessageId(newMsg.id);
+        setUnreadMessageCount(0);
       } else {
         const errorData = await response.json();
         if (errorData.toxicType) {
@@ -594,6 +649,7 @@ export default function ChatPage() {
                     messages.map((message) => (
                       <div
                         key={message.id}
+                        id={`message-${message.id}`}
                         className={cn(
                           "flex",
                           message.is_moderator ? "justify-end" : "justify-start"

@@ -139,9 +139,10 @@ router.put("/global-pause", authenticateJWT, async (req, res) => {
 router.post("/messages", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { user_id, text, is_moderator } = req.body;
+  const senderUserId = req.user.userId; // Get the actual sender's user ID
 
   // Verify that the user_id matches the authenticated user, unless they're a moderator
-  if (req.user.userId != user_id && !is_moderator) {
+  if (senderUserId != user_id && !is_moderator) {
     return res.status(403).json({ error: "Access denied. You can only send messages as yourself." });
   }
 
@@ -191,13 +192,13 @@ router.post("/messages", authenticateJWT, async (req, res) => {
       [user_id, text.trim(), false, is_moderator || false]
     );
 
-    // Notify all other connected users about the new message
+    // Notify all other connected users about the new message (except the sender)
     const newMessage = result.rows[0];
     
     // Get all users except the sender
     const usersResult = await pool.query(
       'SELECT id FROM users WHERE id != $1',
-      [user_id]
+      [senderUserId] // Use senderUserId instead of user_id
     );
     
     // Send notification to all other users
