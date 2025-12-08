@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -33,7 +33,8 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     notifications.forEach(notification => {
       // For chat messages, group them together only if they are unread
       if (notification.type === 'chat_message' && !notification.read) {
-        const key = 'chat_message_group';
+        // Create separate groups for regular and moderator messages
+        const key = notification.title.includes('Moderator') ? 'moderator_message_group' : 'chat_message_group';
         if (!groups[key]) {
           groups[key] = {
             ...notification,
@@ -66,11 +67,18 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     return groups;
   })();
 
-  // Convert grouped notifications back to array
+  // Convert grouped notifications back to array and sort by read status
   const displayNotifications = Object.values(groupedNotifications).map(item => {
     // Remove the groupedIds property as it's only used for internal tracking
     const { groupedIds, ...displayItem } = item as any;
     return displayItem;
+  }).sort((a, b) => {
+    // Unread notifications come first (read = false), then read notifications (read = true)
+    if (a.read === b.read) {
+      // If both have same read status, sort by timestamp (newest first)
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    }
+    return a.read ? 1 : -1;
   });
 
   const handleNotificationClick = (notification: any) => {
@@ -151,7 +159,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                       <div className="flex justify-between">
                         <h3 className="font-medium text-foreground flex items-center">
                           {notification.type === 'chat_message' ? (
-                            <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
+                            notification.title.includes('Moderator') ? (
+                              <Shield className="h-4 w-4 mr-2 text-red-500" />
+                            ) : (
+                              <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
+                            )
                           ) : notification.type === 'chat_status' ? (
                             notification.title.includes('Paused') ? (
                               <Pause className="h-4 w-4 mr-2 text-yellow-500" />
@@ -175,7 +187,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {notification.isGroup && notification.count > 1 ? (
-                          <span>{notification.count} new messages in chat</span>
+                          notification.title.includes('Moderator') ? (
+                            <span>{notification.count} new moderator messages in chat</span>
+                          ) : (
+                            <span>{notification.count} new messages in chat</span>
+                          )
                         ) : (
                           notification.message
                         )}
@@ -185,7 +201,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                       </p>
                       {notification.isGroup && notification.count > 1 && (
                         <Badge variant="secondary" className="mt-2">
-                          {notification.count} new messages
+                          {notification.title.includes('Moderator') ? (
+                            <span>{notification.count} new moderator messages</span>
+                          ) : (
+                            <span>{notification.count} new messages</span>
+                          )}
                         </Badge>
                       )}
                     </li>

@@ -113,10 +113,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           // Combine backend notifications with non-duplicate temporary notifications
           const merged = [...formattedNotifications, ...temporaryNotifications];
           
-          // Sort by timestamp descending (newest first)
-          return merged.sort((a, b) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
+          // Sort by read status first (unread first), then by timestamp descending (newest first)
+          return merged.sort((a, b) => {
+            // Unread notifications come first
+            if (a.read === b.read) {
+              // If both have same read status, sort by timestamp (newest first)
+              return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+            }
+            return a.read ? 1 : -1;
+          });
         });
       } else if (response.status === 401) {
         console.warn('Unauthorized access to notifications API - user may need to log in again');
@@ -167,7 +172,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               id: Math.random().toString(36).substr(2, 9),
               read: false
             };
-            return [newNotification, ...prevNotifications];
+            
+            // Add new notification at the beginning and re-sort
+            const updatedNotifications = [newNotification, ...prevNotifications];
+            
+            // Sort by read status first (unread first), then by timestamp descending (newest first)
+            return updatedNotifications.sort((a, b) => {
+              // Unread notifications come first
+              if (a.read === b.read) {
+                // If both have same read status, sort by timestamp (newest first)
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+              }
+              return a.read ? 1 : -1;
+            });
           }
           
           // Return unchanged if duplicate
@@ -235,16 +252,38 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       read: false
     };
     
-    setNotifications(prev => [newNotification, ...prev]);
+    setNotifications(prev => {
+      const updatedNotifications = [newNotification, ...prev];
+      
+      // Sort by read status first (unread first), then by timestamp descending (newest first)
+      return updatedNotifications.sort((a, b) => {
+        // Unread notifications come first
+        if (a.read === b.read) {
+          // If both have same read status, sort by timestamp (newest first)
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        }
+        return a.read ? 1 : -1;
+      });
+    });
   };
 
   const markAsRead = async (id: string) => {
     // Update local state
-    setNotifications(prev => 
-      prev.map(notification => 
+    setNotifications(prev => {
+      const updatedNotifications = prev.map(notification => 
         notification.id === id ? { ...notification, read: true } : notification
-      )
-    );
+      );
+      
+      // Re-sort to move newly read notifications to the bottom
+      return updatedNotifications.sort((a, b) => {
+        // Unread notifications come first
+        if (a.read === b.read) {
+          // If both have same read status, sort by timestamp (newest first)
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        }
+        return a.read ? 1 : -1;
+      });
+    });
     
     // Update backend if user is logged in and this is a database notification
     if (user && !isNaN(Number(id))) {
@@ -269,9 +308,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const markAllAsRead = async () => {
     // Update local state
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+    setNotifications(prev => {
+      const updatedNotifications = prev.map(notification => ({ ...notification, read: true }));
+      
+      // Re-sort to move all notifications to the bottom
+      return updatedNotifications.sort((a, b) => {
+        // Unread notifications come first
+        if (a.read === b.read) {
+          // If both have same read status, sort by timestamp (newest first)
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        }
+        return a.read ? 1 : -1;
+      });
+    });
     
     // Update backend if user is logged in
     if (user) {

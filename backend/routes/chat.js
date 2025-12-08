@@ -256,7 +256,7 @@ router.post("/messages", authenticateJWT, async (req, res) => {
     for (const user of usersResult.rows) {
       await sendNotification(user.id, {
         type: 'chat_message',
-        title: 'New Chat Message',
+        title: is_moderator ? 'New Moderator Message' : 'New Chat Message',
         message: text.trim().substring(0, 100) + (text.trim().length > 100 ? '...' : ''),
         messageId: newMessage.id,
         timestamp: new Date().toISOString()
