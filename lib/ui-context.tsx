@@ -36,7 +36,7 @@ const defaultTheme: Theme = {
   accent: '0 0% 96.1%',
   'accent-foreground': '0 0% 9%',
   border: '0 0% 89.8%',
-  input: '0 0% 89.8%',
+  input: '0 0% 89.8%', 
   ring: '221.2 83.2% 53.3%',
 };
 

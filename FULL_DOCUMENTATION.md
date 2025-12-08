@@ -1,4 +1,4 @@
-# T-Office Full Documentation
+# T-Office - Internal Office Management Platform
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -1025,6 +1025,27 @@ When adding new database features:
 2. Update `db/drop_migration.sql` with corresponding drop statements
 3. Run migrations to apply changes
 4. Test the new functionality
+
+## 8. Chat System
+
+The chat system enables anonymous communication among all users in the organization. Key features include:
+
+- **Anonymous Messaging**: User identities are hidden to encourage open communication
+- **Shared Chat Room**: All users participate in a single shared chat room
+- **Moderation Capabilities**: Admin and HR users can send messages as moderators
+- **Pause/Resume Functionality**: Chat can be paused globally for all users except moderators
+- **Message Summarization**: Automatic summarization of chat conversations
+- **Toxicity Filtering**: Automated checking for inappropriate content
+- **Real-time Notifications**: Instant notifications for new messages and chat status changes
+
+### Chat Status Notifications
+
+The system now notifies all users when the chat is paused or resumed by a moderator:
+
+- **Pause Notifications**: Inform users that chat has been paused and only moderators can send messages
+- **Resume Notifications**: Inform users that chat has been resumed and everyone can send messages
+- **Visual Indicators**: Banner notifications in the chat interface showing current status
+- **Self-Exclusion**: Users who initiate pause/resume actions don't receive notifications about their own actions
 
 ## 7. OFFBOARDING SYSTEM
 

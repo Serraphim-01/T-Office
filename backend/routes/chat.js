@@ -105,6 +105,15 @@ router.put("/global-pause", authenticateJWT, async (req, res) => {
   const userId = req.user.userId;
 
   try {
+    // Get the previous state to determine if this is a pause or resume action
+    const previousStateResult = await pool.query(
+      'SELECT is_chat_paused FROM global_chat_settings WHERE id = 1'
+    );
+    
+    const wasPaused = previousStateResult.rows.length > 0 ? previousStateResult.rows[0].is_chat_paused : false;
+    const isPausing = is_chat_paused && !wasPaused;
+    const isResuming = !is_chat_paused && wasPaused;
+
     const result = await pool.query(
       `UPDATE global_chat_settings 
        SET is_chat_paused = $1, paused_by = $2, paused_at = $3, updated_at = NOW()
@@ -121,11 +130,53 @@ router.put("/global-pause", authenticateJWT, async (req, res) => {
         [is_chat_paused, is_chat_paused ? userId : null, is_chat_paused ? new Date() : null]
       );
       
+      // Notify all users about the pause/resume event
+      if (isPausing || isResuming) {
+        // Get all users to notify
+        const usersResult = await pool.query('SELECT id FROM users');
+        
+        // Send notification to all users
+        for (const user of usersResult.rows) {
+          // Don't notify the user who initiated the action
+          if (user.id != userId) {
+            sendNotification(user.id, {
+              type: 'chat_status',
+              title: isPausing ? 'Chat Paused' : 'Chat Resumed',
+              message: isPausing 
+                ? `Chat has been paused by a moderator. Only moderators can send messages.` 
+                : `Chat has been resumed. Everyone can send messages again.`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      }
+      
       return res.json({
         is_chat_paused: is_chat_paused,
         paused_by: is_chat_paused ? userId : null,
         paused_at: is_chat_paused ? new Date() : null
       });
+    }
+
+    // Notify all users about the pause/resume event
+    if (isPausing || isResuming) {
+      // Get all users to notify
+      const usersResult = await pool.query('SELECT id FROM users');
+      
+      // Send notification to all users
+      for (const user of usersResult.rows) {
+        // Don't notify the user who initiated the action
+        if (user.id != userId) {
+          sendNotification(user.id, {
+            type: 'chat_status',
+            title: isPausing ? 'Chat Paused' : 'Chat Resumed',
+            message: isPausing 
+              ? `Chat has been paused by a moderator. Only moderators can send messages.` 
+              : `Chat has been resumed. Everyone can send messages again.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
     }
 
     res.json(result.rows[0]);

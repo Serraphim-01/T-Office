@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { Send, Users, MessageCircle, Shield, Clock, FileText, ChevronDown, Pause, Play, X } from 'lucide-react';
+import { Send, Users, MessageCircle, Shield, Clock, FileText, ChevronDown, Pause, Play, X, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { useNotification } from '@/lib/notification-context';
@@ -634,6 +634,19 @@ export default function ChatPage() {
 
         {/* Chat Area */}
         <div className="flex-1 overflow-hidden">
+          {/* Global Pause Warning */}
+          {(isChatGloballyPaused) && (
+            <div className="bg-yellow-50 border-b border-yellow-200 p-4 flex items-center">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Chat is Paused</p>
+                <p className="text-xs text-yellow-700">
+                  Only moderators can send messages. {globalPauseInfo?.paused_by && `Paused by user ${globalPauseInfo.paused_by}`}.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="h-full flex">
             {/* Messages */}
             <div className="flex-1 flex flex-col">

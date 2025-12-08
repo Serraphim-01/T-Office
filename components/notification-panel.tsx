@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, MessageCircle, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -97,6 +97,12 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                         <h3 className="font-medium text-foreground flex items-center">
                           {notification.type === 'chat_message' ? (
                             <MessageCircle className="h-4 w-4 mr-2 text-blue-500" />
+                          ) : notification.type === 'chat_status' ? (
+                            notification.title.includes('Paused') ? (
+                              <Pause className="h-4 w-4 mr-2 text-yellow-500" />
+                            ) : (
+                              <Play className="h-4 w-4 mr-2 text-green-500" />
+                            )
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                           ) : (
