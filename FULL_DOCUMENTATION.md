@@ -420,7 +420,7 @@ node db/run_sql.js db/create_migration.sql
 ```
 
 ##### Using the Shell Script
-``bash
+```
 # From the project root directory
 ./db/run_migration.sh
 ```
@@ -694,7 +694,7 @@ When a department does not have access to a feature, the corresponding UI elemen
 
 **Path:** /chat
 
-**Description:** Internal anonymous communication system
+**Description:** Internal anonymous communication system with real-time notifications
 
 #### Features:
 
@@ -704,6 +704,53 @@ When a department does not have access to a feature, the corresponding UI elemen
 - **Chat History**: View past chat messages
 - **Pause Chat**: Manage chat activity stops and continuations
 - **Clear Chat**: Manage entire chat history
+- **Real-time Notifications**: Receive instant notifications for new messages and chat status changes
+- **Notification Sound**: Audible alerts for new notifications
+- **Unread Message Tracking**: Persistent tracking of read/unread messages across sessions
+- **Notification Panel**: Centralized interface for viewing and managing notifications
+
+#### Notification System
+
+The chat module includes a comprehensive notification system that provides real-time alerts for:
+
+1. **New Chat Messages**: 
+   - Users receive notifications when new messages are posted in the chat
+   - Notifications are automatically marked as read when the user visits the chat page
+   - Sender does not receive notifications for their own messages
+
+2. **Chat Status Changes**:
+   - Users receive notifications when the chat is paused or resumed by a moderator
+   - Notifications include information about who initiated the action
+   - Visual indicators are displayed in the chat interface when paused
+
+3. **Notification Management**:
+   - Unread notifications are displayed at the top of the notification panel
+   - Read notifications are displayed below unread ones
+   - Users can mark individual notifications as read
+   - Users can mark all notifications as read at once
+   - Users can clear only read notifications to reduce clutter
+   - Notification sounds play when new notifications arrive
+
+#### Technical Implementation
+
+**Frontend Components**:
+- `app/chat/page.tsx`: Main chat interface with real-time message display
+- `lib/notification-context.tsx`: Centralized notification state management
+- `components/notification-panel.tsx`: Notification display and management interface
+
+**Backend Services**:
+- `backend/routes/chat.js`: Chat message handling and notification dispatch
+- `backend/index.js`: WebSocket server for real-time communication
+- Database tables for persistent notification storage
+
+**Key Features**:
+- Real-time WebSocket communication for instant notification delivery
+- Persistent notification storage in PostgreSQL database
+- Client-side caching for offline support
+- Smart notification deduplication to prevent duplicate alerts
+- Context-aware notifications (no notifications when user is already in chat)
+- Notification merging for multiple unread messages with badge counts
+- Audio alerts for new notifications
 
 ### Clock
 
@@ -868,6 +915,25 @@ When a department does not have access to a feature, the corresponding UI elemen
 - POST `/api/wiki` - Create wiki topic
 - PUT `/api/wiki/:id` - Update wiki topic
 - DELETE `/api/wiki/:id` - Delete wiki topic
+
+### Chat
+- GET `/api/chat/messages/:userId` - Get chat messages for a user
+- POST `/api/chat/messages` - Send a chat message
+- GET `/api/chat/settings/:userId` - Get chat settings for a user
+- PUT `/api/chat/settings/:userId` - Update chat settings for a user
+- GET `/api/chat/global-pause` - Get global chat pause status
+- PUT `/api/chat/global-pause` - Set global chat pause status
+- GET `/api/chat/summaries/:userId` - Get chat summaries for a user
+- POST `/api/chat/summaries/:userId` - Generate chat summary for a user
+- POST `/api/chat/cleanup` - Clear all chat messages
+- DELETE `/api/chat/messages/:id` - Delete a specific chat message
+
+### Notifications
+- GET `/api/notifications/:userId` - Get notifications for a user
+- PUT `/api/notifications/:notificationId/read` - Mark a notification as read
+- PUT `/api/notifications/read-all` - Mark all notifications as read
+- DELETE `/api/notifications/read` - Clear read notifications
+- POST `/api/set-current-page` - Set user's current page for notification context
 
 ---
 

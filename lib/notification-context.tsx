@@ -24,6 +24,7 @@ interface NotificationContextType {
   clearReadNotifications: () => void; // Add this method
   fetchNotifications: () => Promise<void>; // Add fetch method
   setCurrentPage: (page: string) => void; // Add method to set current page
+  playNotificationSound: () => void; // Add method to play notification sound
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -58,6 +59,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setUnreadCount(notifications.filter(n => !n.read).length);
     }
   }, [notifications]);
+
+  // Function to play notification sound
+  const playNotificationSound = () => {
+    try {
+      // Create audio context
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 800;
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+      }, 200);
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
 
   // Fetch notifications from backend when user changes
   const fetchNotifications = async () => {
@@ -173,6 +198,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               read: false
             };
             
+            // Play notification sound for new notifications
+            playNotificationSound();
+            
             // Add new notification at the beginning and re-sort
             const updatedNotifications = [newNotification, ...prevNotifications];
             
@@ -251,6 +279,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       id: Math.random().toString(36).substr(2, 9),
       read: false
     };
+    
+    // Play notification sound for new notifications
+    playNotificationSound();
     
     setNotifications(prev => {
       const updatedNotifications = [newNotification, ...prev];
@@ -383,7 +414,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       clearNotifications,
       clearReadNotifications,
       fetchNotifications,
-      setCurrentPage // Expose setCurrentPage method
+      setCurrentPage, // Expose setCurrentPage method
+      playNotificationSound // Expose playNotificationSound method
     }}>
       {children}
     </NotificationContext.Provider>
