@@ -31,7 +31,7 @@ interface GlobalPauseStatus {
 
 export default function ChatPage() {
   const { user, loading } = useAuth();
-  const { notifications, markAsRead } = useNotification();
+  const { notifications, markAsRead, setCurrentPage } = useNotification(); // Add setCurrentPage
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -53,6 +53,16 @@ export default function ChatPage() {
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasInitialized = useRef(false);
+
+  // Set current page to /chat when component mounts
+  useEffect(() => {
+    setCurrentPage('/chat');
+    
+    // Reset current page when component unmounts
+    return () => {
+      setCurrentPage('');
+    };
+  }, [setCurrentPage]);
 
   // Redirect if not logged in
   useEffect(() => {

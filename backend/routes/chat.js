@@ -257,7 +257,7 @@ router.post("/messages", authenticateJWT, async (req, res) => {
       await sendNotification(user.id, {
         type: 'chat_message',
         title: 'New Chat Message',
-        message: 'You have a new message in the chat',
+        message: text.trim().substring(0, 100) + (text.trim().length > 100 ? '...' : ''),
         messageId: newMessage.id,
         timestamp: new Date().toISOString()
       });

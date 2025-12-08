@@ -80,7 +80,7 @@ const io = new Server(server, {
   }
 });
 
-// Store connected clients
+// Store connected clients and their current pages
 const connectedClients = new Map();
 
 // Handle WebSocket connections
@@ -89,16 +89,31 @@ io.on('connection', (socket) => {
   
   // Register user with their socket
   socket.on('register_user', (userId) => {
-    connectedClients.set(userId, socket.id);
+    connectedClients.set(userId, { socketId: socket.id, currentPage: '' });
     console.log(`User ${userId} registered with socket ${socket.id}`);
+  });
+  
+  // Update user's current page
+  socket.on('set_current_page', (data) => {
+    const { userId, page } = data;
+    if (connectedClients.has(userId)) {
+      const client = connectedClients.get(userId);
+      client.currentPage = page;
+      connectedClients.set(userId, client);
+      console.log(`User ${userId} is now on page ${page}`);
+    } else {
+      // If user is not registered yet, register them now
+      connectedClients.set(userId, { socketId: socket.id, currentPage: page });
+      console.log(`User ${userId} registered and set to page ${page}`);
+    }
   });
   
   // Handle disconnections
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     // Remove client from connected clients
-    for (let [userId, socketId] of connectedClients.entries()) {
-      if (socketId === socket.id) {
+    for (let [userId, client] of connectedClients.entries()) {
+      if (client.socketId === socket.id) {
         connectedClients.delete(userId);
         break;
       }
@@ -190,13 +205,20 @@ const clearReadNotificationsFromDB = async (userId) => {
 
 // Export function to send notifications
 export const sendNotification = async (userId, notification) => {
+  // Check if user is connected and on the chat page
+  const client = connectedClients.get(userId);
+  if (client && client.currentPage === '/chat' && notification.type === 'chat_message') {
+    // Don't send chat notifications if user is already in chat
+    console.log(`Skipping notification for user ${userId} as they are already in chat`);
+    return;
+  }
+  
   // Save notification to database
   await saveNotificationToDB(userId, notification);
   
   // Send notification via WebSocket if user is connected
-  const socketId = connectedClients.get(userId);
-  if (socketId) {
-    io.to(socketId).emit('notification', notification);
+  if (client) {
+    io.to(client.socketId).emit('notification', notification);
   }
 };
 
@@ -253,6 +275,31 @@ app.delete("/api/notifications/read", authenticateJWT, async (req, res) => {
     res.json({ message: "Read notifications cleared" });
   } catch (err) {
     console.error('Error clearing read notifications:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add endpoint to set user's current page
+app.post("/api/set-current-page", authenticateJWT, (req, res) => {
+  try {
+    const { page } = req.body;
+    const userId = req.user.userId;
+    
+    // Update the user's current page in the connected clients map
+    if (connectedClients.has(userId)) {
+      const client = connectedClients.get(userId);
+      client.currentPage = page;
+      connectedClients.set(userId, client);
+      console.log(`User ${userId} set to page ${page} via API`);
+    } else {
+      // If user is not registered yet, register them now
+      connectedClients.set(userId, { socketId: null, currentPage: page });
+      console.log(`User ${userId} registered and set to page ${page} via API`);
+    }
+    
+    res.json({ message: "Current page updated" });
+  } catch (err) {
+    console.error('Error updating current page:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

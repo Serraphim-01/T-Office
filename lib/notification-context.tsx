@@ -23,6 +23,7 @@ interface NotificationContextType {
   clearNotifications: () => void;
   clearReadNotifications: () => void; // Add this method
   fetchNotifications: () => Promise<void>; // Add fetch method
+  setCurrentPage: (page: string) => void; // Add method to set current page
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [socket, setSocket] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState<string>(''); // Track current page
   const { user } = useAuth(); // Get user from auth context
 
   // Load notifications from localStorage on mount
@@ -79,7 +81,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         const backendNotifications = await response.json();
         // Convert backend notifications to our format
         const formattedNotifications = backendNotifications.map((n: any) => ({
-          id: n.id.toString(),
+          id: n.id.toString(), // Database IDs are strings
           type: n.type,
           title: n.title,
           message: n.message,
@@ -90,16 +92,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         
         // Merge with existing notifications, prioritizing newer ones
         setNotifications(prev => {
-          const merged = [...formattedNotifications];
-          const existingIds = new Set(formattedNotifications.map((n: Notification) => n.id));
-          
-          // Add existing notifications that aren't in the backend response
-          prev.forEach(notification => {
-            // Only add temporary notifications that don't have a database ID
-            if (!existingIds.has(notification.id) && isNaN(Number(notification.id))) {
-              merged.push(notification);
+          // Keep temporary notifications that don't exist in the backend
+          const temporaryNotifications = prev.filter(tempNotification => {
+            // Only keep temporary notifications (non-numeric IDs) that aren't duplicates of backend notifications
+            if (!isNaN(Number(tempNotification.id))) {
+              return false; // Skip database notifications
             }
+            
+            // Check if this temporary notification is a duplicate of any backend notification
+            const isDuplicate = formattedNotifications.some((dbNotification: Notification) => 
+              dbNotification.title === tempNotification.title && 
+              dbNotification.message === tempNotification.message &&
+              dbNotification.type === tempNotification.type &&
+              Math.abs(new Date(dbNotification.timestamp).getTime() - new Date(tempNotification.timestamp).getTime()) < 5000
+            );
+            
+            return !isDuplicate;
           });
+          
+          // Combine backend notifications with non-duplicate temporary notifications
+          const merged = [...formattedNotifications, ...temporaryNotifications];
           
           // Sort by timestamp descending (newest first)
           return merged.sort((a, b) => 
@@ -131,34 +143,92 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
       setSocket(newSocket);
 
+      // Register user with the server
+      newSocket.emit('register_user', user.id);
+
       // Listen for notifications
       newSocket.on('notification', (notificationData) => {
-        // Check if this notification already exists in our list
-        const exists = notifications.some(n => 
-          n.title === notificationData.title && 
-          n.message === notificationData.message &&
-          Math.abs(new Date(n.timestamp).getTime() - new Date(notificationData.timestamp).getTime()) < 5000 // Within 5 seconds
-        );
-        
-        // Only add if it doesn't already exist
-        if (!exists) {
-          addNotification({
-            type: notificationData.type,
-            title: notificationData.title,
-            message: notificationData.message,
-            timestamp: notificationData.timestamp,
-            messageId: notificationData.messageId
-          });
-        }
+        // Use functional update to get the latest notifications state
+        setNotifications(prevNotifications => {
+          // Check if this notification already exists in our list
+          // Only check against database notifications (permanent ones with numeric IDs)
+          const exists = prevNotifications.some(n => 
+            n.title === notificationData.title && 
+            n.message === notificationData.message &&
+            n.type === notificationData.type &&
+            !isNaN(Number(n.id)) && // Only check against permanent notifications
+            Math.abs(new Date(n.timestamp).getTime() - new Date(notificationData.timestamp).getTime()) < 5000 // Within 5 seconds
+          );
+          
+          // Only add if it doesn't already exist as a permanent notification
+          if (!exists) {
+            const newNotification: Notification = {
+              ...notificationData,
+              id: Math.random().toString(36).substr(2, 9),
+              read: false
+            };
+            return [newNotification, ...prevNotifications];
+          }
+          
+          // Return unchanged if duplicate
+          return prevNotifications;
+        });
       });
 
       return () => {
         newSocket.close();
       };
     }
-  }, [user, notifications]); // Depend on user and notifications changes
+  }, [user]); // Depend only on user changes, not notifications
+
+  // Update current page on the backend when it changes
+  useEffect(() => {
+    if (user && currentPage) {
+      // Also update via WebSocket if connected
+      if (socket) {
+        socket.emit('set_current_page', { userId: user.id, page: currentPage });
+      }
+      
+      // Update via API as backup
+      const updatePageViaAPI = async () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (!token) return;
+        
+        try {
+          await fetch('/api/set-current-page', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({ page: currentPage })
+          });
+        } catch (error) {
+          console.error('Failed to update current page via API:', error);
+        }
+      };
+      
+      updatePageViaAPI();
+    }
+  }, [currentPage, user, socket]);
 
   const addNotification = (notification: Omit<Notification, 'id' | 'read'>) => {
+    // Check if a similar notification already exists (to prevent duplicates)
+    // But only check against database notifications (permanent ones with numeric IDs)
+    const isDuplicate = notifications.some(n => 
+      n.title === notification.title && 
+      n.message === notification.message &&
+      n.type === notification.type &&
+      !isNaN(Number(n.id)) && // Only check against permanent notifications
+      Math.abs(new Date(n.timestamp).getTime() - new Date(notification.timestamp).getTime()) < 5000 // Within 5 seconds
+    );
+    
+    if (isDuplicate) {
+      console.log('Skipping duplicate notification:', notification);
+      return;
+    }
+    
     const newNotification: Notification = {
       ...notification,
       id: Math.random().toString(36).substr(2, 9),
@@ -263,7 +333,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markAllAsRead,
       clearNotifications,
       clearReadNotifications,
-      fetchNotifications
+      fetchNotifications,
+      setCurrentPage // Expose setCurrentPage method
     }}>
       {children}
     </NotificationContext.Provider>

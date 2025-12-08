@@ -7,6 +7,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { useNotification } from '@/lib/notification-context';
 import { useRouter } from 'next/navigation';
+import { Badge } from './ui/badge';
 
 interface NotificationPanelProps {
   isOpen: boolean; 
@@ -24,6 +25,53 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       fetchNotifications();
     }
   }, [isOpen, fetchNotifications]);
+
+  // Group notifications by type and title for merging (only unread messages)
+  const groupedNotifications = (() => {
+    const groups: Record<string, any> = {};
+    
+    notifications.forEach(notification => {
+      // For chat messages, group them together only if they are unread
+      if (notification.type === 'chat_message' && !notification.read) {
+        const key = 'chat_message_group';
+        if (!groups[key]) {
+          groups[key] = {
+            ...notification,
+            count: 1,
+            isGroup: true,
+            // Only track database notifications (those with numeric IDs) for counting
+            groupedIds: !isNaN(Number(notification.id)) ? [notification.id] : []
+          };
+        } else {
+          // Update timestamp to the newest one
+          if (new Date(notification.timestamp) > new Date(groups[key].timestamp)) {
+            groups[key].timestamp = notification.timestamp;
+          }
+          
+          // Only count database notifications (those with numeric IDs)
+          if (!isNaN(Number(notification.id))) {
+            // Add to grouped IDs if not already there
+            if (!groups[key].groupedIds.includes(notification.id)) {
+              groups[key].groupedIds.push(notification.id);
+              groups[key].count = groups[key].groupedIds.length;
+            }
+          }
+        }
+      } else {
+        // For other notifications or read chat messages, keep them individual
+        groups[notification.id] = notification;
+      }
+    });
+    
+    return groups;
+  })();
+
+  // Convert grouped notifications back to array
+  const displayNotifications = Object.values(groupedNotifications).map(item => {
+    // Remove the groupedIds property as it's only used for internal tracking
+    const { groupedIds, ...displayItem } = item as any;
+    return displayItem;
+  });
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
@@ -88,13 +136,13 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
           
           <ScrollArea className="flex-1">
             <CardContent className="p-0">
-              {notifications.length === 0 ? (
+              {displayNotifications.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground">
                   No notifications
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
-                  {notifications.map((notification) => (
+                  {displayNotifications.map((notification) => (
                     <li 
                       key={notification.id} 
                       className={`p-4 hover:bg-accent cursor-pointer ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
@@ -115,16 +163,31 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                           ) : (
                             <AlertCircle className="h-4 w-4 mr-2 text-yellow-500" />
                           )}
-                          {notification.title}
+                          {notification.isGroup && notification.count > 1 ? (
+                            <span>{notification.title} ({notification.count} new)</span>
+                          ) : (
+                            notification.title
+                          )}
                         </h3>
                         {!notification.read && (
                           <span className="flex h-2 w-2 rounded-full bg-blue-600 mt-1.5"></span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {notification.isGroup && notification.count > 1 ? (
+                          <span>{notification.count} new messages in chat</span>
+                        ) : (
+                          notification.message
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-2">
                         {new Date(notification.timestamp).toLocaleString()}
                       </p>
+                      {notification.isGroup && notification.count > 1 && (
+                        <Badge variant="secondary" className="mt-2">
+                          {notification.count} new messages
+                        </Badge>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -132,7 +195,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
             </CardContent>
           </ScrollArea>
           
-          {notifications.length > 0 && (
+          {displayNotifications.length > 0 && (
             <div className="p-4 border-t border-border flex justify-between">
               <Button 
                 variant="outline" 
