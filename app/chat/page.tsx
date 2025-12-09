@@ -226,6 +226,20 @@ export default function ChatPage() {
     setTimeout(handleAutoScroll, 100);
   }, [messages]);
 
+  // Listen for chat status changes from notifications
+  useEffect(() => {
+    const handleChatStatusChange = (event: CustomEvent) => {
+      const { isPaused } = event.detail;
+      setIsChatGloballyPaused(isPaused);
+    };
+
+    window.addEventListener('chatStatusChanged', handleChatStatusChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('chatStatusChanged', handleChatStatusChange as EventListener);
+    };
+  }, []);
+
   if (loading) {
     return (
       <DashboardLayout>

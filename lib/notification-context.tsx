@@ -180,12 +180,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       // Listen for notifications
       newSocket.on('notification', (notificationData) => {
-        // Show toast notification for location-related notifications
+        // Show toast notification for location-related and chat notifications
         if (notificationData.type === 'location_created' || notificationData.type === 'location_deleted') {
           toast({
             title: notificationData.title,
             description: notificationData.message,
           });
+        } else if (notificationData.type === 'chat_message') {
+          toast({
+            title: notificationData.title,
+            description: notificationData.message,
+          });
+        } else if (notificationData.type === 'chat_status') {
+          toast({
+            title: notificationData.title,
+            description: notificationData.message,
+          });
+          
+          // Dispatch a custom event to notify components about chat status changes
+          window.dispatchEvent(new CustomEvent('chatStatusChanged', {
+            detail: {
+              isPaused: notificationData.title === 'Chat Paused'
+            }
+          }));
         }
         
         // Use functional update to get the latest notifications state
