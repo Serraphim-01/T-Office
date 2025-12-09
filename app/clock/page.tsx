@@ -13,6 +13,7 @@ import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect, useRef } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import io from 'socket.io-client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Location {
   id: number;
@@ -40,6 +41,7 @@ interface AttendanceRecord {
 
 export default function ClockPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [userLocations, setUserLocations] = useState<UserLocation[]>([]);
@@ -88,12 +90,26 @@ export default function ClockPage() {
           return prev;
         });
         renderMarkers(); // Update map markers
+        
+        // Show toast notification for the user who added the location
+        if (newLocation.created_by === user.id) {
+          toast({
+            title: "Location Added",
+            description: `Successfully added location: ${newLocation.name}`,
+          });
+        }
       });
       
       // Listen for location deleted events
       socketRef.current.on('location_deleted', (deletedLocation: { id: number }) => {
         setUserLocations(prev => prev.filter(location => location.id !== deletedLocation.id));
         renderMarkers(); // Update map markers
+        
+        // Show toast notification
+        toast({
+          title: "Location Deleted",
+          description: "Location has been successfully deleted",
+        });
       });
     }
     
@@ -341,15 +357,24 @@ export default function ClockPage() {
           radius_meters: '100',
           address: ''
         });
-        alert('Location saved successfully!');
-        // renderMarkers() will be called when the WebSocket event is received
+        // Toast notification will be shown when the WebSocket event is received
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to save location');
+        toast({
+          title: "Error",
+          description: errorData.error || 'Failed to save location',
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error saving location:', error);
       setError('Error saving location');
+      toast({
+        title: "Error",
+        description: 'Failed to save location',
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -406,14 +431,21 @@ export default function ClockPage() {
       if (response.ok) {
         // The real-time update will come through the WebSocket
         // We don't need to manually update the state here anymore
-        alert('Location deleted successfully!');
-        // renderMarkers() will be called when the WebSocket event is received
+        // Toast notification will be shown when the WebSocket event is received
       } else {
-        alert('Failed to delete location');
+        toast({
+          title: "Error",
+          description: 'Failed to delete location',
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error deleting location:', error);
-      alert('Error deleting location');
+      toast({
+        title: "Error",
+        description: 'Failed to delete location',
+        variant: "destructive",
+      });
     }
   };
 

@@ -57,6 +57,27 @@ router.post("/user-locations", authenticateJWT, async (req, res) => {
     // Emit real-time update to all connected clients
     req.app.get('io').emit('location_added', result.rows[0]);
 
+    // Send notification to users with manage locations access (excluding the creator)
+    // First, get all users with clock/manage-locations access
+    const usersWithAccess = await req.pool.query(`
+      SELECT DISTINCT u.id, u.full_name
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      JOIN department_page_access dpa ON r.department_id = dpa.department_id
+      WHERE dpa.page_name = 'clock/manage-locations'
+      AND u.id != $1
+    `, [req.user.userId]);
+
+    // Send notifications to each user with access
+    for (const user of usersWithAccess.rows) {
+      await sendNotification(user.id, {
+        type: 'location_created',
+        title: 'New Location Added',
+        message: `${req.user.full_name || 'A user'} added a new location: ${name}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error creating user location:', err);
@@ -105,15 +126,18 @@ router.delete("/user-locations/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Check if the location exists and is user-created (not system location)
-    const checkResult = await req.pool.query(
-      'SELECT id FROM locations WHERE id = $1 AND created_by IS NOT NULL',
+    // First get the location name for the notification
+    const locationResult = await req.pool.query(
+      'SELECT name, created_by FROM locations WHERE id = $1 AND created_by IS NOT NULL',
       [id]
     );
 
-    if (checkResult.rows.length === 0) {
+    if (locationResult.rows.length === 0) {
       return res.status(404).json({ error: "Location not found or cannot be deleted" });
     }
+
+    const locationName = locationResult.rows[0].name;
+    const createdBy = locationResult.rows[0].created_by;
 
     const result = await req.pool.query(
       'DELETE FROM locations WHERE id = $1 AND created_by IS NOT NULL RETURNING *',
@@ -122,6 +146,27 @@ router.delete("/user-locations/:id", authenticateJWT, async (req, res) => {
 
     // Emit real-time update to all connected clients
     req.app.get('io').emit('location_deleted', { id });
+
+    // Send notification to users with manage locations access (excluding the deleter)
+    // First, get all users with clock/manage-locations access
+    const usersWithAccess = await req.pool.query(`
+      SELECT DISTINCT u.id, u.full_name
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      JOIN department_page_access dpa ON r.department_id = dpa.department_id
+      WHERE dpa.page_name = 'clock/manage-locations'
+      AND u.id != $1
+    `, [req.user.userId]);
+
+    // Send notifications to each user with access
+    for (const user of usersWithAccess.rows) {
+      await sendNotification(user.id, {
+        type: 'location_deleted',
+        title: 'Location Deleted',
+        message: `${req.user.full_name || 'A user'} deleted location: ${locationName}`,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     res.status(204).send();
   } catch (err) {
