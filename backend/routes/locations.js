@@ -318,6 +318,13 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
 
     console.log(`[CLOCK-IN] Successfully recorded clock-in for user ${userId}:`, result.rows[0]);
 
+    // Emit real-time update for attendance
+    req.app.get('io').emit('attendance_updated', { 
+      userId, 
+      record: result.rows[0],
+      type: 'clock_in'
+    });
+
     res.status(201).json({
       message: "Successfully clocked in",
       attendance: result.rows[0],
@@ -414,6 +421,13 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
     );
 
     console.log(`[CLOCK-OUT] Successfully recorded clock-out for user ${userId}:`, result.rows[0]);
+
+    // Emit real-time update for attendance
+    req.app.get('io').emit('attendance_updated', { 
+      userId, 
+      record: result.rows[0],
+      type: 'clock_out'
+    });
 
     res.status(201).json({
       message: "Successfully clocked out",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import io from 'socket.io-client';
 
 interface User {
   id: number;
@@ -37,16 +38,20 @@ interface User {
   attendance: any[];
   other_details: any;
   active: boolean;
-  role_name?: string; // Add role_name property
+  role_name?: string;
 }
 
 interface AttendanceRecord {
   id: number;
+  user_id: number;
+  location_event_id: number;
+  event_type: string;
+  timestamp: string;
+  notes: string | null;
   clock_in: string | null;
   clock_out: string | null;
   total_hours: number | null;
   status: string;
-  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -69,17 +74,85 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   const [activeSection, setActiveSection] = useState('profile');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  // Support staff state
   const [supportStaffAssignments, setSupportStaffAssignments] = useState<any[]>([]);
   
   const { toast } = useToast();
+  const socketRef = useRef<any>(null);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (currentUser) {
+      // Initialize socket connection
+      socketRef.current = io('http://localhost:4000');
+      
+      // Listen for attendance updates
+      socketRef.current.on('attendance_updated', (data: { userId: number, record: any, type: string }) => {
+        // Only update if this is for the current user being viewed
+        if (data.userId === parseInt(params.id)) {
+          setAttendance(prev => {
+            // Transform the raw record into the format expected by the UI
+            const newRecord: AttendanceRecord = {
+              id: data.record.id,
+              user_id: data.record.user_id,
+              location_event_id: data.record.location_event_id,
+              event_type: data.record.event_type,
+              timestamp: data.record.timestamp,
+              notes: data.record.notes,
+              clock_in: data.record.event_type === 'clock_in' ? data.record.timestamp : null,
+              clock_out: data.record.event_type === 'clock_out' ? data.record.timestamp : null,
+              total_hours: null,
+              status: 'present',
+              created_at: data.record.timestamp,
+              updated_at: data.record.timestamp
+            };
+            
+            // Check if this is a clock-out record that should be paired with an existing clock-in
+            if (data.record.event_type === 'clock_out') {
+              // Find the most recent clock-in record that doesn't have a clock-out
+              const updatedAttendance = [...prev];
+              for (let i = 0; i < updatedAttendance.length; i++) {
+                // Check if this is a clock-in record without clock-out
+                if (updatedAttendance[i].event_type === 'clock_in' && !updatedAttendance[i].clock_out) {
+                  // Update this record with the clock-out time
+                  const clockInTime = new Date(updatedAttendance[i].timestamp);
+                  const clockOutTime = new Date(data.record.timestamp);
+                  const diffHours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+                  
+                  updatedAttendance[i] = {
+                    ...updatedAttendance[i],
+                    clock_out: data.record.timestamp,
+                    total_hours: parseFloat(diffHours.toFixed(2)),
+                    status: diffHours > 0 ? 'present' : 'absent',
+                    updated_at: data.record.timestamp
+                  };
+                  return [...updatedAttendance]; // Return updated array
+                }
+              }
+              // If no matching clock-in found, add as new record
+              return [newRecord, ...prev];
+            } else {
+              // For clock-in, simply add to the beginning of the list
+              return [newRecord, ...prev];
+            }
+          });
+        }
+      });
+    }
+    
+    // Clean up socket connection
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [currentUser, params.id]);
 
   useEffect(() => {
     if (currentUser && params.id) {
       fetchUserDetails();
       fetchUserAttendance();
       fetchUserWikiCompletions();
-      fetchSupportStaffAssignments(params.id); // For current support staff
+      fetchSupportStaffAssignments(params.id);
     }
   }, [currentUser, params.id]);
 
