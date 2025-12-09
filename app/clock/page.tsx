@@ -90,26 +90,12 @@ export default function ClockPage() {
           return prev;
         });
         renderMarkers(); // Update map markers
-        
-        // Show toast notification for the user who added the location
-        if (newLocation.created_by === user.id) {
-          toast({
-            title: "Location Added",
-            description: `Successfully added location: ${newLocation.name}`,
-          });
-        }
       });
       
       // Listen for location deleted events
       socketRef.current.on('location_deleted', (deletedLocation: { id: number }) => {
         setUserLocations(prev => prev.filter(location => location.id !== deletedLocation.id));
         renderMarkers(); // Update map markers
-        
-        // Show toast notification
-        toast({
-          title: "Location Deleted",
-          description: "Location has been successfully deleted",
-        });
       });
     }
     
@@ -357,7 +343,7 @@ export default function ClockPage() {
           radius_meters: '100',
           address: ''
         });
-        // Toast notification will be shown when the WebSocket event is received
+        // Toast notification will be shown globally by the notification context
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to save location');
@@ -431,7 +417,7 @@ export default function ClockPage() {
       if (response.ok) {
         // The real-time update will come through the WebSocket
         // We don't need to manually update the state here anymore
-        // Toast notification will be shown when the WebSocket event is received
+        // Toast notification will be shown globally by the notification context
       } else {
         toast({
           title: "Error",

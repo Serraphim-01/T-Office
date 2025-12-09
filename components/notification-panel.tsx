@@ -84,9 +84,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
     
-    // Navigate to chat page if it's a chat message notification
+    // Navigate based on notification type
     if (notification.type === 'chat_message') {
       router.push('/chat');
+    } else if (notification.type === 'location_created' || notification.type === 'location_deleted') {
+      router.push('/clock');
     }
     
     onClose();

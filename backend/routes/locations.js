@@ -50,7 +50,7 @@ router.post("/user-locations", authenticateJWT, async (req, res) => {
 
   try {
     const result = await req.pool.query(
-      'INSERT INTO locations (name, latitude, longitude, radius_meters, address, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at',
+      'INSERT INTO locations (name, latitude, longitude, radius_meters, address, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at, created_by',
       [name, latitude, longitude, radius_meters || 100, address, req.user.userId]
     );
 

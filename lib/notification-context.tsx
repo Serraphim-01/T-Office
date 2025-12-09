@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import io from 'socket.io-client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Notification {
   id: string;
@@ -35,6 +36,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<string>(''); // Track current page
   const { user } = useAuth(); // Get user from auth context
+  const { toast } = useToast(); // Use toast hook for global notifications
 
   // Load notifications from localStorage on mount
   useEffect(() => {
@@ -178,6 +180,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       // Listen for notifications
       newSocket.on('notification', (notificationData) => {
+        // Show toast notification for location-related notifications
+        if (notificationData.type === 'location_created' || notificationData.type === 'location_deleted') {
+          toast({
+            title: notificationData.title,
+            description: notificationData.message,
+          });
+        }
+        
         // Use functional update to get the latest notifications state
         setNotifications(prevNotifications => {
           // Check if this notification already exists in our list
@@ -224,7 +234,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         newSocket.close();
       };
     }
-  }, [user]); // Depend only on user changes, not notifications
+  }, [user, toast]); // Depend only on user changes, not notifications
 
   // Update current page on the backend when it changes
   useEffect(() => {
