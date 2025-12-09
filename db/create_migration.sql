@@ -693,6 +693,12 @@ FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/notifications'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
 -- Insert default access for HR department to clock features
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'clock/manage-locations'
@@ -702,6 +708,12 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'clock/delete-locations'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'clock/notifications'
 FROM departments
 WHERE name = 'HR'
 ON CONFLICT (department_id, page_name) DO NOTHING;

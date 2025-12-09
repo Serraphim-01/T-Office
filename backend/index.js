@@ -293,6 +293,16 @@ export const sendNotification = async (userId, notification) => {
     }
   }
   
+  // Check feature access for clock notifications
+  if (notification.type === 'location_created' || notification.type === 'location_deleted') {
+    const hasAccess = await hasPageAccess(userId, 'clock/notifications');
+    if (!hasAccess) {
+      // User doesn't have access to clock notifications, don't send them
+      console.log(`Skipping clock notification for user ${userId} due to lack of feature access`);
+      return;
+    }
+  }
+  
   // Save notification to database
   await saveNotificationToDB(userId, notification);
   

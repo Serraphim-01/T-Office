@@ -182,14 +182,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // Listen for notifications
       newSocket.on('notification', async (notificationData) => {
         // Check feature access for chat notifications
-        let hasNotificationAccess = true;
+        let hasChatNotificationAccess = true;
         if (user && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) {
-          hasNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+          hasChatNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+        }
+        
+        // Check feature access for clock notifications
+        let hasClockNotificationAccess = true;
+        if (user && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) {
+          hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
         }
         
         // Show toast notification for location-related and chat notifications (if user has access)
-        if ((notificationData.type === 'location_created' || notificationData.type === 'location_deleted') || 
-            (hasNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status'))) {
+        if ((hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) || 
+            (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status'))) {
           toast({
             title: notificationData.title,
             description: notificationData.message,
@@ -197,7 +203,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }
         
         // Dispatch a custom event to notify components about chat status changes (if user has access)
-        if (hasNotificationAccess && notificationData.type === 'chat_status') {
+        if (hasChatNotificationAccess && notificationData.type === 'chat_status') {
           window.dispatchEvent(new CustomEvent('chatStatusChanged', {
             detail: {
               isPaused: notificationData.title === 'Chat Paused'
@@ -287,13 +293,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   const addNotification = async (notification: Omit<Notification, 'id' | 'read'>) => {
     // Check feature access for chat notifications
-    let hasNotificationAccess = true;
+    let hasChatNotificationAccess = true;
     if (user && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
-      hasNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+      hasChatNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+    }
+    
+    // Check feature access for clock notifications
+    let hasClockNotificationAccess = true;
+    if (user && (notification.type === 'location_created' || notification.type === 'location_deleted')) {
+      hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
     }
     
     // If user doesn't have access to chat notifications, don't add them
-    if (!hasNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
+    if (!hasChatNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
+      return;
+    }
+    
+    // If user doesn't have access to clock notifications, don't add them
+    if (!hasClockNotificationAccess && (notification.type === 'location_created' || notification.type === 'location_deleted')) {
       return;
     }
     
