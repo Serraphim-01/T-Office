@@ -14,6 +14,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
 import io from 'socket.io-client';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { AccessDenied } from '@/components/access-denied';
 
 interface Location {
   id: number;
@@ -41,6 +43,7 @@ interface AttendanceRecord {
 
 export default function ClockPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -62,6 +65,7 @@ export default function ClockPage() {
   const [error, setError] = useState<string | null>(null);
   const [canManageLocations, setCanManageLocations] = useState(false);
   const [canDeleteLocations, setCanDeleteLocations] = useState(false);
+  const [canUseClock, setCanUseClock] = useState(true); // Track if user can use clock feature
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<(google.maps.Marker | google.maps.marker.AdvancedMarkerElement)[]>([]);
   const socketRef = useRef<any>(null);
@@ -112,6 +116,7 @@ export default function ClockPage() {
     
     // Check access to main clock page first
     const clockAccess = await hasPageAccess(user.id.toString(), 'clock');
+    setCanUseClock(clockAccess); // Set the main clock access state
     
     if (!clockAccess) {
       // If no access to main clock page, disable all clock features
@@ -705,6 +710,34 @@ export default function ClockPage() {
     );
   }
 
+  // If user doesn't have access to clock page, show access denied message
+  if (!canUseClock) {
+    return (
+      <DashboardLayout>
+        <div className="h-full flex flex-col">
+          <div className="p-6 border-b border-border bg-background">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center">
+                  <Clock className="mr-3 h-6 w-6 text-primary" />
+                  Clock In/Out
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Time tracking and location management system
+                </p>
+              </div>
+            </div>
+          </div>
+          <AccessDenied 
+            featureName="clock" 
+            returnUrl="/dashboard"
+            returnLabel="Return to Dashboard"
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -865,10 +898,6 @@ export default function ClockPage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={location.is_active}
-                          onCheckedChange={(checked) => handleToggleLocation(location.id, checked)}
-                        />
                         {/* Only show delete button if user has delete locations access */}
                         {canDeleteLocations && (
                           <Button

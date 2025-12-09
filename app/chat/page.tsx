@@ -3,6 +3,7 @@
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { AccessDenied } from '@/components/access-denied';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -272,25 +273,11 @@ export default function ChatPage() {
               </div>
             </div>
           </div>
-          
-          <div className="flex-1 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-destructive" />
-                  Access Denied
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  You don't have permission to access the chat feature. Please contact your administrator.
-                </p>
-                <Button onClick={() => router.push('/dashboard')}>
-                  Return to Dashboard
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          <AccessDenied 
+            featureName="chat" 
+            returnUrl="/dashboard"
+            returnLabel="Return to Dashboard"
+          />
         </div>
       </DashboardLayout>
     );
