@@ -643,6 +643,12 @@ FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/notifications'
+FROM departments
+WHERE name = 'Admin'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
 -- Insert default access for HR department to chat features
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'chat/moderator'
@@ -664,6 +670,12 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'chat/clear'
+FROM departments
+WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat/notifications'
 FROM departments
 WHERE name = 'HR'
 ON CONFLICT (department_id, page_name) DO NOTHING;
