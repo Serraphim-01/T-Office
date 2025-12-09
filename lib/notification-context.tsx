@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useAuth } from '@/lib/auth-context';
 import io from 'socket.io-client';
 import { useToast } from '@/hooks/use-toast';
+import { hasPageAccess } from '@/lib/page-access';
 
 interface Notification {
   id: string;
@@ -18,7 +19,7 @@ interface Notification {
 interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
-  addNotification: (notification: Omit<Notification, 'id' | 'read'>) => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'read'>) => Promise<void>;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotifications: () => void;
@@ -179,25 +180,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       newSocket.emit('register_user', user.id);
 
       // Listen for notifications
-      newSocket.on('notification', (notificationData) => {
-        // Show toast notification for location-related and chat notifications
-        if (notificationData.type === 'location_created' || notificationData.type === 'location_deleted') {
+      newSocket.on('notification', async (notificationData) => {
+        // Check feature access for chat notifications
+        let hasNotificationAccess = true;
+        if (user && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) {
+          hasNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+        }
+        
+        // Show toast notification for location-related and chat notifications (if user has access)
+        if ((notificationData.type === 'location_created' || notificationData.type === 'location_deleted') || 
+            (hasNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status'))) {
           toast({
             title: notificationData.title,
             description: notificationData.message,
           });
-        } else if (notificationData.type === 'chat_message') {
-          toast({
-            title: notificationData.title,
-            description: notificationData.message,
-          });
-        } else if (notificationData.type === 'chat_status') {
-          toast({
-            title: notificationData.title,
-            description: notificationData.message,
-          });
-          
-          // Dispatch a custom event to notify components about chat status changes
+        }
+        
+        // Dispatch a custom event to notify components about chat status changes (if user has access)
+        if (hasNotificationAccess && notificationData.type === 'chat_status') {
           window.dispatchEvent(new CustomEvent('chatStatusChanged', {
             detail: {
               isPaused: notificationData.title === 'Chat Paused'
@@ -285,7 +285,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [currentPage, user, socket]);
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'read'>) => {
+  const addNotification = async (notification: Omit<Notification, 'id' | 'read'>) => {
+    // Check feature access for chat notifications
+    let hasNotificationAccess = true;
+    if (user && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
+      hasNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+    }
+    
+    // If user doesn't have access to chat notifications, don't add them
+    if (!hasNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
+      return;
+    }
+    
     // Check if a similar notification already exists (to prevent duplicates)
     // But only check against database notifications (permanent ones with numeric IDs)
     const isDuplicate = notifications.some(n => 

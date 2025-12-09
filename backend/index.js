@@ -206,6 +206,73 @@ const clearReadNotificationsFromDB = async (userId) => {
   }
 };
 
+// Function to check if a user has access to a specific page/feature
+const hasPageAccess = async (userId, pageName) => {
+  try {
+    // First get user's role
+    const userResult = await pool.query(
+      `SELECT u.role_id, r.name as role_name, u.department
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = $1`,
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return false;
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Check role-based access first
+    if (user.role_id) {
+      const roleAccessResult = await pool.query(
+        'SELECT page_name FROM role_page_access WHERE role_id = $1 AND page_name = $2',
+        [user.role_id, pageName]
+      );
+      
+      if (roleAccessResult.rows.length > 0) {
+        return true;
+      }
+      
+      // If no role-specific access, check department access as fallback
+      const departmentResult = await pool.query(
+        'SELECT id FROM departments WHERE name = $1',
+        [user.department]
+      );
+      
+      if (departmentResult.rows.length > 0) {
+        const deptAccessResult = await pool.query(
+          'SELECT page_name FROM department_page_access WHERE department_id = $1 AND page_name = $2',
+          [departmentResult.rows[0].id, pageName]
+        );
+        
+        return deptAccessResult.rows.length > 0;
+      }
+    } else {
+      // No role, check department access directly
+      const departmentResult = await pool.query(
+        'SELECT id FROM departments WHERE name = $1',
+        [user.department]
+      );
+      
+      if (departmentResult.rows.length > 0) {
+        const deptAccessResult = await pool.query(
+          'SELECT page_name FROM department_page_access WHERE department_id = $1 AND page_name = $2',
+          [departmentResult.rows[0].id, pageName]
+        );
+        
+        return deptAccessResult.rows.length > 0;
+      }
+    }
+    
+    return false;
+  } catch (err) {
+    console.error('Error checking page access:', err);
+    return false;
+  }
+};
+
 // Export function to send notifications
 export const sendNotification = async (userId, notification) => {
   // Check if user is connected and on the chat page
@@ -214,6 +281,16 @@ export const sendNotification = async (userId, notification) => {
     // Don't send chat notifications if user is already in chat
     console.log(`Skipping notification for user ${userId} as they are already in chat`);
     return;
+  }
+  
+  // Check feature access for chat notifications
+  if (notification.type === 'chat_message' || notification.type === 'chat_status') {
+    const hasAccess = await hasPageAccess(userId, 'chat/notifications');
+    if (!hasAccess) {
+      // User doesn't have access to chat notifications, don't send them
+      console.log(`Skipping chat notification for user ${userId} due to lack of feature access`);
+      return;
+    }
   }
   
   // Save notification to database

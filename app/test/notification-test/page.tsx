@@ -11,8 +11,8 @@ export default function NotificationTestPage() {
   const { addNotification } = useNotification();
   const router = useRouter();
 
-  const sendTestNotification = () => {
-    addNotification({
+  const sendTestNotification = async () => {
+    await addNotification({
       type: 'test',
       title: 'Test Notification',
       message: 'This is a test notification from the notification system',
@@ -20,8 +20,8 @@ export default function NotificationTestPage() {
     });
   };
 
-  const sendChatNotification = () => {
-    addNotification({
+  const sendChatNotification = async () => {
+    await addNotification({
       type: 'chat_message',
       title: 'New Chat Message',
       message: 'You have a new message in the chat room',
@@ -29,8 +29,8 @@ export default function NotificationTestPage() {
     });
   };
 
-  const sendSuccessNotification = () => {
-    addNotification({
+  const sendSuccessNotification = async () => {
+    await addNotification({
       type: 'success',
       title: 'Operation Successful',
       message: 'Your action was completed successfully',

@@ -571,6 +571,7 @@ router.get("/pages", authenticateJWT, async (req, res) => {
       { name: 'chat/pause', title: 'Chat - Pause/Resume' },
       { name: 'chat/summarizer', title: 'Chat - Summarizer' },
       { name: 'chat/clear', title: 'Chat - Clear Chat' },
+      { name: 'chat/notifications', title: 'Chat Notifications' },
       { name: 'clock', title: 'Clock' },
       { name: 'clock/manage-locations', title: 'Clock - Manage Your Locations' },
       { name: 'clock/delete-locations', title: 'Clock - Delete Locations' },
