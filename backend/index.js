@@ -80,6 +80,9 @@ const io = new Server(server, {
   }
 });
 
+// Make io instance accessible to routes
+app.set('io', io);
+
 // Store connected clients and their current pages
 const connectedClients = new Map();
 

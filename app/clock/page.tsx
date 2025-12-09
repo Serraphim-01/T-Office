@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect, useRef } from 'react';
 import { Wrapper, Status } from '@googlemaps/react-wrapper';
+import io from 'socket.io-client';
 
 interface Location {
   id: number;
@@ -61,12 +62,47 @@ export default function ClockPage() {
   const [canDeleteLocations, setCanDeleteLocations] = useState(false);
   const googleMapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<(google.maps.Marker | google.maps.marker.AdvancedMarkerElement)[]>([]);
+  const socketRef = useRef<any>(null);
 
   // Check feature access when user loads
   useEffect(() => {
     if (user) {
       checkFeatureAccess();
     }
+  }, [user]);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (user) {
+      // Initialize socket connection
+      socketRef.current = io('http://localhost:4000');
+      
+      // Listen for location added events
+      socketRef.current.on('location_added', (newLocation: UserLocation) => {
+        setUserLocations(prev => {
+          // Check if location already exists to prevent duplicates
+          const exists = prev.some(loc => loc.id === newLocation.id);
+          if (!exists) {
+            return [...prev, newLocation];
+          }
+          return prev;
+        });
+        renderMarkers(); // Update map markers
+      });
+      
+      // Listen for location deleted events
+      socketRef.current.on('location_deleted', (deletedLocation: { id: number }) => {
+        setUserLocations(prev => prev.filter(location => location.id !== deletedLocation.id));
+        renderMarkers(); // Update map markers
+      });
+    }
+    
+    // Clean up socket connection
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, [user]);
 
   const checkFeatureAccess = async () => {
@@ -296,7 +332,8 @@ export default function ClockPage() {
 
       if (response.ok) {
         const newLocation = await response.json();
-        setUserLocations(prev => [...prev, newLocation]);
+        // The real-time update will come through the WebSocket
+        // We don't need to manually update the state here anymore
         setLocationForm({
           name: '',
           latitude: '',
@@ -305,7 +342,7 @@ export default function ClockPage() {
           address: ''
         });
         alert('Location saved successfully!');
-        renderMarkers(); // Update map markers
+        // renderMarkers() will be called when the WebSocket event is received
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to save location');
@@ -367,9 +404,10 @@ export default function ClockPage() {
       });
 
       if (response.ok) {
-        setUserLocations(prev => prev.filter(location => location.id !== locationId));
-        renderMarkers(); // Update map markers
+        // The real-time update will come through the WebSocket
+        // We don't need to manually update the state here anymore
         alert('Location deleted successfully!');
+        // renderMarkers() will be called when the WebSocket event is received
       } else {
         alert('Failed to delete location');
       }

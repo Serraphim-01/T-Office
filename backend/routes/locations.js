@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticateJWT } from "./auth.js";
+import { sendNotification } from '../index.js'; // Import sendNotification function
 
 const router = express.Router();
 
@@ -52,6 +53,9 @@ router.post("/user-locations", authenticateJWT, async (req, res) => {
       'INSERT INTO locations (name, latitude, longitude, radius_meters, address, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, latitude, longitude, radius_meters, address, is_active, created_at, updated_at',
       [name, latitude, longitude, radius_meters || 100, address, req.user.userId]
     );
+
+    // Emit real-time update to all connected clients
+    req.app.get('io').emit('location_added', result.rows[0]);
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -115,6 +119,9 @@ router.delete("/user-locations/:id", authenticateJWT, async (req, res) => {
       'DELETE FROM locations WHERE id = $1 AND created_by IS NOT NULL RETURNING *',
       [id]
     );
+
+    // Emit real-time update to all connected clients
+    req.app.get('io').emit('location_deleted', { id });
 
     res.status(204).send();
   } catch (err) {
