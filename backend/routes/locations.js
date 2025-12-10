@@ -370,6 +370,36 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
       type: 'clock_in'
     });
 
+    // Send notification to users with HR Users access when someone clocks in
+    try {
+      // Import the sendNotification function
+      const { sendNotification } = await import('../index.js');
+      
+      // Get all users with HR Users access
+      const hrUsersResult = await req.pool.query(`
+        SELECT DISTINCT u.id
+        FROM users u
+        JOIN roles r ON u.role_id = r.id
+        JOIN department_page_access dpa ON r.department_id = dpa.department_id
+        WHERE dpa.page_name = 'hr/users'
+      `);
+      
+      // Send notification to each HR user
+      for (const userRow of hrUsersResult.rows) {
+        // Don't notify the user who clocked in
+        if (userRow.id != userId) {
+          await sendNotification(userRow.id, {
+            type: 'clock_in',
+            title: 'User Clocked In',
+            message: `${req.user.full_name || 'A user'} has clocked in at ${locationCheck.locationName}.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending clock-in notifications:', notificationError);
+    }
+
     res.status(201).json({
       message: "Successfully clocked in",
       attendance: result.rows[0],
@@ -473,6 +503,36 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
       record: result.rows[0],
       type: 'clock_out'
     });
+
+    // Send notification to users with HR Users access when someone clocks out
+    try {
+      // Import the sendNotification function
+      const { sendNotification } = await import('../index.js');
+      
+      // Get all users with HR Users access
+      const hrUsersResult = await req.pool.query(`
+        SELECT DISTINCT u.id
+        FROM users u
+        JOIN roles r ON u.role_id = r.id
+        JOIN department_page_access dpa ON r.department_id = dpa.department_id
+        WHERE dpa.page_name = 'hr/users'
+      `);
+      
+      // Send notification to each HR user
+      for (const userRow of hrUsersResult.rows) {
+        // Don't notify the user who clocked out
+        if (userRow.id != userId) {
+          await sendNotification(userRow.id, {
+            type: 'clock_out',
+            title: 'User Clocked Out',
+            message: `${req.user.full_name || 'A user'} has clocked out at ${locationCheck.locationName}.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending clock-out notifications:', notificationError);
+    }
 
     res.status(201).json({
       message: "Successfully clocked out",

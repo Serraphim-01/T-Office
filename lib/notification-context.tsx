@@ -246,9 +246,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        // Show toast notification for location-related, chat, and relevant feature update notifications
+        // Check feature access for HR users notifications (lesson completed, clock in/out)
+        let hasHRUsersAccess = true;
+        if (user && (notificationData.type === 'lesson_completed' || notificationData.type === 'clock_in' || notificationData.type === 'clock_out')) {
+          hasHRUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
+        }
+        
+        // Show toast notification for location-related, chat, HR users, and relevant feature update notifications
         if ((hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) || 
             (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
+            (hasHRUsersAccess && (notificationData.type === 'lesson_completed' || notificationData.type === 'clock_in' || notificationData.type === 'clock_out')) ||
             (notificationData.type === 'feature_update' && isRelevantFeatureUpdate)) {
           toast({
             title: notificationData.title,
@@ -265,11 +272,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           }));
         }
         
+        // Dispatch a custom event for feature update notifications
+        if (notificationData.type === 'feature_update' && isRelevantFeatureUpdate) {
+          window.dispatchEvent(new CustomEvent('feature-update-notification'));
+        }
+        
         // Only add notification to the panel if user has access to the corresponding feature
         // Exception: feature_update notifications are added if they're for the user's department
         const shouldAddNotification = 
           (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
           (hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) ||
+          (hasHRUsersAccess && (notificationData.type === 'lesson_completed' || notificationData.type === 'clock_in' || notificationData.type === 'clock_out')) ||
           (notificationData.type === 'feature_update' && isRelevantFeatureUpdate);
         
         if (!shouldAddNotification) {
@@ -380,6 +393,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       }
     }
     
+    // Check feature access for HR users notifications (lesson completed, clock in/out)
+    let hasHRUsersAccess = true;
+    if (user && (notification.type === 'lesson_completed' || notification.type === 'clock_in' || notification.type === 'clock_out')) {
+      hasHRUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
+    }
+    
     // If user doesn't have access to chat notifications, don't add them
     if (!hasChatNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
       return;
@@ -387,6 +406,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     // If user doesn't have access to clock notifications, don't add them
     if (!hasClockNotificationAccess && (notification.type === 'location_created' || notification.type === 'location_deleted')) {
+      return;
+    }
+    
+    // If user doesn't have access to HR users features, don't add those notifications
+    if (!hasHRUsersAccess && (notification.type === 'lesson_completed' || notification.type === 'clock_in' || notification.type === 'clock_out')) {
       return;
     }
     

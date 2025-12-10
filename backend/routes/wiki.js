@@ -213,6 +213,38 @@ router.post("/:department/:topic/completion", authenticateJWT, async (req, res) 
       [req.user.userId, topicId]
     );
 
+    // Send notification to users with HR Users access when someone completes a lesson
+    if (result.rows.length > 0) {
+      try {
+        // Import the sendNotification function
+        const { sendNotification } = await import('../index.js');
+        
+        // Get all users with HR Users access
+        const hrUsersResult = await req.pool.query(`
+          SELECT DISTINCT u.id
+          FROM users u
+          JOIN roles r ON u.role_id = r.id
+          JOIN department_page_access dpa ON r.department_id = dpa.department_id
+          WHERE dpa.page_name = 'hr/users'
+        `);
+        
+        // Send notification to each HR user
+        for (const userRow of hrUsersResult.rows) {
+          // Don't notify the user who completed the lesson
+          if (userRow.id != req.user.userId) {
+            await sendNotification(userRow.id, {
+              type: 'lesson_completed',
+              title: 'Lesson Completed',
+              message: `${req.user.full_name || 'A user'} has completed the lesson "${topic}" in the ${department} department.`,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error sending lesson completion notifications:', notificationError);
+      }
+    }
+
     res.json({
       completed: true,
       completed_at: result.rows[0]?.completed_at || new Date().toISOString(),

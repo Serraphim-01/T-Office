@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -180,6 +180,12 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                             )
                           ) : notification.type === 'feature_update' ? (
                             <AlertCircle className="h-4 w-4 mr-2 text-purple-500" />
+                          ) : notification.type === 'lesson_completed' ? (
+                            <BookOpen className="h-4 w-4 mr-2 text-green-500" />
+                          ) : notification.type === 'clock_in' ? (
+                            <LogIn className="h-4 w-4 mr-2 text-blue-500" />
+                          ) : notification.type === 'clock_out' ? (
+                            <LogOut className="h-4 w-4 mr-2 text-orange-500" />
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                           ) : (

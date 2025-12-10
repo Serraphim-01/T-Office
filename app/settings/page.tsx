@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUI } from '@/lib/ui-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,16 +67,35 @@ export default function SettingsPage() {
   const [inputFormats, setInputFormats] = useState<Record<string, 'hsl' | 'hex' | 'rgb'>>(() =>
     Object.keys(theme).reduce((acc, key) => ({ ...acc, [key]: 'hsl' }), {})
   );
+  
+  // State for feature update countdown setting
+  const [countdownSeconds, setCountdownSeconds] = useState(15);
+
+  // Load countdown setting from localStorage on mount
+  useEffect(() => {
+    const storedCountdown = localStorage.getItem('featureUpdateCountdown');
+    if (storedCountdown) {
+      setCountdownSeconds(parseInt(storedCountdown, 10));
+    }
+  }, []);
+
+  // Save countdown setting to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('featureUpdateCountdown', countdownSeconds.toString());
+  }, [countdownSeconds]);
 
   const handleColorChange = (key: keyof typeof theme, value: string, format: 'hsl' | 'hex' | 'rgb') => {
     let hslValue = value;
+    
     if (format === 'hex') {
       hslValue = hexToHsl(value);
     } else if (format === 'rgb') {
-      // Assume value is "r g b"
-      const [r, g, b] = value.split(' ').map(v => parseInt(v) / 255);
-      hslValue = hexToHsl(`#${Math.round(r * 255).toString(16).padStart(2, '0')}${Math.round(g * 255).toString(16).padStart(2, '0')}${Math.round(b * 255).toString(16).padStart(2, '0')}`);
+      // Convert RGB string like "255 255 255" to hex first, then to HSL
+      const [r, g, b] = value.split(' ').map(Number);
+      const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      hslValue = hexToHsl(hex);
     }
+    
     setTempTheme(prev => ({ ...prev, [key]: hslValue }));
   };
 
@@ -124,7 +143,37 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Settings</h1>
+        
+        {/* Feature Update Settings */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Feature Update Settings</CardTitle>
+            <CardDescription>
+              Configure how the application handles feature updates.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <Label className="w-48">Auto-refresh Countdown</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  min="5"
+                  max="60"
+                  value={countdownSeconds}
+                  onChange={(e) => setCountdownSeconds(Math.max(5, Math.min(60, parseInt(e.target.value) || 15)))}
+                  className="w-24"
+                />
+                <span>seconds</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Time before automatic refresh when feature updates are detected (5-60 seconds)
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* Theme Customization */}
         <Card>
           <CardHeader>
             <CardTitle>Theme Customization</CardTitle>
@@ -152,25 +201,16 @@ export default function SettingsPage() {
                     type={format === 'hex' ? 'text' : format === 'rgb' ? 'text' : 'text'}
                     value={getDisplayValue(key as keyof typeof theme, format)}
                     onChange={(e) => handleColorChange(key as keyof typeof theme, e.target.value, format)}
-                    className="flex-1"
-                    placeholder={format === 'hsl' ? 'e.g., 48 100% 50%' : format === 'hex' ? '#ffff00' : '255 255 0'}
+                    className="w-48"
                   />
-                  {format === 'hex' && (
-                    <Input
-                      type="color"
-                      value={hslToHex(tempTheme[key as keyof typeof theme])}
-                      onChange={(e) => handleColorChange(key as keyof typeof theme, e.target.value, 'hex')}
-                      className="w-12 h-10 p-1 border rounded"
-                    />
-                  )}
                 </div>
               );
             })}
-
-            <div className="flex space-x-4 pt-4">
+            
+            <div className="flex space-x-2 pt-4">
               <Button onClick={applyChanges}>Apply Changes</Button>
-              <Button variant="outline" onClick={() => setTempTheme(theme)}>Reset Changes</Button>
-              <Button variant="destructive" onClick={resetTheme}>Reset to Default</Button>
+              <Button variant="outline" onClick={() => setTempTheme(theme)}>Reset</Button>
+              <Button variant="outline" onClick={resetTheme}>Reset to Default</Button>
             </div>
           </CardContent>
         </Card>
