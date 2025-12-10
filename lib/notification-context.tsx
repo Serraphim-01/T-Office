@@ -108,7 +108,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const backendNotifications = await response.json();
         // Convert backend notifications to our format
-        const formattedNotifications = backendNotifications.map((n: any) => ({
+        let formattedNotifications = backendNotifications.map((n: any) => ({
           id: n.id.toString(), // Database IDs are strings
           type: n.type,
           title: n.title,
@@ -117,6 +117,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           read: n.read,
           messageId: n.messageId
         }));
+        
+        // Filter notifications based on feature access
+        if (user) {
+          // Check chat notification access
+          const hasChatNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+          
+          // Check clock notification access
+          const hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
+          
+          // Filter out notifications based on access permissions
+          formattedNotifications = formattedNotifications.filter((n: Notification) => {
+            // If it's a chat notification and user doesn't have access, filter it out
+            if ((n.type === 'chat_message' || n.type === 'chat_status') && !hasChatNotificationAccess) {
+              return false;
+            }
+            
+            // If it's a clock notification and user doesn't have access, filter it out
+            if ((n.type === 'location_created' || n.type === 'location_deleted') && !hasClockNotificationAccess) {
+              return false;
+            }
+            
+            return true;
+          });
+        }
         
         // Merge with existing notifications, prioritizing newer ones
         setNotifications(prev => {
@@ -209,6 +233,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               isPaused: notificationData.title === 'Chat Paused'
             }
           }));
+        }
+        
+        // Only add notification to the panel if user has access to the corresponding feature
+        const shouldAddNotification = 
+          (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
+          (hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted'));
+        
+        if (!shouldAddNotification) {
+          return; // Don't add notification to panel if user doesn't have access
         }
         
         // Use functional update to get the latest notifications state
