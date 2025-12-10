@@ -14,6 +14,7 @@ interface Notification {
   timestamp: string;
   read: boolean;
   messageId?: number; // For chat messages
+  department?: string; // For feature update notifications
 }
 
 interface NotificationContextType {
@@ -115,31 +116,49 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           message: n.message,
           timestamp: n.timestamp,
           read: n.read,
-          messageId: n.messageId
+          messageId: n.messageId,
+          department: n.department // Add department information
         }));
         
-        // Filter notifications based on feature access
+        // Filter notifications based on feature access and department (if user is available)
         if (user) {
-          // Check chat notification access
-          const hasChatNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+          // We need to filter notifications asynchronously
+          const filteredNotifications = [];
           
-          // Check clock notification access
-          const hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
-          
-          // Filter out notifications based on access permissions
-          formattedNotifications = formattedNotifications.filter((n: Notification) => {
-            // If it's a chat notification and user doesn't have access, filter it out
-            if ((n.type === 'chat_message' || n.type === 'chat_status') && !hasChatNotificationAccess) {
-              return false;
+          for (const notification of formattedNotifications) {
+            let shouldInclude = true;
+            
+            // Check chat notification access
+            if (notification.type === 'chat_message' || notification.type === 'chat_status') {
+              const hasChatNotificationAccess = await hasPageAccess(user.id.toString(), 'chat/notifications');
+              if (!hasChatNotificationAccess) {
+                shouldInclude = false;
+              }
             }
             
-            // If it's a clock notification and user doesn't have access, filter it out
-            if ((n.type === 'location_created' || n.type === 'location_deleted') && !hasClockNotificationAccess) {
-              return false;
+            // Check clock notification access
+            if (notification.type === 'location_created' || notification.type === 'location_deleted') {
+              const hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
+              if (!hasClockNotificationAccess) {
+                shouldInclude = false;
+              }
             }
             
-            return true;
-          });
+            // Check department for feature update notifications
+            if (notification.type === 'feature_update') {
+              // Only include feature update notifications if they're for the user's department
+              // If department is not specified, we include it for backward compatibility
+              if (notification.department && user.department && notification.department !== user.department) {
+                shouldInclude = false;
+              }
+            }
+            
+            if (shouldInclude) {
+              filteredNotifications.push(notification);
+            }
+          }
+          
+          formattedNotifications = filteredNotifications;
         }
         
         // Merge with existing notifications, prioritizing newer ones
@@ -217,9 +236,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
         }
         
-        // Show toast notification for location-related and chat notifications (if user has access)
+        // Check department for feature update notifications
+        let isRelevantFeatureUpdate = true;
+        if (user && notificationData.type === 'feature_update') {
+          // Only show feature update notifications if they're for the user's department
+          // If department is not specified, we include it for backward compatibility
+          if (notificationData.department && user.department && notificationData.department !== user.department) {
+            isRelevantFeatureUpdate = false;
+          }
+        }
+        
+        // Show toast notification for location-related, chat, and relevant feature update notifications
         if ((hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) || 
-            (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status'))) {
+            (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
+            (notificationData.type === 'feature_update' && isRelevantFeatureUpdate)) {
           toast({
             title: notificationData.title,
             description: notificationData.message,
@@ -236,12 +266,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         }
         
         // Only add notification to the panel if user has access to the corresponding feature
+        // Exception: feature_update notifications are added if they're for the user's department
         const shouldAddNotification = 
           (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
-          (hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted'));
+          (hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) ||
+          (notificationData.type === 'feature_update' && isRelevantFeatureUpdate);
         
         if (!shouldAddNotification) {
-          return; // Don't add notification to panel if user doesn't have access
+          return; // Don't add notification to panel if user doesn't have access or it's not relevant
         }
         
         // Use functional update to get the latest notifications state
@@ -337,6 +369,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
     }
     
+    // Check department for feature update notifications
+    let isRelevantFeatureUpdate = true;
+    if (user && notification.type === 'feature_update') {
+      // Only add feature update notifications if they're for the user's department
+      // If department is not specified, we include it for backward compatibility
+      const department = (notification as any).department;
+      if (department && user.department && department !== user.department) {
+        isRelevantFeatureUpdate = false;
+      }
+    }
+    
     // If user doesn't have access to chat notifications, don't add them
     if (!hasChatNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
       return;
@@ -344,6 +387,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     // If user doesn't have access to clock notifications, don't add them
     if (!hasClockNotificationAccess && (notification.type === 'location_created' || notification.type === 'location_deleted')) {
+      return;
+    }
+    
+    // If feature update notification is not relevant to the user's department, don't add it
+    if (!isRelevantFeatureUpdate && notification.type === 'feature_update') {
       return;
     }
     

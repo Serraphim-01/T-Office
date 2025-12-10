@@ -89,9 +89,15 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       router.push('/chat');
     } else if (notification.type === 'location_created' || notification.type === 'location_deleted') {
       router.push('/clock');
+    } else if (notification.type === 'feature_update') {
+      // Feature update notifications are department-specific and should not navigate
+      // The cursor is already set to default for these notifications
     }
     
-    onClose();
+    // Only close the panel for actionable notifications
+    if (notification.type !== 'feature_update') {
+      onClose();
+    }
   };
 
   // Close panel when pressing Escape key
@@ -155,7 +161,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                   {displayNotifications.map((notification) => (
                     <li 
                       key={notification.id} 
-                      className={`p-4 hover:bg-accent cursor-pointer ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
+                      className={`p-4 hover:bg-accent ${!notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''} ${notification.type === 'feature_update' ? 'cursor-default' : 'cursor-pointer'}`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex justify-between">
@@ -172,6 +178,8 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                             ) : (
                               <Play className="h-4 w-4 mr-2 text-green-500" />
                             )
+                          ) : notification.type === 'feature_update' ? (
+                            <AlertCircle className="h-4 w-4 mr-2 text-purple-500" />
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                           ) : (

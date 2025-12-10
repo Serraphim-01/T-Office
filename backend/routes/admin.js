@@ -425,6 +425,41 @@ router.post("/roles/:roleId/pages", authenticateJWT, async (req, res) => {
     // Commit transaction
     await pool.query('COMMIT');
 
+    // Send notification to all users in the department about the feature access update
+    try {
+      // Get the role details to determine the department
+      const roleDetails = await pool.query(
+        'SELECT r.name as role_name, d.name as department_name FROM roles r JOIN departments d ON r.department_id = d.id WHERE r.id = $1',
+        [roleId]
+      );
+      
+      if (roleDetails.rows.length > 0) {
+        const { role_name, department_name } = roleDetails.rows[0];
+        
+        // Get all users in this department
+        const usersResult = await pool.query(
+          'SELECT id FROM users WHERE department = $1',
+          [department_name]
+        );
+        
+        // Import the sendNotification function
+        const { sendNotification } = await import('../index.js');
+        
+        // Send notification to each user in the department
+        for (const userRow of usersResult.rows) {
+          await sendNotification(userRow.id, {
+            type: 'feature_update',
+            title: 'Role Features Updated',
+            message: `The features for the "${role_name}" role in your department have been updated.`,
+            timestamp: new Date().toISOString(),
+            department: department_name // Add department information
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending feature update notifications:', notificationError);
+    }
+
     res.json({ message: "Role feature access updated successfully" });
   } catch (err) {
     // Rollback transaction on error
@@ -693,6 +728,41 @@ router.post("/departments/:departmentId/pages", authenticateJWT, async (req, res
 
     // Commit transaction
     await pool.query('COMMIT');
+
+    // Send notification to all users in the department about the feature access update
+    try {
+      // Get the department name
+      const deptResult = await pool.query(
+        'SELECT name FROM departments WHERE id = $1',
+        [departmentId]
+      );
+      
+      if (deptResult.rows.length > 0) {
+        const departmentName = deptResult.rows[0].name;
+        
+        // Get all users in this department
+        const usersResult = await pool.query(
+          'SELECT id FROM users WHERE department = $1',
+          [departmentName]
+        );
+        
+        // Import the sendNotification function
+        const { sendNotification } = await import('../index.js');
+        
+        // Send notification to each user in the department
+        for (const userRow of usersResult.rows) {
+          await sendNotification(userRow.id, {
+            type: 'feature_update',
+            title: 'Department Features Updated',
+            message: `The features for your department "${departmentName}" have been updated.`,
+            timestamp: new Date().toISOString(),
+            department: departmentName // Add department information
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending feature update notifications:', notificationError);
+    }
 
     res.json({ message: "Feature access updated successfully" });
   } catch (err) {
