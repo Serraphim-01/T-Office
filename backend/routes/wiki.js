@@ -257,7 +257,8 @@ router.post("/:department/:topic/completion", authenticateJWT, async (req, res) 
               comment: latestComment ? {
                 text: latestComment.comment,
                 commenter: latestComment.commenter_name
-              } : null
+              } : null,
+              user_id: req.user.userId // Add user ID for navigation
             });
           }
         }

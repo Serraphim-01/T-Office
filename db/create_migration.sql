@@ -1462,6 +1462,13 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     read BOOLEAN DEFAULT false,
     message_id INTEGER, -- For chat messages
+    department VARCHAR(255), -- For feature update notifications
+    user_name VARCHAR(255), -- For HR notifications
+    lesson_name VARCHAR(255), -- For lesson completion notifications
+    location VARCHAR(255), -- For clock notifications
+    target_user_id INTEGER, -- For navigation to user details
+    comment_text TEXT, -- For lesson completion notifications with comments
+    comment_commenter VARCHAR(255), -- For lesson completion notifications with comments
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -18,6 +18,7 @@ interface Notification {
   user_name?: string; // For HR notifications
   lesson_name?: string; // For lesson completion notifications
   location?: string; // For clock notifications
+  user_id?: number; // For navigation to user details
   comment?: {
     text: string;
     commenter: string;

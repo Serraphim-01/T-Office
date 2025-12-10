@@ -128,8 +128,8 @@ io.on('connection', (socket) => {
 const saveNotificationToDB = async (userId, notification) => {
   try {
     const result = await pool.query(
-      `INSERT INTO user_notifications (user_id, type, title, message, timestamp, message_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO user_notifications (user_id, type, title, message, timestamp, message_id, department, user_name, lesson_name, location, target_user_id, comment_text, comment_commenter)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         userId,
@@ -137,7 +137,14 @@ const saveNotificationToDB = async (userId, notification) => {
         notification.title,
         notification.message,
         notification.timestamp,
-        notification.messageId
+        notification.messageId,
+        notification.department,
+        notification.user_name,
+        notification.lesson_name,
+        notification.location,
+        notification.user_id, // This is the target_user_id for navigation
+        notification.comment ? notification.comment.text : null,
+        notification.comment ? notification.comment.commenter : null
       ]
     );
     return result.rows[0];
@@ -151,14 +158,42 @@ const saveNotificationToDB = async (userId, notification) => {
 const fetchUserNotifications = async (userId) => {
   try {
     const result = await pool.query(
-      `SELECT id, type, title, message, timestamp, read, message_id as "messageId"
+      `SELECT id, type, title, message, timestamp, read, message_id as "messageId", department, user_name, lesson_name, location, target_user_id as "user_id", 
+              comment_text as "comment_text", comment_commenter as "comment_commenter"
        FROM user_notifications
        WHERE user_id = $1
        ORDER BY timestamp DESC
        LIMIT 100`,
       [userId]
     );
-    return result.rows;
+    
+    // Transform the results to match the expected format
+    return result.rows.map(row => {
+      const notification = {
+        id: row.id,
+        type: row.type,
+        title: row.title,
+        message: row.message,
+        timestamp: row.timestamp,
+        read: row.read,
+        messageId: row.messageId,
+        department: row.department,
+        user_name: row.user_name,
+        lesson_name: row.lesson_name,
+        location: row.location,
+        user_id: row.user_id
+      };
+      
+      // Add comment object if comment data exists
+      if (row.comment_text && row.comment_commenter) {
+        notification.comment = {
+          text: row.comment_text,
+          commenter: row.comment_commenter
+        };
+      }
+      
+      return notification;
+    });
   } catch (err) {
     console.error('Error fetching notifications from database:', err);
     return [];

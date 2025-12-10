@@ -395,7 +395,8 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
             message: `${req.user.full_name || 'A user'} has clocked in at ${locationCheck.locationName}.`,
             timestamp: new Date().toISOString(),
             user_name: req.user.full_name || 'A user',
-            location: locationCheck.locationName
+            location: locationCheck.locationName,
+            user_id: userId // Add user ID for navigation
           });
         }
       }
@@ -532,7 +533,8 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
             message: `${req.user.full_name || 'A user'} has clocked out at ${locationCheck.locationName}.`,
             timestamp: new Date().toISOString(),
             user_name: req.user.full_name || 'A user',
-            location: locationCheck.locationName
+            location: locationCheck.locationName,
+            user_id: userId // Add user ID for navigation
           });
         }
       }

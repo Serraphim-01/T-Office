@@ -28,6 +28,7 @@ interface DisplayNotification {
   user_name?: string; // For HR notifications
   lesson_name?: string; // For lesson completion notifications
   location?: string; // For clock notifications
+  user_id?: number; // For navigation to user details
   comment?: {
     text: string;
     commenter: string;
@@ -109,6 +110,20 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       router.push('/chat');
     } else if (notification.type === 'location_created' || notification.type === 'location_deleted') {
       router.push('/clock');
+    } else if (notification.type === 'clock_in' || notification.type === 'clock_out') {
+      // Navigate to user details page with attendance tab
+      if (notification.user_id && !isNaN(notification.user_id)) {
+        router.push(`/hr/users/${notification.user_id}?tab=attendance`);
+      } else {
+        router.push('/hr/users');
+      }
+    } else if (notification.type === 'lesson_completed') {
+      // Navigate to user details page with wiki tab
+      if (notification.user_id && !isNaN(notification.user_id)) {
+        router.push(`/hr/users/${notification.user_id}?tab=wiki`);
+      } else {
+        router.push('/hr/users');
+      }
     } else if (notification.type === 'feature_update') {
       // Feature update notifications are department-specific and should not navigate
       // The cursor is already set to default for these notifications

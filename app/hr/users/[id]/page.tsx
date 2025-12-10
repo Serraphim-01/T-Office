@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,6 +67,7 @@ interface WikiCompletion {
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
   const { user: currentUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Add this to read URL parameters
   const [user, setUser] = useState<User | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [wikiCompletions, setWikiCompletions] = useState<WikiCompletion[]>([]);
@@ -78,6 +79,17 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   
   const { toast } = useToast();
   const socketRef = useRef<any>(null);
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      // Validate the tab parameter to prevent invalid values
+      if (['profile', 'attendance', 'wiki'].includes(tabParam)) {
+        setActiveSection(tabParam);
+      }
+    }
+  }, [searchParams]);
 
   // Initialize WebSocket connection
   useEffect(() => {
