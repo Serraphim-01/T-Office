@@ -219,14 +219,28 @@ router.post("/:department/:topic/completion", authenticateJWT, async (req, res) 
         // Import the sendNotification function
         const { sendNotification } = await import('../index.js');
         
-        // Get all users with HR Users access
+        // Get all users with HR Users access (through either department or role-based access)
         const hrUsersResult = await req.pool.query(`
           SELECT DISTINCT u.id
           FROM users u
-          JOIN roles r ON u.role_id = r.id
-          JOIN department_page_access dpa ON r.department_id = dpa.department_id
-          WHERE dpa.page_name = 'hr/users'
+          LEFT JOIN roles r ON u.role_id = r.id
+          LEFT JOIN role_page_access rpa ON r.id = rpa.role_id AND rpa.page_name = 'hr/users'
+          LEFT JOIN department_page_access dpa ON r.department_id = dpa.department_id AND dpa.page_name = 'hr/users'
+          WHERE rpa.page_name = 'hr/users' OR dpa.page_name = 'hr/users'
         `);
+        
+        // Get the latest comment for this lesson (if any)
+        const commentsResult = await req.pool.query(`
+          SELECT wc.comment, u.full_name as commenter_name
+          FROM wiki_comments wc
+          JOIN users u ON wc.user_id = u.id
+          WHERE wc.topic_id = $1
+          ORDER BY wc.created_at DESC
+          LIMIT 1
+        `, [topicId]);
+        
+        const latestComment = commentsResult.rows[0];
+        const commentText = latestComment ? ` Comment: "${latestComment.comment}" by ${latestComment.commenter_name}.` : '';
         
         // Send notification to each HR user
         for (const userRow of hrUsersResult.rows) {
@@ -235,8 +249,15 @@ router.post("/:department/:topic/completion", authenticateJWT, async (req, res) 
             await sendNotification(userRow.id, {
               type: 'lesson_completed',
               title: 'Lesson Completed',
-              message: `${req.user.full_name || 'A user'} has completed the lesson "${topic}" in the ${department} department.`,
-              timestamp: new Date().toISOString()
+              message: `${req.user.full_name || 'A user'} has completed the lesson "${topic}" in the ${department} department.${commentText}`,
+              timestamp: new Date().toISOString(),
+              user_name: req.user.full_name || 'A user',
+              lesson_name: topic,
+              department: department,
+              comment: latestComment ? {
+                text: latestComment.comment,
+                commenter: latestComment.commenter_name
+              } : null
             });
           }
         }

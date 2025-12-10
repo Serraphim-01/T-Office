@@ -375,13 +375,14 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
       // Import the sendNotification function
       const { sendNotification } = await import('../index.js');
       
-      // Get all users with HR Users access
+      // Get all users with HR Users access (through either department or role-based access)
       const hrUsersResult = await req.pool.query(`
         SELECT DISTINCT u.id
         FROM users u
-        JOIN roles r ON u.role_id = r.id
-        JOIN department_page_access dpa ON r.department_id = dpa.department_id
-        WHERE dpa.page_name = 'hr/users'
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN role_page_access rpa ON r.id = rpa.role_id AND rpa.page_name = 'hr/users'
+        LEFT JOIN department_page_access dpa ON r.department_id = dpa.department_id AND dpa.page_name = 'hr/users'
+        WHERE rpa.page_name = 'hr/users' OR dpa.page_name = 'hr/users'
       `);
       
       // Send notification to each HR user
@@ -392,7 +393,9 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
             type: 'clock_in',
             title: 'User Clocked In',
             message: `${req.user.full_name || 'A user'} has clocked in at ${locationCheck.locationName}.`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            user_name: req.user.full_name || 'A user',
+            location: locationCheck.locationName
           });
         }
       }
@@ -509,13 +512,14 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
       // Import the sendNotification function
       const { sendNotification } = await import('../index.js');
       
-      // Get all users with HR Users access
+      // Get all users with HR Users access (through either department or role-based access)
       const hrUsersResult = await req.pool.query(`
         SELECT DISTINCT u.id
         FROM users u
-        JOIN roles r ON u.role_id = r.id
-        JOIN department_page_access dpa ON r.department_id = dpa.department_id
-        WHERE dpa.page_name = 'hr/users'
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN role_page_access rpa ON r.id = rpa.role_id AND rpa.page_name = 'hr/users'
+        LEFT JOIN department_page_access dpa ON r.department_id = dpa.department_id AND dpa.page_name = 'hr/users'
+        WHERE rpa.page_name = 'hr/users' OR dpa.page_name = 'hr/users'
       `);
       
       // Send notification to each HR user
@@ -526,7 +530,9 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
             type: 'clock_out',
             title: 'User Clocked Out',
             message: `${req.user.full_name || 'A user'} has clocked out at ${locationCheck.locationName}.`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            user_name: req.user.full_name || 'A user',
+            location: locationCheck.locationName
           });
         }
       }

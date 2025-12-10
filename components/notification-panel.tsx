@@ -14,6 +14,26 @@ interface NotificationPanelProps {
   onClose: () => void; 
 }
 
+interface DisplayNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  messageId?: number;
+  department?: string;
+  isGroup?: boolean;
+  count?: number;
+  user_name?: string; // For HR notifications
+  lesson_name?: string; // For lesson completion notifications
+  location?: string; // For clock notifications
+  comment?: {
+    text: string;
+    commenter: string;
+  }; // For lesson completion notifications with comments
+}
+
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const { notifications, markAsRead, markAllAsRead, clearReadNotifications, fetchNotifications } = useNotification();
   const router = useRouter();
@@ -181,11 +201,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                           ) : notification.type === 'feature_update' ? (
                             <AlertCircle className="h-4 w-4 mr-2 text-purple-500" />
                           ) : notification.type === 'lesson_completed' ? (
-                            <BookOpen className="h-4 w-4 mr-2 text-green-500" />
+                            <BookOpen className="h-4 w-4 mr-2 text-blue-500" />
                           ) : notification.type === 'clock_in' ? (
-                            <LogIn className="h-4 w-4 mr-2 text-blue-500" />
+                            <LogIn className="h-4 w-4 mr-2 text-green-500" />
                           ) : notification.type === 'clock_out' ? (
-                            <LogOut className="h-4 w-4 mr-2 text-orange-500" />
+                            <LogOut className="h-4 w-4 mr-2 text-red-500" />
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                           ) : (
@@ -209,7 +229,24 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                             <span>{notification.count} new messages in chat</span>
                           )
                         ) : (
-                          notification.message
+                          <>
+                            {notification.message}
+                            {notification.type === 'lesson_completed' && notification.comment && (
+                              <span className="block mt-1 text-xs italic">
+                                Latest comment: "{notification.comment.text}" by {notification.comment.commenter}
+                              </span>
+                            )}
+                            {notification.type === 'clock_in' && (
+                              <span className="block mt-1 text-xs">
+                                {notification.user_name} clocked in at {notification.location}
+                              </span>
+                            )}
+                            {notification.type === 'clock_out' && (
+                              <span className="block mt-1 text-xs">
+                                {notification.user_name} clocked out at {notification.location}
+                              </span>
+                            )}
+                          </>
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">

@@ -36,7 +36,7 @@ export const authenticateJWT = async (req, res, next) => {
       // Handle cases where role_id might be null or role might not exist
       console.log('Fetching user data from database for user ID:', req.user.userId);
       const userResult = await req.pool.query(
-        `SELECT u.department, u.active, COALESCE(r.name, 'default') as role 
+        `SELECT u.department, u.active, u.full_name, COALESCE(r.name, 'default') as role 
          FROM users u 
          LEFT JOIN roles r ON u.role_id = r.id 
          WHERE u.id = $1`,
@@ -53,7 +53,8 @@ export const authenticateJWT = async (req, res, next) => {
         
         req.user.department = userResult.rows[0].department;
         req.user.role = userResult.rows[0].role || 'default';
-        console.log(`User ${req.user.userId} department/role updated from DB: department=${req.user.department}, role=${req.user.role}`);
+        req.user.full_name = userResult.rows[0].full_name; // Add full_name to the user object
+        console.log(`User ${req.user.userId} department/role updated from DB: department=${req.user.department}, role=${req.user.role}, full_name=${req.user.full_name}`);
       } else {
         console.log(`User ${req.user.userId} not found in database`);
         return res.status(404).json({ error: "User not found" });

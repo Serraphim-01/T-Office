@@ -15,6 +15,13 @@ interface Notification {
   read: boolean;
   messageId?: number; // For chat messages
   department?: string; // For feature update notifications
+  user_name?: string; // For HR notifications
+  lesson_name?: string; // For lesson completion notifications
+  location?: string; // For clock notifications
+  comment?: {
+    text: string;
+    commenter: string;
+  }; // For lesson completion notifications with comments
 }
 
 interface NotificationContextType {
@@ -140,6 +147,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             if (notification.type === 'location_created' || notification.type === 'location_deleted') {
               const hasClockNotificationAccess = await hasPageAccess(user.id.toString(), 'clock/notifications');
               if (!hasClockNotificationAccess) {
+                shouldInclude = false;
+              }
+            }
+            
+            // Check HR Users notification access
+            if (notification.type === 'lesson_completed' || notification.type === 'clock_in' || notification.type === 'clock_out') {
+              const hasHRUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
+              if (!hasHRUsersAccess) {
                 shouldInclude = false;
               }
             }
