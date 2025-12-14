@@ -15,6 +15,7 @@ T-Office is a full-stack internal office management platform designed to streaml
 - **Offline Support**: PWA-enabled fallback page
 - **Role-Based Access Control**: Fine-grained permission system with roles and departments
 - **User Offboarding**: Automated transfer of responsibilities to support staff
+- **Real-time Notifications**: Instant alerts for user lifecycle events, system activities, and communications
 
 ## Technology Stack
 
@@ -91,6 +92,26 @@ The system will automatically:
 - Transfer provider attachments to the user's support staff
 - Reassign any users who had the offboarded user as their support staff
 - Deactivate the user's account
+
+## Real-time Notifications
+
+The T-Office platform includes a comprehensive real-time notification system that keeps users informed about important events:
+
+### Notification Types
+
+- **User Lifecycle Events**: Notifications when users are onboarded, offboarded, or when support staff assignments change
+- **Activity Tracking**: Notifications for clock-ins, clock-outs, and completed wiki lessons
+- **System Events**: Notifications for chat messages, location changes, and feature updates
+
+### Notification Targeting
+
+The system implements intelligent notification targeting to ensure the right people receive the right notifications:
+
+- **Onboarding Notifications**: Sent to users with HR access and others in the same department
+- **Offboarding Notifications**: Sent to HR personnel, department colleagues, support staff, and those supported by the offboarded user
+- **Support Staff Notifications**: Sent to HR personnel, the assigned support staff, and the user receiving support
+
+For detailed technical information about the notification system, see [NOTIFICATION_SYSTEM.md](NOTIFICATION_SYSTEM.md).
 
 ## Changelog
 

@@ -1,6 +1,13 @@
 import express from "express";
 import { authenticateJWT, saltRounds } from "./auth.js";
 import bcrypt from "bcrypt";
+// Import the helper functions for notifications
+import {
+  getUsersToNotifyOnOnboarding,
+  getUsersToNotifyOnOffboarding,
+  getUsersToNotifyOnSupportAssignment,
+  getUsersToNotifyOnSupportRemoval
+} from '../utils/helpers.js';
 
 const router = express.Router();
 
@@ -57,6 +64,30 @@ router.post("/users", authenticateJWT, async (req, res) => {
         [name, email, department, hashedPassword]
       );
       userId = result.rows[0].id;
+    }
+
+    // Send notifications to relevant users
+    try {
+      // Import the sendNotification function
+      const { sendNotification } = await import('../index.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnOnboarding(pool, userId);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        await sendNotification(notifyUserId, {
+          type: 'user_onboarded',
+          title: 'New User Onboarded',
+          message: `A new user ${name} has been onboarded in the ${department} department.`,
+          timestamp: new Date().toISOString(),
+          user_name: name,
+          department: department,
+          user_id: userId // Add user ID for navigation
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending onboarding notifications:', notificationError);
     }
 
     console.log('User created successfully with default password');
