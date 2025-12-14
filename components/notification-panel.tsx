@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut, User, UserPlus, UserMinus, UserX } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -40,6 +40,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const { notifications, markAsRead, markAllAsRead, clearReadNotifications, fetchNotifications } = useNotification();
   const router = useRouter();
   const hasReadNotifications = notifications.some(n => !n.read);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch notifications when panel opens
   useEffect(() => {
@@ -47,6 +48,23 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       fetchNotifications();
     }
   }, [isOpen, fetchNotifications]);
+
+  // Handle click outside to close panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
@@ -150,104 +168,115 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
 
   return (
     <>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={onClose}>
-          <div className="absolute top-16 right-4 w-96 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[calc(100vh-4rem)] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <Card className="flex-1 flex flex-col h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b">
-                <CardTitle className="text-lg font-semibold">Notifications</CardTitle>
-                <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
-                  <X className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent className="flex-1 p-0 flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                  <span className="text-sm text-gray-500">{displayNotifications.filter(n => !n.read).length} unread</span>
-                  {hasReadNotifications && (
-                    <div className="space-x-2">
-                      <Button variant="outline" size="sm" onClick={markAllAsRead}>Mark all as read</Button>
-                      <Button variant="outline" size="sm" onClick={clearReadNotifications}>Clear read</Button>
-                    </div>
-                  )}
-                </div>
-                <ScrollArea className="flex-1">
-                  {displayNotifications.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                      No notifications
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-gray-200">
-                      {displayNotifications.map((notification) => (
-                        <li 
-                          key={notification.id} 
-                          className={`p-4 hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
-                          onClick={() => handleNotificationClick(notification)}
-                        >
-                          <div className="flex items-start">
-                            {notification.type === 'chat_message' ? (
-                              <MessageCircle className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
-                            ) : notification.type === 'location_created' || notification.type === 'location_deleted' ? (
-                              <AlertCircle className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
-                            ) : notification.type === 'chat_status' ? (
-                              notification.message.includes('paused') ? (
-                                <Pause className="h-4 w-4 mr-2 text-yellow-500 mt-0.5" />
-                              ) : (
-                                <Play className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
-                              )
-                            ) : notification.type === 'feature_update' ? (
-                              <AlertCircle className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
-                            ) : notification.type === 'lesson_completed' ? (
-                              <BookOpen className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
-                            ) : notification.type === 'clock_in' ? (
-                              <LogIn className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
-                            ) : notification.type === 'clock_out' ? (
-                              <LogOut className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
-                            ) : notification.type === 'user_onboarded' ? (
-                              <UserPlus className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
-                            ) : notification.type === 'user_offboarded' ? (
-                              <UserX className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
-                            ) : notification.type === 'support_assigned' || notification.type === 'support_reassigned' ? (
-                              <UserPlus className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
-                            ) : notification.type === 'support_removed' ? (
-                              <UserMinus className="h-4 w-4 mr-2 text-orange-500 mt-0.5" />
-                            ) : notification.type === 'success' ? (
-                              <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+      {/* Slide-out panel */}
+      <div className={`fixed inset-y-0 right-0 z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Backdrop - only show when panel is open */}
+        {isOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40" 
+            onClick={onClose}
+          />
+        )}
+        
+        {/* Panel */}
+        <div 
+          ref={panelRef}
+          className="relative h-full w-96 bg-white shadow-xl border-l border-gray-200 flex flex-col z-50"
+        >
+          <Card className="flex-1 flex flex-col h-full rounded-none border-0 border-l">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b">
+              <CardTitle className="text-lg font-semibold">Notifications</CardTitle>
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b">
+                <span className="text-sm text-gray-500">{displayNotifications.filter(n => !n.read).length} unread</span>
+                {hasReadNotifications && (
+                  <div className="space-x-2">
+                    <Button variant="outline" size="sm" onClick={markAllAsRead}>Mark all as read</Button>
+                    <Button variant="outline" size="sm" onClick={clearReadNotifications}>Clear read</Button>
+                  </div>
+                )}
+              </div>
+              <ScrollArea className="flex-1">
+                {displayNotifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No notifications
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-200">
+                    {displayNotifications.map((notification) => (
+                      <li 
+                        key={notification.id} 
+                        className={`p-4 hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start">
+                          {notification.type === 'chat_message' ? (
+                            <MessageCircle className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
+                          ) : notification.type === 'location_created' || notification.type === 'location_deleted' ? (
+                            <AlertCircle className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
+                          ) : notification.type === 'chat_status' ? (
+                            notification.message.includes('paused') ? (
+                              <Pause className="h-4 w-4 mr-2 text-yellow-500 mt-0.5" />
                             ) : (
-                              <AlertCircle className="h-4 w-4 mr-2 text-yellow-500 mt-0.5" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm font-medium text-gray-900 truncate">
-                                {notification.isGroup && notification.count && notification.count > 1 ? (
-                                  <span>{notification.title} ({notification.count} new)</span>
-                                ) : (
-                                  notification.title
-                                )}
-                              </h3>
-                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-gray-400">
-                                  {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                                {!notification.read && (
-                                  <Badge variant="secondary" className="h-2 w-2 p-0 bg-blue-500">
-                                    <span className="sr-only">Unread</span>
-                                  </Badge>
-                                )}
-                              </div>
+                              <Play className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                            )
+                          ) : notification.type === 'feature_update' ? (
+                            <AlertCircle className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
+                          ) : notification.type === 'lesson_completed' ? (
+                            <BookOpen className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
+                          ) : notification.type === 'clock_in' ? (
+                            <LogIn className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                          ) : notification.type === 'clock_out' ? (
+                            <LogOut className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
+                          ) : notification.type === 'user_onboarded' ? (
+                            <UserPlus className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                          ) : notification.type === 'user_offboarded' ? (
+                            <UserX className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
+                          ) : notification.type === 'support_assigned' || notification.type === 'support_reassigned' ? (
+                            <UserPlus className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
+                          ) : notification.type === 'support_removed' ? (
+                            <UserMinus className="h-4 w-4 mr-2 text-orange-500 mt-0.5" />
+                          ) : notification.type === 'success' ? (
+                            <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4 mr-2 text-yellow-500 mt-0.5" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-medium text-gray-900 truncate">
+                              {notification.isGroup && notification.count && notification.count > 1 ? (
+                                <span>{notification.title} ({notification.count} new)</span>
+                              ) : (
+                                notification.title
+                              )}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-gray-400">
+                                {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {!notification.read && (
+                                <Badge variant="secondary" className="h-2 w-2 p-0 bg-blue-500">
+                                  <span className="sr-only">Unread</span>
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
-      )}
+      </div>
     </>
   );
 }
