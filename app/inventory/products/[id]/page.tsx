@@ -22,6 +22,7 @@ interface Product {
   product_type: string;
   created_at: string;
   updated_at: string;
+  default_unit_price?: number;
 }
 
 interface Transaction {
@@ -50,7 +51,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
   const [editedProduct, setEditedProduct] = useState({
     name: '',
     part_number: '',
-    product_type: ''
+    product_type: '',
+    default_unit_price: 0
   });
   const [canEditProduct, setCanEditProduct] = useState(false); // Added feature access control
   const router = useRouter();
@@ -92,7 +94,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
       setEditedProduct({
         name: data.name,
         part_number: data.part_number,
-        product_type: data.product_type
+        product_type: data.product_type,
+        default_unit_price: data.default_unit_price || 0
       });
     } catch (error) {
       toast({
@@ -261,6 +264,15 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     }
   };
 
+  // Add this helper function for currency formatting
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -352,6 +364,18 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       required
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultUnitPrice">Default Unit Price (₦)</Label>
+                    <Input
+                      id="defaultUnitPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editedProduct.default_unit_price}
+                      onChange={(e) => setEditedProduct({...editedProduct, default_unit_price: parseFloat(e.target.value) || 0})}
+                      placeholder="Enter default unit price"
+                    />
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -390,6 +414,16 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       <Badge variant="default">{product.product_type}</Badge>
                     </div>
                   </div>
+
+                  {product.default_unit_price !== undefined && product.default_unit_price > 0 && (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg font-bold text-green-600">₦</span>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Default Unit Price</p>
+                        <p className="font-medium text-green-600">{formatCurrency(product.default_unit_price)}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

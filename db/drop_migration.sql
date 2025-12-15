@@ -25,10 +25,13 @@ DROP TRIGGER IF EXISTS update_user_support_assignments_updated_at ON user_suppor
 DROP TRIGGER IF EXISTS update_provider_user_assignments_updated_at ON provider_user_assignments;
 DROP TRIGGER IF EXISTS update_user_notifications_updated_at ON user_notifications; -- Add this line
 
--- Drop role-related indexes
+-- Drop indexes
 DROP INDEX IF EXISTS idx_roles_department_id;
 DROP INDEX IF EXISTS idx_role_page_access_role_id;
 DROP INDEX IF EXISTS idx_users_role_id;
+DROP INDEX IF EXISTS idx_products_default_unit_price;
+DROP INDEX IF EXISTS idx_inbound_transactions_batch_number;
+DROP INDEX IF EXISTS idx_outbound_transactions_prices;
 
 -- Drop tables in reverse order of creation (due to foreign key constraints)
 DROP TABLE IF EXISTS wiki_comments CASCADE;

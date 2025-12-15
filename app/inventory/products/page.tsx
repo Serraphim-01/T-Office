@@ -91,6 +91,7 @@ function ProductsContent() {
   const [newProductPartNumber, setNewProductPartNumber] = useState('');
   const [newProductType, setNewProductType] = useState('');
   const [newProductProviderId, setNewProductProviderId] = useState<number | null>(null);
+  const [newProductDefaultPrice, setNewProductDefaultPrice] = useState<number>(0);
   const [batchProducts, setBatchProducts] = useState<{name: string, part_number: string, product_type: string}[]>([]);
   const [providerProducts, setProviderProducts] = useState<{name: string, part_number: string, product_type: string}[]>([]);
   const [currentStep, setCurrentStep] = useState<'provider' | 'products'>('provider');
@@ -338,7 +339,8 @@ function ProductsContent() {
         body: JSON.stringify({ 
           name: newProductName, 
           part_number: newProductPartNumber, 
-          product_type: newProductType 
+          product_type: newProductType,
+          default_unit_price: newProductDefaultPrice
         }),
       });
 
@@ -351,6 +353,7 @@ function ProductsContent() {
       setNewProductName('');
       setNewProductPartNumber('');
       setNewProductType('');
+      setNewProductDefaultPrice(0);
       
       toast({ title: 'Success', description: 'Product added successfully' });
     } catch (error) {
@@ -386,6 +389,7 @@ function ProductsContent() {
     try {
       const token = localStorage.getItem('token');
       
+      // Add all batch products with the same default price
       for (const product of batchProducts) {
         const response = await fetch(`http://localhost:4000/api/inventory/providers/${createdProviderId}/products`, {
           method: 'POST',
@@ -393,7 +397,10 @@ function ProductsContent() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(product),
+          body: JSON.stringify({
+            ...product,
+            default_unit_price: newProductDefaultPrice
+          }),
         });
         
         if (!response.ok) {
@@ -404,8 +411,9 @@ function ProductsContent() {
       // Refresh the products list to get the updated data
       await fetchProducts();
       
-      // Clear batch
+      // Clear batch and form
       setBatchProducts([]);
+      setNewProductDefaultPrice(0);
       
       toast({ 
         title: 'Success', 
@@ -445,6 +453,7 @@ function ProductsContent() {
     setNewProductName('');
     setNewProductPartNumber('');
     setNewProductType('');
+    // Note: We don't clear the default price so user can add multiple products with same price
     
     toast({ 
       title: 'Success', 
@@ -562,7 +571,8 @@ const handleCreateProduct = async (e: React.FormEvent) => {
         name: newProductName, 
         part_number: newProductPartNumber, 
         product_type: newProductType,
-        provider_id: newProductProviderId
+        provider_id: newProductProviderId,
+        default_unit_price: newProductDefaultPrice
       }),
     });
 
@@ -620,6 +630,7 @@ const resetProductForm = () => {
   setNewProductPartNumber('');
   setNewProductType('');
   setNewProductProviderId(null);
+  setNewProductDefaultPrice(0);
 };
 
 // Group products by provider
@@ -1243,6 +1254,18 @@ useEffect(() => {
                             required
                           />
                         </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newProductDefaultPrice">Default Unit Price (₦)</Label>
+                          <Input
+                            id="newProductDefaultPrice"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={newProductDefaultPrice}
+                            onChange={(e) => setNewProductDefaultPrice(parseFloat(e.target.value) || 0)}
+                            placeholder="Enter default unit price"
+                          />
+                        </div>
                       </div>
                       <div className="flex justify-end space-x-2">
                         <Button 
@@ -1273,6 +1296,7 @@ useEffect(() => {
                               <TableHead>Name</TableHead>
                               <TableHead>Part Number</TableHead>
                               <TableHead>Type</TableHead>
+                              <TableHead>Default Price</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1282,6 +1306,7 @@ useEffect(() => {
                                 <TableCell>{product.name}</TableCell>
                                 <TableCell>{product.part_number}</TableCell>
                                 <TableCell>{product.product_type}</TableCell>
+                                <TableCell>{formatCurrency(newProductDefaultPrice)}</TableCell>
                                 <TableCell className="text-right">
                                   <Button 
                                     size="sm" 
@@ -1380,6 +1405,18 @@ useEffect(() => {
                       onChange={(e) => setNewProductType(e.target.value)}
                       placeholder="Enter product type"
                       required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newProductDefaultPrice">Default Unit Price (₦)</Label>
+                    <Input
+                      id="newProductDefaultPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newProductDefaultPrice}
+                      onChange={(e) => setNewProductDefaultPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter default unit price"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1542,3 +1579,12 @@ useEffect(() => {
     </DashboardLayout>
   );
 }
+
+// Add this helper function for currency formatting
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 2
+  }).format(amount);
+};

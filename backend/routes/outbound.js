@@ -88,7 +88,9 @@ router.post('/', authenticateJWT, async (req, res) => {
     receiver_email, 
     receiver_phone, 
     dispatch_datetime, 
-    delivery_datetime 
+    delivery_datetime,
+    inbound_price,
+    outbound_price
   } = req.body;
   
   // Validate input
@@ -107,13 +109,31 @@ router.post('/', authenticateJWT, async (req, res) => {
     // Start transaction
     await req.pool.query('BEGIN');
     
+    // Get the inbound transaction with product price
+    const inboundResult = await req.pool.query(`
+      SELECT i.id, p.default_unit_price 
+      FROM inbound_transactions i
+      JOIN products p ON i.product_id = p.id
+      WHERE i.id = $1`,
+      [inbound_transaction_id]
+    );
+    
+    if (inboundResult.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Inbound transaction not found' });
+    }
+    
+    const defaultPrice = inboundResult.rows[0].default_unit_price || 0.00;
+    const actualInboundPrice = inbound_price !== undefined ? parseFloat(inbound_price) : defaultPrice;
+    const actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : defaultPrice;
+    
     // Insert outbound transaction
     const result = await req.pool.query(`
       INSERT INTO outbound_transactions 
-      (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status, inbound_price, outbound_price) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING id`,
-      [inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, 'Outgoing']
+      [inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, 'Outgoing', actualInboundPrice, actualOutboundPrice]
     );
     
     const outboundTransactionId = result.rows[0].id;
@@ -156,7 +176,9 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     receiver_email, 
     receiver_phone, 
     dispatch_datetime, 
-    delivery_datetime 
+    delivery_datetime,
+    inbound_price,
+    outbound_price
   } = req.body;
   
   // Validate input
@@ -174,6 +196,21 @@ router.post('/multi', authenticateJWT, async (req, res) => {
   try {
     // Start transaction
     await req.pool.query('BEGIN');
+    
+    // Get product default price
+    const productResult = await req.pool.query(
+      'SELECT default_unit_price FROM products WHERE id = $1',
+      [product_id]
+    );
+    
+    if (productResult.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    const defaultPrice = productResult.rows[0].default_unit_price || 0.00;
+    const actualInboundPrice = inbound_price !== undefined ? parseFloat(inbound_price) : defaultPrice;
+    const actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : defaultPrice;
     
     // Find one of the inbound transactions that contains these serial numbers to use as the link
     let inboundTransactionId = null;
@@ -211,10 +248,10 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     // Insert outbound transaction
     const result = await req.pool.query(`
       INSERT INTO outbound_transactions 
-      (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status, inbound_price, outbound_price) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING id`,
-      [inboundTransactionId, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, 'Outgoing']
+      [inboundTransactionId, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, 'Outgoing', actualInboundPrice, actualOutboundPrice]
     );
     
     const outboundTransactionId = result.rows[0].id;

@@ -40,6 +40,8 @@ interface OutboundTransaction {
   created_at: string;
   serial_numbers: string[] | null;
   provider_name: string; // Added provider information
+  inbound_price?: number;
+  outbound_price?: number;
 }
 
 interface StoredTransaction {
@@ -92,6 +94,8 @@ function OutboundContent() {
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState<string[]>([]);
+  const [inboundPrice, setInboundPrice] = useState<number>(0);
+  const [outboundPrice, setOutboundPrice] = useState<number>(0);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -210,6 +214,8 @@ function OutboundContent() {
     setDeliveryDate('');
     setDeliveryTime('');
     setSelectedSerialNumbers([]);
+    setInboundPrice(0);
+    setOutboundPrice(0);
     
     // Fetch all serial numbers for this product
     fetchProductSerialNumbers(productId);
@@ -277,7 +283,9 @@ function OutboundContent() {
           receiver_email: receiverEmail,
           receiver_phone: receiverPhone,
           dispatch_datetime: `${dispatchDate}T${dispatchTime}`,
-          delivery_datetime: `${deliveryDate}T${deliveryTime}`
+          delivery_datetime: `${deliveryDate}T${deliveryTime}`,
+          inbound_price: inboundPrice,
+          outbound_price: outboundPrice
         }),
       });
 
@@ -622,6 +630,30 @@ function OutboundContent() {
                     value={deliveryTime}
                     onChange={(e) => setDeliveryTime(e.target.value)}
                     required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="inboundPrice">Inbound Price</Label>
+                  <Input
+                    id="inboundPrice"
+                    type="number"
+                    step="0.01"
+                    value={inboundPrice}
+                    onChange={(e) => setInboundPrice(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter inbound price"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="outboundPrice">Outbound Price</Label>
+                  <Input
+                    id="outboundPrice"
+                    type="number"
+                    step="0.01"
+                    value={outboundPrice}
+                    onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter outbound price"
                   />
                 </div>
               </div>

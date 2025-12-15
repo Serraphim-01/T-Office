@@ -46,6 +46,7 @@ interface InboundTransaction {
   status: 'Incoming' | 'Stored';
   created_at: string;
   serial_numbers?: string[];
+  batch_number?: string;
 }
 
 export default function InboundPage() {
@@ -80,6 +81,7 @@ function InboundContent() {
   const [serialNumbers, setSerialNumbers] = useState<string[]>(['']);
   const [expectedArrivalStart, setExpectedArrivalStart] = useState('');
   const [expectedArrivalEnd, setExpectedArrivalEnd] = useState('');
+  const [batchNumber, setBatchNumber] = useState('');
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -274,6 +276,7 @@ function InboundContent() {
         : Array(transaction.quantity).fill(''));
       setExpectedArrivalStart(transaction.expected_arrival_start.split('T')[0]);
       setExpectedArrivalEnd(transaction.expected_arrival_end.split('T')[0]);
+      setBatchNumber(data.batch_number || '');
       setIsEditing(true);
       setIsAdding(true);
     } catch (error) {
@@ -411,7 +414,8 @@ function InboundContent() {
           serial_numbers: serialNumbers,
           provider_id: selectedProviderId,
           expected_arrival_start: expectedArrivalStart,
-          expected_arrival_end: expectedArrivalEnd
+          expected_arrival_end: expectedArrivalEnd,
+          batch_number: batchNumber
         }),
       });
 
@@ -489,6 +493,7 @@ function InboundContent() {
     setSerialNumbers(['']);
     setExpectedArrivalStart('');
     setExpectedArrivalEnd('');
+    setBatchNumber('');
   };
 
   return (
@@ -618,6 +623,16 @@ function InboundContent() {
                       value={expectedArrivalEnd}
                       onChange={(e) => setExpectedArrivalEnd(e.target.value)}
                       required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="batchNumber">Batch Number</Label>
+                    <Input
+                      id="batchNumber"
+                      value={batchNumber}
+                      onChange={(e) => setBatchNumber(e.target.value)}
+                      placeholder="Enter batch number (optional)"
                     />
                   </div>
                 </div>

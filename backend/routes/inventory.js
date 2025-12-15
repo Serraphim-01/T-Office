@@ -72,7 +72,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
   
   try {
     const result = await req.pool.query(
-      `SELECT p.id, p.name, p.part_number, p.product_type, p.created_at, p.updated_at,
+      `SELECT p.id, p.name, p.part_number, p.product_type, p.created_at, p.updated_at, p.default_unit_price,
               pr.id as provider_id, pr.name as provider_name
        FROM products p
        LEFT JOIN providers pr ON p.provider_id = pr.id
@@ -93,7 +93,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
 
 // Add a new product
 router.post('/products', authenticateJWT, async (req, res) => {
-  const { name, part_number, product_type, provider_id } = req.body;
+  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type || !provider_id) {
@@ -112,8 +112,8 @@ router.post('/products', authenticateJWT, async (req, res) => {
     }
     
     const result = await req.pool.query(
-      'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) RETURNING id, name, part_number, product_type',
-      [name, part_number, product_type, provider_id]
+      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, part_number, product_type, default_unit_price',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -129,7 +129,7 @@ router.post('/products', authenticateJWT, async (req, res) => {
 // Update a product
 router.put('/products/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { name, part_number, product_type, provider_id } = req.body;
+  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type || !provider_id) {
@@ -148,8 +148,8 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
     }
     
     const result = await req.pool.query(
-      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, updated_at = NOW() WHERE id = $5 RETURNING id, name, part_number, product_type',
-      [name, part_number, product_type, provider_id, id]
+      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, part_number, product_type, default_unit_price',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00, id]
     );
     
     if (result.rowCount === 0) {
@@ -212,6 +212,7 @@ router.post('/products/import', authenticateJWT, upload.single('file'), async (r
             const impPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
             const impProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
             const impProviderName = row.provider || row.Provider || '';
+            const impDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
 
             // Get or create provider if specified
             let impProviderId = null;
@@ -223,17 +224,17 @@ router.post('/products/import', authenticateJWT, upload.single('file'), async (r
               impProviderId = providerResult.rows[0].id;
             }
 
-            // Validate required fields including provider
-            if (!impName || !impPartNumber || !impProviderId) {
+            // Validate required fields - provider is now optional
+            if (!impName || !impPartNumber) {
               errorCount++;
-              errors.push(`Row missing required fields (Name: ${impName || 'N/A'}, Part Number: ${impPartNumber || 'N/A'}, Provider: ${impProviderName || 'N/A'})`);
+              errors.push(`Row missing required fields (Name: ${impName || 'N/A'}, Part Number: ${impPartNumber || 'N/A'})`);
               continue;
             }
 
             // Insert product into database
             await req.pool.query(
-              'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
-              [impName, impPartNumber, impProductType, impProviderId]
+              'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4, default_unit_price = $5',
+              [impName, impPartNumber, impProductType, impProviderId, impDefaultPrice]
             );
             successCount++;
           } catch (error) {
@@ -317,11 +318,12 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const prodPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
                   const prodType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
                   const prodProviderName = row.provider || row.Provider || '';
+                  const prodDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
 
-                  // Validate required fields including provider
-                  if (!prodName || !prodPartNumber || !prodProviderName) {
+                  // Validate required fields - provider is now optional
+                  if (!prodName || !prodPartNumber) {
                     errorCount.products++;
-                    errors.push(`Product row missing required fields (Name: ${prodName || 'N/A'}, Part Number: ${prodPartNumber || 'N/A'}, Provider: ${prodProviderName || 'N/A'})`);
+                    errors.push(`Product row missing required fields (Name: ${prodName || 'N/A'}, Part Number: ${prodPartNumber || 'N/A'})`);
                     continue;
                   }
 
@@ -336,8 +338,8 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   }
 
                   await req.pool.query(
-                    'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
-                    [prodName, prodPartNumber, prodType, prodProviderId]
+                    'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4, default_unit_price = $5',
+                    [prodName, prodPartNumber, prodType, prodProviderId, prodDefaultPrice]
                   );
                   successCount.products++;
                   break;
@@ -350,6 +352,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalStart = row.expected_arrival_start || row['Expected Arrival Start'] || '';
                   const expectedArrivalEnd = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const inboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const batchNumber = row.batch_number || row['Batch Number'] || '';
 
                   // Validate required fields
                   if (!inboundPartNumber || !inboundQuantity || !providerName || !expectedArrivalStart || !expectedArrivalEnd) {
@@ -385,10 +388,10 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Insert inbound transaction
                   const inboundResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
-                    (product_id, quantity, provider, expected_arrival_start, expected_arrival_end, status) 
-                    VALUES ($1, $2, $3, $4, $5, $6) 
+                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7) 
                     RETURNING id`,
-                    [inboundProductId, inboundQuantity, provider, expectedArrivalStart, expectedArrivalEnd, 'Incoming']
+                    [inboundProductId, inboundQuantity, providerId, expectedArrivalStart, expectedArrivalEnd, 'Incoming', batchNumber]
                   );
 
                   const inboundId = inboundResult.rows[0].id;
@@ -418,6 +421,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalEndStored = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const arrivalDate = row.arrival_date || row['Arrival Date'] || '';
                   const storedSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const batchNumberStored = row.batch_number || row['Batch Number'] || '';
 
                   // Validate required fields
                   if (!storedPartNumber || !storedQuantity || !storedProviderName || !expectedArrivalStartStored || !expectedArrivalEndStored || !arrivalDate) {
@@ -453,10 +457,10 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Insert stored transaction
                   const storedResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
-                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, batch_number) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
                     RETURNING id`,
-                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored']
+                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored', batchNumberStored]
                   );
 
                   const storedId = storedResult.rows[0].id;
@@ -487,6 +491,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const dispatchDatetime = row.dispatch_datetime || row['Dispatch Datetime'] || '';
                   const deliveryDatetime = row.delivery_datetime || row['Delivery Datetime'] || '';
                   const outboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const outboundPrice = parseFloat(row.outbound_price || row['Outbound Price'] || '0.00');
 
                   // Validate required fields
                   if (!outboundPartNumber || !outboundQuantity || !receiverAddress || !receiverEmail || !receiverPhone || !dispatchDatetime || !deliveryDatetime || !outboundSerialNumbers) {
@@ -497,7 +502,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   // Get the inbound transaction ID by product part number
                   const outboundInboundResult = await req.pool.query(
-                    `SELECT i.id FROM inbound_transactions i
+                    `SELECT i.id, p.default_unit_price FROM inbound_transactions i
                     JOIN products p ON i.product_id = p.id
                     WHERE p.part_number = $1 AND i.status = 'Stored'
                     LIMIT 1`,
@@ -511,14 +516,15 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   }
 
                   const outboundInboundId = outboundInboundResult.rows[0].id;
+                  const inboundPrice = outboundInboundResult.rows[0].default_unit_price || 0.00;
 
                   // Insert outbound transaction
                   const outboundResult = await req.pool.query(
                     `INSERT INTO outbound_transactions 
-                    (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+                    (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status, inbound_price, outbound_price) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
                     RETURNING id`,
-                    [outboundInboundId, outboundQuantity, receiverAddress, receiverEmail, receiverPhone, dispatchDatetime, deliveryDatetime, 'Outgoing']
+                    [outboundInboundId, outboundQuantity, receiverAddress, receiverEmail, receiverPhone, dispatchDatetime, deliveryDatetime, 'Outgoing', inboundPrice, outboundPrice]
                   );
 
                   const outboundId = outboundResult.rows[0].id;
@@ -550,6 +556,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     const defPartNumber = row.part_number || row.partNumber || row['Part Number'] || row['part number'] || '';
                     const defProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
                     const defProviderName = row.provider || row.Provider || '';
+                    const defDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
 
                     // Get or create provider if specified
                     let defProviderId = null;
@@ -561,16 +568,16 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                       defProviderId = providerResult.rows[0].id;
                     }
 
-                    // Validate required fields including provider
-                    if (defName && defPartNumber && defProviderId) {
+                    // Validate required fields - provider is now optional
+                    if (defName && defPartNumber) {
                       await req.pool.query(
-                        'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4',
-                        [defName, defPartNumber, defProductType, defProviderId]
+                        'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4, default_unit_price = $5',
+                        [defName, defPartNumber, defProductType, defProviderId, defDefaultPrice]
                       );
                       successCount.products++;
                     } else {
                       errorCount.products++;
-                      errors.push(`Row missing required fields (Name: ${defName || 'N/A'}, Part Number: ${defPartNumber || 'N/A'}, Provider: ${defProviderName || 'N/A'})`);
+                      errors.push(`Row missing required fields (Name: ${defName || 'N/A'}, Part Number: ${defPartNumber || 'N/A'})`);
                     }
                   }
                   break;
@@ -904,7 +911,7 @@ router.get('/providers/:id', authenticateJWT, async (req, res) => {
 // Add a product to a specific provider
 router.post('/providers/:providerId/products', authenticateJWT, async (req, res) => {
   const { providerId } = req.params;
-  const { name, part_number, product_type } = req.body;
+  const { name, part_number, product_type, default_unit_price } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type) {
@@ -912,9 +919,6 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
   }
   
   try {
-    // Start transaction
-    await req.pool.query('BEGIN');
-    
     // Check if provider exists
     const providerCheck = await req.pool.query(
       'SELECT id, name FROM providers WHERE id = $1',
@@ -922,7 +926,6 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
     );
     
     if (providerCheck.rowCount === 0) {
-      await req.pool.query('ROLLBACK');
       return res.status(404).json({ error: 'Provider not found' });
     }
     
@@ -930,14 +933,11 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
     
     // Insert product with provider_id
     const productResult = await req.pool.query(
-      'INSERT INTO products (name, part_number, product_type, provider_id) VALUES ($1, $2, $3, $4) RETURNING id, name, part_number, product_type',
-      [name, part_number, product_type, providerId]
+      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, part_number, product_type, default_unit_price',
+      [name, part_number, product_type, providerId, default_unit_price || 0.00]
     );
     
     const product = productResult.rows[0];
-    
-    // Commit transaction
-    await req.pool.query('COMMIT');
     
     // Return the created product with provider info
     res.status(201).json({
@@ -946,8 +946,6 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
       provider_name: provider.name
     });
   } catch (error) {
-    // Rollback transaction on error
-    await req.pool.query('ROLLBACK');
     console.error('Error adding product to provider:', error);
     if (error.code === '23505') { // Unique constraint violation
       res.status(400).json({ error: 'A product with this part number already exists' });

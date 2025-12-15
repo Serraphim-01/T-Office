@@ -372,6 +372,7 @@ CREATE TABLE IF NOT EXISTS products (
     part_number VARCHAR(100) UNIQUE NOT NULL,
     product_type VARCHAR(100) NOT NULL,
     provider_id INTEGER REFERENCES providers(id) ON DELETE RESTRICT,
+    default_unit_price DECIMAL(10, 2) DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -390,6 +391,7 @@ CREATE TABLE IF NOT EXISTS inbound_transactions (
     expected_arrival_end DATE NOT NULL,
     arrival_date DATE,
     status VARCHAR(20) DEFAULT 'Incoming' CHECK (status IN ('Incoming', 'Stored', 'Outbound')),
+    batch_number VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -418,6 +420,8 @@ CREATE TABLE IF NOT EXISTS outbound_transactions (
     dispatch_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
     delivery_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
     status VARCHAR(20) DEFAULT 'Outgoing' CHECK (status IN ('Outgoing', 'Dispatched', 'Delivered')),
+    inbound_price DECIMAL(10, 2) DEFAULT 0.00,
+    outbound_price DECIMAL(10, 2) DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -477,16 +481,19 @@ CREATE INDEX IF NOT EXISTS idx_providers_name ON providers(name);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_part_number ON products(part_number);
 CREATE INDEX IF NOT EXISTS idx_products_provider_id ON products(provider_id);
+CREATE INDEX IF NOT EXISTS idx_products_default_unit_price ON products(default_unit_price);
 
 -- Inbound indexes
 CREATE INDEX IF NOT EXISTS idx_inbound_transactions_product_id ON inbound_transactions(product_id);
 CREATE INDEX IF NOT EXISTS idx_inbound_transactions_provider_id ON inbound_transactions(provider_id);
 CREATE INDEX IF NOT EXISTS idx_inbound_transactions_status ON inbound_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_inbound_transactions_batch_number ON inbound_transactions(batch_number);
 CREATE INDEX IF NOT EXISTS idx_inbound_serial_numbers_transaction_id ON inbound_serial_numbers(transaction_id);
 
 -- Outbound indexes
 CREATE INDEX IF NOT EXISTS idx_outbound_transactions_inbound_id ON outbound_transactions(inbound_transaction_id);
 CREATE INDEX IF NOT EXISTS idx_outbound_transactions_status ON outbound_transactions(status);
+CREATE INDEX IF NOT EXISTS idx_outbound_transactions_prices ON outbound_transactions(inbound_price, outbound_price);
 CREATE INDEX IF NOT EXISTS idx_outbound_serial_numbers_transaction_id ON outbound_serial_numbers(outbound_transaction_id);
 
 -- User Support Staff Assignment indexes
