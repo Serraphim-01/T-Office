@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { useNotification } from '@/lib/notification-context';
 import { useRouter } from 'next/navigation';
 import { Badge } from './ui/badge';
+import { useAuth } from '@/lib/auth-context';
+import { hasPageAccess } from '@/lib/page-access';
 
 interface NotificationPanelProps {
   isOpen: boolean; 
@@ -39,6 +41,7 @@ interface AppNotification {
 export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const { notifications, markAsRead, markAllAsRead, clearReadNotifications, fetchNotifications } = useNotification();
   const router = useRouter();
+  const { user } = useAuth();
   const hasReadNotifications = notifications.some(n => !n.read);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +69,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     };
   }, [isOpen, onClose]);
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
     markAsRead(notification.id);
     
     // Navigate based on notification type
@@ -93,11 +96,19 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                notification.type === 'support_assigned' || 
                notification.type === 'support_removed' ||
                notification.type === 'support_reassigned') {
-      // Navigate to user details page
-      if (notification.user_id && !isNaN(notification.user_id)) {
-        router.push(`/hr/users/${notification.user_id}`);
-      } else {
-        router.push('/hr/users');
+      // Check if user has access to HR features before navigating
+      if (user?.id) {
+        const hasOnboardingAccess = await hasPageAccess(user.id.toString(), 'hr/onboarding');
+        const hasUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
+        
+        // Only navigate if user has access to HR features
+        if (hasOnboardingAccess || hasUsersAccess) {
+          if (notification.user_id && !isNaN(notification.user_id)) {
+            router.push(`/hr/users/${notification.user_id}`);
+          } else {
+            router.push('/hr/users');
+          }
+        }
       }
     } else if (notification.type === 'feature_update') {
       // Feature update notifications are department-specific and should not navigate
@@ -166,6 +177,45 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     }
   });
 
+  // Determine if notification should have clickable cursor based on user access
+  const isNotificationClickable = (notification: any) => {
+    // These notification types should always be clickable
+    const alwaysClickableTypes = [
+      'chat_message',
+      'location_created',
+      'location_deleted',
+      'clock_in',
+      'clock_out',
+      'lesson_completed',
+      'feature_update'
+    ];
+    
+    if (alwaysClickableTypes.includes(notification.type)) {
+      return true;
+    }
+    
+    // For HR-related notifications, check access
+    const hrTypes = [
+      'user_onboarded',
+      'user_offboarded',
+      'support_assigned',
+      'support_removed',
+      'support_reassigned'
+    ];
+    
+    if (hrTypes.includes(notification.type)) {
+      // For users with HR access, make clickable
+      if (user?.id) {
+        // In a real implementation, we would check access here
+        // For now, we'll make it clickable for everyone and handle access in the click handler
+        return true;
+      }
+      return false;
+    }
+    
+    return true;
+  };
+
   return (
     <>
       {/* Slide-out panel */}
@@ -210,8 +260,8 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                     {displayNotifications.map((notification) => (
                       <li 
                         key={notification.id} 
-                        className={`p-4 hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`}
-                        onClick={() => handleNotificationClick(notification)}
+                        className={`p-4 hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''} ${isNotificationClickable(notification) ? 'cursor-pointer' : 'cursor-default'}`}
+                        onClick={() => isNotificationClickable(notification) && handleNotificationClick(notification)}
                       >
                         <div className="flex items-start">
                           {notification.type === 'chat_message' ? (
@@ -248,24 +298,37 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                           <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-medium text-gray-900 truncate">
                               {notification.isGroup && notification.count && notification.count > 1 ? (
-                                <span>{notification.title} ({notification.count} new)</span>
+                                <span className="text-gray-700 font-medium">
+                                  {notification.title}
+                                </span>
                               ) : (
-                                notification.title
+                                <span className="text-gray-900 font-medium">
+                                  {notification.title}
+                                </span>
                               )}
                             </h3>
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                              {notification.message}
-                            </p>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs text-gray-400">
-                                {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              {!notification.read && (
-                                <Badge variant="secondary" className="h-2 w-2 p-0 bg-blue-500">
-                                  <span className="sr-only">Unread</span>
-                                </Badge>
+                            <p className="text-sm text-gray-500">
+                              {notification.isGroup && notification.count && notification.count > 1 ? (
+                                <span className="text-gray-500 font-normal">
+                                  {notification.count} similar notifications
+                                </span>
+                              ) : (
+                                <span className="text-gray-500 font-normal">
+                                  {notification.message}
+                                </span>
                               )}
-                            </div>
+                            </p>
+                            {notification.comment && (
+                              <div className="mt-2 flex items-center space-x-2">
+                                <User className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm text-gray-500 font-normal">
+                                  {notification.comment.commenter}:
+                                </span>
+                                <span className="text-sm text-gray-500 font-normal">
+                                  "{notification.comment.text}"
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </li>
