@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, Download, FileText, X } from 'lucide-react';
+import { Upload, Download, FileText, X, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CSVImportModalProps {
@@ -150,20 +150,49 @@ Product Name 3,PART003,Software,Provider C`;
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">{description}</p>
           
-          {/* Sample CSV Download */}
-          <div className="rounded-lg border bg-muted p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Download Sample CSV</p>
-                  <p className="text-xs text-muted-foreground">See the required format</p>
+          {/* Resources Section */}
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Download Sample Template</p>
+                    <p className="text-xs text-muted-foreground">See the required format</p>
+                  </div>
                 </div>
+                <a 
+                  href="/sample_inventory_import_template.csv" 
+                  download="sample_inventory_import_template.csv"
+                >
+                  <Button variant="outline" size="sm">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                </a>
               </div>
-              <Button variant="outline" size="sm" onClick={downloadSampleCSV}>
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
+            </div>
+            
+            <div className="rounded-lg border bg-muted p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">View Import Guide</p>
+                    <p className="text-xs text-muted-foreground">Learn how to format your CSV</p>
+                  </div>
+                </div>
+                <a 
+                  href="/csv_import_guide.md" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="sm">
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    View Guide
+                  </Button>
+                </a>
+              </div>
             </div>
           </div>
           

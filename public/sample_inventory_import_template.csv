@@ -1,0 +1,17 @@
+# Inventory Import Template
+# This CSV template shows all possible fields for importing inventory data
+# Fields marked with * are required
+# For existing providers, only the provider name is needed
+# For new providers, official contact information is required (*)
+# Serial numbers should be separated by | (pipe) character
+# Date format: YYYY-MM-DD
+# DateTime format: YYYY-MM-DDTHH:MM:SS
+
+type,name,part_number,product_type,provider,provider_email,provider_phone,provider_address,official_contact_name*,official_contact_email*,official_contact_phone*,organization_contact_name,organization_contact_email,organization_contact_phone,default_unit_price,quantity,expected_arrival_start,expected_arrival_end,arrival_date,serial_numbers,receiver_address,receiver_email,receiver_phone,dispatch_datetime,delivery_datetime,outbound_price
+product,MacBook Pro,MBA-2023-001,Laptop,Tech Solutions Inc.,info@techsolutions.com,+1-555-0123,"123 Tech Street, San Francisco, CA",Sam Wilson,sam@techsolutions.com,+1-555-0124,Jane Smith,jane@techsolutions.com,+1-555-0125,1200000.00,,,,,,,,,,,
+product,iPad Air,IPA-2023-001,Tablet,Tech Solutions Inc.,info@techsolutions.com,+1-555-0123,"123 Tech Street, San Francisco, CA",Sam Wilson,sam@techsolutions.com,+1-555-0124,Jane Smith,jane@techsolutions.com,+1-555-0125,800000.00,,,,,,,,,,,
+product,Monitor,MNT-2023-001,Display,Existing Provider,,,,,,,,,,,,500000.00,,,,,,,,,,,
+product,Keyboard,KBD-2023-001,Accessory,New Provider Inc.,contact@newprovider.com,+1-555-9999,"456 New Street, Los Angeles, CA",John Doe,john@newprovider.com,+1-555-9998,,,,,,,,60000.00,,,,,,,,,,,
+inbound,,IPA-2023-001,,Tech Solutions Inc.,,,,,,,,,,10,2023-12-01,2023-12-15,,,SN001|SN002|SN003|SN004|SN005|SN006|SN007|SN008|SN009|SN010,,,,,,,,,
+stored,,MBA-2023-001,,Tech Solutions Inc.,,,,,,,,,,5,2023-12-01,2023-12-15,2023-12-10,,SN011|SN012|SN013|SN014|SN015,,,,,,,,,
+outbound,,IPA-2023-001,,,,,,,,,,,,,,,,,,5,"123 Delivery St, New York, NY",user@example.com,+1-555-0199,2023-12-20T09:00:00,2023-12-21T17:00:00,SN001|SN002|SN003|SN004|SN005,850000.00

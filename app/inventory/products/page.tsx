@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess, clearPageAccessCache } from '@/lib/page-access';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
 import { CSVImportModal } from '@/components/csv-import-modal';
+import { ExportModal } from '@/components/export-modal';
 
 interface Product {
   id: number;
@@ -783,38 +784,69 @@ useEffect(() => {
               )}
               
               {canExportCSV && (
-                <Button
-                  onClick={async () => {
+                <ExportModal
+                  title="Export CSV"
+                  onExport={async (exportType) => {
                     try {
                       const token = localStorage.getItem('token');
-                      const response = await fetch('http://localhost:4000/api/inventory/export/products', {
+                      const response = await fetch(`http://localhost:4000/api/inventory/export/${exportType}`, {
                         headers: {
                           'Authorization': `Bearer ${token}`
                         }
                       });
 
-                      if (!response.ok) throw new Error('Failed to export products');
+                      if (!response.ok) throw new Error('Failed to export data');
 
                       const blob = await response.blob();
                       const url = window.URL.createObjectURL(blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = 'products_export.csv';
+                      
+                      // Set filename based on export type
+                      let filename = 'export.csv';
+                      switch (exportType) {
+                        case 'providers-products':
+                          filename = 'providers_products_export.csv';
+                          break;
+                        case 'comprehensive':
+                          filename = 'comprehensive_export.csv';
+                          break;
+                        case 'products':
+                          filename = 'products_export.csv';
+                          break;
+                        case 'inbound':
+                          filename = 'inbound_transactions_export.csv';
+                          break;
+                        case 'stored':
+                          filename = 'stored_transactions_export.csv';
+                          break;
+                        case 'outbound':
+                          filename = 'outbound_transactions_export.csv';
+                          break;
+                        default:
+                          filename = 'export.csv';
+                      }
+                      
+                      a.download = filename;
                       document.body.appendChild(a);
                       a.click();
                       window.URL.revokeObjectURL(url);
                       document.body.removeChild(a);
+                      
+                      toast({
+                        title: 'Success',
+                        description: 'Data exported successfully',
+                      });
                     } catch (error) {
                       toast({
                         title: 'Error',
-                        description: 'Failed to export products',
+                        description: error instanceof Error ? error.message : 'Failed to export data',
                         variant: 'destructive',
                       });
                     }
                   }}
-                >
-                  Export CSV
-                </Button>
+                  featureAccess={canExportCSV}
+                />
               )}
               
               {canAddProvider && (

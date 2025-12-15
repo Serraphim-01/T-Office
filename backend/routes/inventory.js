@@ -213,15 +213,56 @@ router.post('/products/import', authenticateJWT, upload.single('file'), async (r
             const impProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
             const impProviderName = row.provider || row.Provider || '';
             const impDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
+            
+            // Provider contact information (for new providers)
+            const impProviderEmail = row.provider_email || row['Provider Email'] || '';
+            const impProviderPhone = row.provider_phone || row['Provider Phone'] || '';
+            const impProviderAddress = row.provider_address || row['Provider Address'] || '';
+            const impOfficialContactName = row.official_contact_name || row['Official Contact Name'] || '';
+            const impOfficialContactEmail = row.official_contact_email || row['Official Contact Email'] || '';
+            const impOfficialContactPhone = row.official_contact_phone || row['Official Contact Phone'] || '';
+            const impOrgContactName = row.organization_contact_name || row['Organization Contact Name'] || '';
+            const impOrgContactEmail = row.organization_contact_email || row['Organization Contact Email'] || '';
+            const impOrgContactPhone = row.organization_contact_phone || row['Organization Contact Phone'] || '';
 
-            // Get or create provider if specified
             let impProviderId = null;
+            
             if (impProviderName) {
-              const providerResult = await req.pool.query(
-                'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+              // Check if provider already exists
+              const existingProvider = await req.pool.query(
+                'SELECT id FROM providers WHERE name = $1',
                 [impProviderName]
               );
-              impProviderId = providerResult.rows[0].id;
+              
+              if (existingProvider.rowCount > 0) {
+                // Use existing provider
+                impProviderId = existingProvider.rows[0].id;
+              } else {
+                // Create new provider with full details if provided
+                if (impOfficialContactName && impOfficialContactEmail && impOfficialContactPhone) {
+                  // Create provider with full details
+                  const providerResult = await req.pool.query(
+                    `INSERT INTO providers 
+                    (name, email, phone, address, 
+                     official_contact_name, official_contact_email, official_contact_phone,
+                     organization_contact_name, organization_contact_email, organization_contact_phone) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                    ON CONFLICT (name) DO UPDATE SET name = $1 
+                    RETURNING id`,
+                    [impProviderName, impProviderEmail, impProviderPhone, impProviderAddress,
+                     impOfficialContactName, impOfficialContactEmail, impOfficialContactPhone,
+                     impOrgContactName, impOrgContactEmail, impOrgContactPhone]
+                  );
+                  impProviderId = providerResult.rows[0].id;
+                } else {
+                  // Create provider with just name
+                  const providerResult = await req.pool.query(
+                    'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                    [impProviderName]
+                  );
+                  impProviderId = providerResult.rows[0].id;
+                }
+              }
             }
 
             // Validate required fields - provider is now optional
@@ -319,6 +360,17 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const prodType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
                   const prodProviderName = row.provider || row.Provider || '';
                   const prodDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
+                  
+                  // Provider contact information (for new providers)
+                  const prodProviderEmail = row.provider_email || row['Provider Email'] || '';
+                  const prodProviderPhone = row.provider_phone || row['Provider Phone'] || '';
+                  const prodProviderAddress = row.provider_address || row['Provider Address'] || '';
+                  const prodOfficialContactName = row.official_contact_name || row['Official Contact Name'] || '';
+                  const prodOfficialContactEmail = row.official_contact_email || row['Official Contact Email'] || '';
+                  const prodOfficialContactPhone = row.official_contact_phone || row['Official Contact Phone'] || '';
+                  const prodOrgContactName = row.organization_contact_name || row['Organization Contact Name'] || '';
+                  const prodOrgContactEmail = row.organization_contact_email || row['Organization Contact Email'] || '';
+                  const prodOrgContactPhone = row.organization_contact_phone || row['Organization Contact Phone'] || '';
 
                   // Validate required fields - provider is now optional
                   if (!prodName || !prodPartNumber) {
@@ -327,14 +379,43 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     continue;
                   }
 
-                  // Get or create provider if specified
                   let prodProviderId = null;
                   if (prodProviderName) {
-                    const providerResult = await req.pool.query(
-                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                    // Check if provider already exists
+                    const existingProvider = await req.pool.query(
+                      'SELECT id FROM providers WHERE name = $1',
                       [prodProviderName]
                     );
-                    prodProviderId = providerResult.rows[0].id;
+                    
+                    if (existingProvider.rowCount > 0) {
+                      // Use existing provider
+                      prodProviderId = existingProvider.rows[0].id;
+                    } else {
+                      // Create new provider with full details if provided
+                      if (prodOfficialContactName && prodOfficialContactEmail && prodOfficialContactPhone) {
+                        // Create provider with full details
+                        const providerResult = await req.pool.query(
+                          `INSERT INTO providers 
+                          (name, email, phone, address, 
+                           official_contact_name, official_contact_email, official_contact_phone,
+                           organization_contact_name, organization_contact_email, organization_contact_phone) 
+                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                          ON CONFLICT (name) DO UPDATE SET name = $1 
+                          RETURNING id`,
+                          [prodProviderName, prodProviderEmail, prodProviderPhone, prodProviderAddress,
+                           prodOfficialContactName, prodOfficialContactEmail, prodOfficialContactPhone,
+                           prodOrgContactName, prodOrgContactEmail, prodOrgContactPhone]
+                        );
+                        prodProviderId = providerResult.rows[0].id;
+                      } else {
+                        // Create provider with just name
+                        const providerResult = await req.pool.query(
+                          'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                          [prodProviderName]
+                        );
+                        prodProviderId = providerResult.rows[0].id;
+                      }
+                    }
                   }
 
                   await req.pool.query(
@@ -363,11 +444,23 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Get or create provider
                   let providerId = null;
                   if (providerName) {
-                    const providerResult = await req.pool.query(
-                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                    // Check if provider already exists
+                    const existingProvider = await req.pool.query(
+                      'SELECT id FROM providers WHERE name = $1',
                       [providerName]
                     );
-                    providerId = providerResult.rows[0].id;
+                    
+                    if (existingProvider.rowCount > 0) {
+                      // Use existing provider
+                      providerId = existingProvider.rows[0].id;
+                    } else {
+                      // Create new provider with just name for inbound transactions
+                      const providerResult = await req.pool.query(
+                        'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                        [providerName]
+                      );
+                      providerId = providerResult.rows[0].id;
+                    }
                   }
 
                   // Get product ID by part number
@@ -401,7 +494,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   // Insert serial numbers if provided
                   if (inboundSerialNumbers) {
-                    const serials = inboundSerialNumbers.split(',').map(s => s.trim());
+                    const serials = inboundSerialNumbers.split('|').map(s => s.trim());
                     for (const serial of serials) {
                       if (serial) {
                         await req.pool.query(
@@ -435,11 +528,23 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Get or create provider
                   let storedProviderId = null;
                   if (storedProviderName) {
-                    const providerResult = await req.pool.query(
-                      'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                    // Check if provider already exists
+                    const existingProvider = await req.pool.query(
+                      'SELECT id FROM providers WHERE name = $1',
                       [storedProviderName]
                     );
-                    storedProviderId = providerResult.rows[0].id;
+                    
+                    if (existingProvider.rowCount > 0) {
+                      // Use existing provider
+                      storedProviderId = existingProvider.rows[0].id;
+                    } else {
+                      // Create new provider with just name for stored transactions
+                      const providerResult = await req.pool.query(
+                        'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                        [storedProviderName]
+                      );
+                      storedProviderId = providerResult.rows[0].id;
+                    }
                   }
 
                   // Get product ID by part number
@@ -473,7 +578,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   // Insert serial numbers if provided
                   if (storedSerialNumbers) {
-                    const serials = storedSerialNumbers.split(',').map(s => s.trim());
+                    const serials = storedSerialNumbers.split('|').map(s => s.trim());
                     for (const serial of serials) {
                       if (serial) {
                         await req.pool.query(
@@ -536,7 +641,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const outboundId = outboundResult.rows[0].id;
 
                   // Insert serial numbers
-                  const outboundSerials = outboundSerialNumbers.split(',').map(s => s.trim());
+                  const outboundSerials = outboundSerialNumbers.split('|').map(s => s.trim());
                   for (const serial of outboundSerials) {
                     if (serial) {
                       await req.pool.query(
@@ -563,15 +668,55 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     const defProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
                     const defProviderName = row.provider || row.Provider || '';
                     const defDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
+                    
+                    // Provider contact information (for new providers)
+                    const defProviderEmail = row.provider_email || row['Provider Email'] || '';
+                    const defProviderPhone = row.provider_phone || row['Provider Phone'] || '';
+                    const defProviderAddress = row.provider_address || row['Provider Address'] || '';
+                    const defOfficialContactName = row.official_contact_name || row['Official Contact Name'] || '';
+                    const defOfficialContactEmail = row.official_contact_email || row['Official Contact Email'] || '';
+                    const defOfficialContactPhone = row.official_contact_phone || row['Official Contact Phone'] || '';
+                    const defOrgContactName = row.organization_contact_name || row['Organization Contact Name'] || '';
+                    const defOrgContactEmail = row.organization_contact_email || row['Organization Contact Email'] || '';
+                    const defOrgContactPhone = row.organization_contact_phone || row['Organization Contact Phone'] || '';
 
-                    // Get or create provider if specified
                     let defProviderId = null;
                     if (defProviderName) {
-                      const providerResult = await req.pool.query(
-                        'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                      // Check if provider already exists
+                      const existingProvider = await req.pool.query(
+                        'SELECT id FROM providers WHERE name = $1',
                         [defProviderName]
                       );
-                      defProviderId = providerResult.rows[0].id;
+                      
+                      if (existingProvider.rowCount > 0) {
+                        // Use existing provider
+                        defProviderId = existingProvider.rows[0].id;
+                      } else {
+                        // Create new provider with full details if provided
+                        if (defOfficialContactName && defOfficialContactEmail && defOfficialContactPhone) {
+                          // Create provider with full details
+                          const providerResult = await req.pool.query(
+                            `INSERT INTO providers 
+                            (name, email, phone, address, 
+                             official_contact_name, official_contact_email, official_contact_phone,
+                             organization_contact_name, organization_contact_email, organization_contact_phone) 
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+                            ON CONFLICT (name) DO UPDATE SET name = $1 
+                            RETURNING id`,
+                            [defProviderName, defProviderEmail, defProviderPhone, defProviderAddress,
+                             defOfficialContactName, defOfficialContactEmail, defOfficialContactPhone,
+                             defOrgContactName, defOrgContactEmail, defOrgContactPhone]
+                          );
+                          defProviderId = providerResult.rows[0].id;
+                        } else {
+                          // Create provider with just name
+                          const providerResult = await req.pool.query(
+                            'INSERT INTO providers (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING id',
+                            [defProviderName]
+                          );
+                          defProviderId = providerResult.rows[0].id;
+                        }
+                      }
                     }
 
                     // Validate required fields - provider is now optional
@@ -661,6 +806,195 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
     let filename = '';
 
     switch (type) {
+      case 'providers-products':
+        // Export providers with their products in the import format
+        const providersProductsResult = await req.pool.query(`
+          SELECT 
+            'product' as type,
+            p.name,
+            p.part_number,
+            p.product_type,
+            pr.name as provider,
+            pr.email as provider_email,
+            pr.phone as provider_phone,
+            pr.address as provider_address,
+            pr.official_contact_name,
+            pr.official_contact_email,
+            pr.official_contact_phone,
+            pr.organization_contact_name,
+            pr.organization_contact_email,
+            pr.organization_contact_phone,
+            p.default_unit_price,
+            NULL as quantity,
+            NULL as expected_arrival_start,
+            NULL as expected_arrival_end,
+            NULL as arrival_date,
+            NULL as serial_numbers,
+            NULL as receiver_address,
+            NULL as receiver_email,
+            NULL as receiver_phone,
+            NULL as dispatch_datetime,
+            NULL as delivery_datetime,
+            NULL as outbound_price
+          FROM products p
+          LEFT JOIN providers pr ON p.provider_id = pr.id
+          ORDER BY pr.name, p.name
+        `);
+        data = providersProductsResult.rows;
+        filename = 'providers_products_export.csv';
+        break;
+
+      case 'comprehensive':
+        // Export all data in the import format
+        const comprehensiveResult = await req.pool.query(`
+          WITH product_data AS (
+            SELECT 
+              'product' as type,
+              p.name,
+              p.part_number,
+              p.product_type,
+              pr.name as provider,
+              pr.email as provider_email,
+              pr.phone as provider_phone,
+              pr.address as provider_address,
+              pr.official_contact_name,
+              pr.official_contact_email,
+              pr.official_contact_phone,
+              pr.organization_contact_name,
+              pr.organization_contact_email,
+              pr.organization_contact_phone,
+              p.default_unit_price,
+              NULL as quantity,
+              NULL as expected_arrival_start,
+              NULL as expected_arrival_end,
+              NULL as arrival_date,
+              NULL as serial_numbers,
+              NULL as receiver_address,
+              NULL as receiver_email,
+              NULL as receiver_phone,
+              NULL as dispatch_datetime,
+              NULL as delivery_datetime,
+              NULL as outbound_price
+            FROM products p
+            LEFT JOIN providers pr ON p.provider_id = pr.id
+          ),
+          inbound_data AS (
+            SELECT 
+              'inbound' as type,
+              NULL as name,
+              p.part_number,
+              NULL as product_type,
+              pr.name as provider,
+              NULL as provider_email,
+              NULL as provider_phone,
+              NULL as provider_address,
+              NULL as official_contact_name,
+              NULL as official_contact_email,
+              NULL as official_contact_phone,
+              NULL as organization_contact_name,
+              NULL as organization_contact_email,
+              NULL as organization_contact_phone,
+              NULL as default_unit_price,
+              i.quantity,
+              TO_CHAR(i.expected_arrival_start, 'YYYY-MM-DD') as expected_arrival_start,
+              TO_CHAR(i.expected_arrival_end, 'YYYY-MM-DD') as expected_arrival_end,
+              NULL as arrival_date,
+              ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), '|') as serial_numbers,
+              NULL as receiver_address,
+              NULL as receiver_email,
+              NULL as receiver_phone,
+              NULL as dispatch_datetime,
+              NULL as delivery_datetime,
+              NULL as outbound_price
+            FROM inbound_transactions i
+            JOIN products p ON i.product_id = p.id
+            JOIN providers pr ON i.provider_id = pr.id
+            LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+            WHERE i.status = 'Incoming'
+            GROUP BY i.id, p.part_number, pr.name, i.quantity, i.expected_arrival_start, i.expected_arrival_end
+          ),
+          stored_data AS (
+            SELECT 
+              'stored' as type,
+              NULL as name,
+              p.part_number,
+              NULL as product_type,
+              pr.name as provider,
+              NULL as provider_email,
+              NULL as provider_phone,
+              NULL as provider_address,
+              NULL as official_contact_name,
+              NULL as official_contact_email,
+              NULL as official_contact_phone,
+              NULL as organization_contact_name,
+              NULL as organization_contact_email,
+              NULL as organization_contact_phone,
+              NULL as default_unit_price,
+              i.quantity,
+              TO_CHAR(i.expected_arrival_start, 'YYYY-MM-DD') as expected_arrival_start,
+              TO_CHAR(i.expected_arrival_end, 'YYYY-MM-DD') as expected_arrival_end,
+              TO_CHAR(i.arrival_date, 'YYYY-MM-DD') as arrival_date,
+              ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), '|') as serial_numbers,
+              NULL as receiver_address,
+              NULL as receiver_email,
+              NULL as receiver_phone,
+              NULL as dispatch_datetime,
+              NULL as delivery_datetime,
+              NULL as outbound_price
+            FROM inbound_transactions i
+            JOIN products p ON i.product_id = p.id
+            JOIN providers pr ON i.provider_id = pr.id
+            LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+            WHERE i.status = 'Stored'
+            GROUP BY i.id, p.part_number, pr.name, i.quantity, i.expected_arrival_start, i.expected_arrival_end, i.arrival_date
+          ),
+          outbound_data AS (
+            SELECT 
+              'outbound' as type,
+              NULL as name,
+              p.part_number,
+              NULL as product_type,
+              NULL as provider,
+              NULL as provider_email,
+              NULL as provider_phone,
+              NULL as provider_address,
+              NULL as official_contact_name,
+              NULL as official_contact_email,
+              NULL as official_contact_phone,
+              NULL as organization_contact_name,
+              NULL as organization_contact_email,
+              NULL as organization_contact_phone,
+              NULL as default_unit_price,
+              o.quantity,
+              NULL as expected_arrival_start,
+              NULL as expected_arrival_end,
+              NULL as arrival_date,
+              ARRAY_TO_STRING(ARRAY_AGG(osn.serial_number), '|') as serial_numbers,
+              o.receiver_address,
+              o.receiver_email,
+              o.receiver_phone,
+              TO_CHAR(o.dispatch_datetime, 'YYYY-MM-DD"T"HH24:MI:SS') as dispatch_datetime,
+              TO_CHAR(o.delivery_datetime, 'YYYY-MM-DD"T"HH24:MI:SS') as delivery_datetime,
+              NULL as outbound_price
+            FROM outbound_transactions o
+            JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
+            JOIN products p ON i.product_id = p.id
+            LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
+            GROUP BY o.id, p.part_number, o.quantity, o.receiver_address, o.receiver_email, o.receiver_phone, o.dispatch_datetime, o.delivery_datetime
+          )
+          SELECT * FROM product_data
+          UNION ALL
+          SELECT * FROM inbound_data
+          UNION ALL
+          SELECT * FROM stored_data
+          UNION ALL
+          SELECT * FROM outbound_data
+          ORDER BY type, provider, name, part_number
+        `);
+        data = comprehensiveResult.rows;
+        filename = 'comprehensive_export.csv';
+        break;
+
       case 'products':
         const productsResult = await req.pool.query(
           'SELECT id, name, part_number, product_type, created_at, updated_at FROM products ORDER BY name'
@@ -743,7 +1077,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
         break;
 
       default:
-        return res.status(400).json({ error: 'Invalid export type. Supported types: products, inbound, stored, outbound' });
+        return res.status(400).json({ error: 'Invalid export type. Supported types: providers-products, comprehensive, products, inbound, stored, outbound' });
     }
 
     if (format === 'csv') {
