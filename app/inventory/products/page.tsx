@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess, clearPageAccessCache } from '@/lib/page-access';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
+import { CSVImportModal } from '@/components/csv-import-modal';
 
 interface Product {
   id: number;
@@ -109,8 +110,6 @@ function ProductsContent() {
   const [canDeleteProduct, setCanDeleteProduct] = useState(false);
   const [canDeleteProvider, setCanDeleteProvider] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const csvFileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -232,123 +231,6 @@ function ProductsContent() {
       }
       return newSet;
     });
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow import if user has permission
-    if (!canImportCSV) {
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to import products via CSV',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsImporting(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/products/import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Failed to import products');
-
-      const result = await response.json();
-      
-      toast({
-        title: 'Success',
-        description: `${result.successCount} products imported successfully. ${result.errorCount} errors occurred.`,
-      });
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      
-      // Refresh product list
-      fetchProducts();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to import products',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  const handleComprehensiveFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow import if user has permission
-    if (!canImportAllData) {
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to import comprehensive data',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsComprehensiveImporting(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/comprehensive-import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Failed to import comprehensive data');
-
-      const result = await response.json();
-      
-      const totalSuccess = result.successCount.products + result.successCount.inbound + 
-                          result.successCount.stored + result.successCount.outbound;
-      const totalErrors = result.errorCount.products + result.errorCount.inbound + 
-                         result.errorCount.stored + result.errorCount.outbound;
-      
-      toast({
-        title: 'Success',
-        description: `Import completed: ${totalSuccess} items imported successfully. ${totalErrors} errors occurred.`,
-      });
-      
-      // Reset file input
-      if (csvFileInputRef.current) {
-        csvFileInputRef.current.value = '';
-      }
-      
-      // Refresh product list
-      fetchProducts();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to import comprehensive data',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsComprehensiveImporting(false);
-    }
   };
 
   const handleSubmitProvider = async (e: React.FormEvent) => {
@@ -795,41 +677,98 @@ useEffect(() => {
             <CardTitle className="text-2xl font-bold">Inventory Products by Provider</CardTitle>
             <div className="flex space-x-2">
               {canImportCSV && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".csv,text/csv"
-                    className="hidden"
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isImporting}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isImporting ? 'Importing...' : 'Import CSV'}
-                  </Button>
-                </>
+                <CSVImportModal
+                  title="Import CSV"
+                  description="Upload a CSV file to import products"
+                  onImport={async (file) => {
+                    setIsImporting(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+
+                      const token = localStorage.getItem('token');
+                      const response = await fetch('http://localhost:4000/api/inventory/products/import', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: formData,
+                      });
+
+                      if (!response.ok) throw new Error('Failed to import products');
+
+                      const result = await response.json();
+                      
+                      toast({
+                        title: 'Success',
+                        description: `${result.successCount} products imported successfully. ${result.errorCount} errors occurred.`,
+                      });
+                      
+                      // Refresh product list
+                      fetchProducts();
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: error instanceof Error ? error.message : 'Failed to import products',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setIsImporting(false);
+                    }
+                  }}
+                  isLoading={isImporting}
+                  featureAccess={canImportCSV}
+                />
               )}
               
               {canImportAllData && (
-                <>
-                  <input
-                    type="file"
-                    ref={csvFileInputRef}
-                    onChange={handleComprehensiveFileUpload}
-                    accept=".csv,text/csv"
-                    className="hidden"
-                  />
-                  <Button
-                    onClick={() => csvFileInputRef.current?.click()}
-                    disabled={isComprehensiveImporting}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isComprehensiveImporting ? 'Importing...' : 'Import All Data'}
-                  </Button>
-                </>
+                <CSVImportModal
+                  title="Import All Data"
+                  description="Upload a comprehensive CSV file to import products, inbound, stored, and outbound data"
+                  onImport={async (file) => {
+                    setIsComprehensiveImporting(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+
+                      const token = localStorage.getItem('token');
+                      const response = await fetch('http://localhost:4000/api/inventory/comprehensive-import', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: formData,
+                      });
+
+                      if (!response.ok) throw new Error('Failed to import comprehensive data');
+
+                      const result = await response.json();
+                      
+                      const totalSuccess = result.successCount.products + result.successCount.inbound + 
+                                          result.successCount.stored + result.successCount.outbound;
+                      const totalErrors = result.errorCount.products + result.errorCount.inbound + 
+                                         result.errorCount.stored + result.errorCount.outbound;
+                      
+                      toast({
+                        title: 'Success',
+                        description: `Import completed: ${totalSuccess} items imported successfully. ${totalErrors} errors occurred.`,
+                      });
+                      
+                      // Refresh product list
+                      fetchProducts();
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: error instanceof Error ? error.message : 'Failed to import comprehensive data',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setIsComprehensiveImporting(false);
+                    }
+                  }}
+                  isLoading={isComprehensiveImporting}
+                  featureAccess={canImportAllData}
+                />
               )}
               
               {canExportCSV && (
