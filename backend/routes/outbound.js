@@ -59,6 +59,8 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
         o.delivery_datetime,
         o.status,
         o.created_at,
+        o.inbound_price,
+        o.outbound_price,
         pr.name as provider_name,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o
@@ -458,6 +460,8 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         o.delivery_datetime,
         o.status,
         o.created_at,
+        o.inbound_price,
+        o.outbound_price,
         pr.name as provider_name,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o

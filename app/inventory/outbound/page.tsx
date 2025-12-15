@@ -446,10 +446,11 @@ function OutboundContent() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
-                    <TableHead>Provider</TableHead> {/* Added Provider column */}
-                    <TableHead>Delivery Address</TableHead>
                     <TableHead>Quantity</TableHead>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Dispatch Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Prices (₦)</TableHead> {/* Added Prices column */}
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -477,14 +478,16 @@ function OutboundContent() {
                         {transaction.product_name}
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
-                      <TableCell>{transaction.provider_name || 'N/A'}</TableCell> {/* Added Provider cell */}
+                      <TableCell>{transaction.quantity}</TableCell>
+                      <TableCell>{transaction.provider_name || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{transaction.receiver_address}</span>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {transaction.dispatch_date ? format(parseISO(transaction.dispatch_date), 'MMM d, yyyy') : 'N/A'}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell>{transaction.quantity}</TableCell>
                       <TableCell className="status-cell">
                         <div className="flex items-center">
                           <Badge 
@@ -499,41 +502,56 @@ function OutboundContent() {
                           </Badge>
                         </div>
                       </TableCell>
+                      <TableCell> {/* Added Prices cell */}
+                        <div className="text-xs">
+                          <div>In: {transaction.inbound_price !== undefined ? new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                            minimumFractionDigits: 2
+                          }).format(transaction.inbound_price) : 'N/A'}</div>
+                          <div>Out: {transaction.outbound_price !== undefined ? new Intl.NumberFormat('en-NG', {
+                            style: 'currency',
+                            currency: 'NGN',
+                            minimumFractionDigits: 2
+                          }).format(transaction.outbound_price) : 'N/A'}</div>
+                        </div>
+                      </TableCell>
                       <TableCell className="actions-cell">
                         <div className="flex space-x-2">
-                          {canMarkAsDispatched && (
+                          {canMarkAsDispatched && transaction.status === 'Outgoing' && (
                             <Button 
                               size="sm" 
-                              variant="outline"
-                              onClick={() => handleUpdateStatus(transaction.id, 'Dispatched')}
-                              disabled={transaction.status !== 'Outgoing'}
-                              className="p-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateStatus(transaction.id, 'Dispatched');
+                              }}
                             >
-                              <Send className="h-5 w-5" />
-                              <span className="sr-only">Mark as Dispatched</span>
+                              <Send className="h-4 w-4 mr-1" />
+                              Dispatch
                             </Button>
                           )}
-                          {canMarkAsDelivered && (
+                          {canMarkAsDelivered && transaction.status === 'Dispatched' && (
                             <Button 
                               size="sm" 
-                              variant="outline"
-                              onClick={() => handleUpdateStatus(transaction.id, 'Delivered')}
-                              disabled={transaction.status !== 'Dispatched'}
-                              className="p-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateStatus(transaction.id, 'Delivered');
+                              }}
                             >
-                              <CheckCircle className="h-5 w-5" />
-                              <span className="sr-only">Mark as Delivered</span>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Deliver
                             </Button>
                           )}
                           {canDeleteTransaction && (
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => handleDelete(transaction.id)}
-                              className="p-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(transaction.id);
+                              }}
                             >
-                              <Trash2 className="h-5 w-5" />
-                              <span className="sr-only">Delete</span>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>

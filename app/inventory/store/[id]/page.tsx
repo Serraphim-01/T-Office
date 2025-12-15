@@ -22,6 +22,7 @@ interface StoredTransaction {
   status: string;
   created_at: string;
   serial_numbers: string[] | null;
+  batch_number?: string;
 }
 
 export default function StoredTransactionDetailsPage() {
@@ -136,6 +137,12 @@ export default function StoredTransactionDetailsPage() {
                   <p className="text-sm text-muted-foreground">Created At</p>
                   <p className="font-medium">{format(parseISO(transaction.created_at), 'MMM d, yyyy h:mm a')}</p>
                 </div>
+                {transaction.batch_number && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Batch Number</p>
+                    <p className="font-medium">{transaction.batch_number}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

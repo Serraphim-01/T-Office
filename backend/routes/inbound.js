@@ -18,6 +18,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         i.expected_arrival_end,
         i.status,
         i.created_at,
+        i.batch_number,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -47,6 +48,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
         pr.name as provider_name,
         i.arrival_date,
         i.status,
+        i.batch_number,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -66,7 +68,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
 
 // Add a new inbound transaction
 router.post('/', authenticateJWT, async (req, res) => {
-  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end, batch_number } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
   
   // Validate input
   if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
@@ -88,13 +90,17 @@ router.post('/', authenticateJWT, async (req, res) => {
       return res.status(400).json({ error: 'Invalid provider ID' });
     }
     
-    // Insert inbound transaction
+    // Generate automatic batch number: BATCH-{product_id}-{timestamp}
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const batch_number = `BATCH-${product_id}-${timestamp}`;
+    
+    // Insert inbound transaction with auto-generated batch number
     const result = await req.pool.query(`
       INSERT INTO inbound_transactions 
       (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
       VALUES ($1, $2, $3, $4, $5, $6, $7) 
       RETURNING id`,
-      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number || null]
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number]
     );
     
     const transactionId = result.rows[0].id;
@@ -114,11 +120,101 @@ router.post('/', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
-    res.status(201).json({ id: transactionId, message: 'Inbound transaction created successfully' });
+    res.status(201).json({ id: transactionId, batch_number, message: 'Inbound transaction created successfully' });
   } catch (error) {
     // Rollback transaction on error
     await req.pool.query('ROLLBACK');
     console.error('Error adding inbound transaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add multiple inbound transactions with the same batch number
+router.post('/bulk', authenticateJWT, async (req, res) => {
+  const { transactions, expected_arrival_start, expected_arrival_end } = req.body;
+  
+  // Validate input
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+    return res.status(400).json({ error: 'At least one transaction is required' });
+  }
+  
+  if (!expected_arrival_start || !expected_arrival_end) {
+    return res.status(400).json({ error: 'Expected arrival dates are required' });
+  }
+  
+  // Validate each transaction
+  for (const transaction of transactions) {
+    const { product_id, quantity, provider_id } = transaction;
+    if (!product_id || !quantity || !provider_id) {
+      return res.status(400).json({ error: 'Each transaction must have product_id, quantity, and provider_id' });
+    }
+  }
+  
+  try {
+    // Start transaction
+    await req.pool.query('BEGIN');
+    
+    // Verify all providers exist
+    for (const transaction of transactions) {
+      const providerCheck = await req.pool.query(
+        'SELECT id FROM providers WHERE id = $1',
+        [transaction.provider_id]
+      );
+      
+      if (providerCheck.rowCount === 0) {
+        await req.pool.query('ROLLBACK');
+        return res.status(400).json({ error: `Invalid provider ID: ${transaction.provider_id}` });
+      }
+    }
+    
+    // Generate automatic batch number using the first product ID: BATCH-{product_id}-{timestamp}
+    const firstProductId = transactions[0].product_id;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const batch_number = `BATCH-${firstProductId}-${timestamp}`;
+    
+    // Insert all transactions with the same batch number
+    const results = [];
+    for (const transaction of transactions) {
+      const { product_id, quantity, serial_numbers, provider_id } = transaction;
+      
+      // Insert inbound transaction with auto-generated batch number
+      const result = await req.pool.query(`
+        INSERT INTO inbound_transactions 
+        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) 
+        RETURNING id`,
+        [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number]
+      );
+      
+      const transactionId = result.rows[0].id;
+      
+      // Insert serial numbers if provided
+      if (serial_numbers && Array.isArray(serial_numbers) && serial_numbers.length > 0) {
+        for (const serial of serial_numbers) {
+          if (serial && serial.trim() !== '') {
+            await req.pool.query(
+              'INSERT INTO inbound_serial_numbers (transaction_id, serial_number) VALUES ($1, $2)',
+              [transactionId, serial.trim()]
+            );
+          }
+        }
+      }
+      
+      results.push({ id: transactionId, product_id });
+    }
+    
+    // Commit transaction
+    await req.pool.query('COMMIT');
+    
+    res.status(201).json({ 
+      transactions: results, 
+      batch_number, 
+      message: 'Inbound transactions created successfully' 
+    });
+  } catch (error) {
+    // Rollback transaction on error
+    await req.pool.query('ROLLBACK');
+    console.error('Error adding inbound transactions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -140,6 +236,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         i.expected_arrival_end,
         i.status,
         i.created_at,
+        i.batch_number,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -163,7 +260,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
 // Update an inbound transaction
 router.put('/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end, batch_number } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
   
   // Validate input
   if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
@@ -185,13 +282,26 @@ router.put('/:id', authenticateJWT, async (req, res) => {
       return res.status(400).json({ error: 'Invalid provider ID' });
     }
     
-    // Update inbound transaction
+    // Get the existing batch number
+    const existingTransaction = await req.pool.query(
+      'SELECT batch_number FROM inbound_transactions WHERE id = $1 AND status = $2',
+      [id, 'Incoming']
+    );
+    
+    if (existingTransaction.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Transaction not found or already stored' });
+    }
+    
+    const batch_number = existingTransaction.rows[0].batch_number;
+    
+    // Update inbound transaction, keeping the existing batch number
     const result = await req.pool.query(`
       UPDATE inbound_transactions 
-      SET product_id = $1, quantity = $2, provider_id = $3, expected_arrival_start = $4, expected_arrival_end = $5, batch_number = $6, updated_at = NOW()
-      WHERE id = $7 AND status = 'Incoming'
+      SET product_id = $1, quantity = $2, provider_id = $3, expected_arrival_start = $4, expected_arrival_end = $5, updated_at = NOW()
+      WHERE id = $6 AND status = 'Incoming'
       RETURNING id`,
-      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, batch_number || null, id]
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, id]
     );
     
     if (result.rowCount === 0) {
@@ -355,6 +465,7 @@ router.get('/store/product/:productId', authenticateJWT, async (req, res) => {
         i.arrival_date,
         i.status,
         i.created_at,
+        i.batch_number,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -388,6 +499,7 @@ router.get('/store/:id', authenticateJWT, async (req, res) => {
         i.arrival_date,
         i.status,
         i.created_at,
+        i.batch_number,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id

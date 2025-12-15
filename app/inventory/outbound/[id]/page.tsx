@@ -26,6 +26,8 @@ interface OutboundTransaction {
   created_at: string;
   serial_numbers: string[] | null;
   provider_name: string; // Added provider information
+  inbound_price?: number; // Added inbound_price property
+  outbound_price?: number; // Added outbound_price property
 }
 
 export default function OutboundTransactionDetailsPage() {
@@ -226,6 +228,30 @@ export default function OutboundTransactionDetailsPage() {
                   <p className="text-sm text-muted-foreground">Inbound Transaction ID</p>
                   <p className="font-medium">#{transaction.inbound_transaction_id}</p>
                 </div>
+                {transaction.inbound_price !== undefined && ( // Added inbound price display
+                  <div>
+                    <p className="text-sm text-muted-foreground">Inbound Price (₦)</p>
+                    <p className="font-medium text-green-600">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        minimumFractionDigits: 2
+                      }).format(transaction.inbound_price)}
+                    </p>
+                  </div>
+                )}
+                {transaction.outbound_price !== undefined && ( // Added outbound price display
+                  <div>
+                    <p className="text-sm text-muted-foreground">Outbound Price (₦)</p>
+                    <p className="font-medium text-green-600">
+                      {new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        minimumFractionDigits: 2
+                      }).format(transaction.outbound_price)}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

@@ -40,6 +40,9 @@ interface Transaction {
   status: string;
   created_at: string;
   serial_numbers: string[] | null;
+  batch_number?: string; // Added batch_number property
+  inbound_price?: number; // Added inbound_price property
+  outbound_price?: number; // Added outbound_price property
 }
 
 export default function ProductDetailsPage({ params }: { params: { id: string } }) {
@@ -474,6 +477,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     <TableHead>Provider</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Batch Number</TableHead> {/* Added Batch Number column */}
+                    <TableHead>Prices</TableHead> {/* Added Prices column */}
                     <TableHead>Serial Numbers</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -517,6 +522,15 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                             <span className="sr-only">{transaction.status}</span>
                           </Badge>
                         </div>
+                      </TableCell>
+                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell> {/* Added Batch Number cell */}
+                      <TableCell> {/* Added Prices cell */}
+                        {transaction.type === 'outbound' && (
+                          <div className="text-xs">
+                            <div>In: {transaction.inbound_price !== undefined ? formatCurrency(transaction.inbound_price) : 'N/A'}</div>
+                            <div>Out: {transaction.outbound_price !== undefined ? formatCurrency(transaction.outbound_price) : 'N/A'}</div>
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {formatSerialNumbersDisplay(transaction.serial_numbers)}

@@ -42,6 +42,7 @@ interface StoredTransaction {
   serial_numbers: string[] | null;
   status: string;
   provider_name: string; // Added provider_name to match backend
+  batch_number?: string; // Added batch_number property
 }
 
 interface ProductSerialNumbers {
@@ -335,6 +336,7 @@ function StoreContent() {
                     <TableHead>Quantity</TableHead>
                     <TableHead>Provider</TableHead>
                     <TableHead>Arrival Date</TableHead>
+                    <TableHead>Batch Number</TableHead> {/* Added Batch Number column */}
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -393,6 +395,7 @@ function StoreContent() {
                           </span>
                         </div>
                       </TableCell>
+                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell> {/* Added Batch Number cell */}
                       <TableCell className="status-cell">
                         <div className="flex items-center">
                           <Badge variant="default" title="Stored">

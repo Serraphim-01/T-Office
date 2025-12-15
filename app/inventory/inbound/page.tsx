@@ -49,6 +49,14 @@ interface InboundTransaction {
   batch_number?: string;
 }
 
+interface ProductEntry {
+  id: string;
+  provider_id: number | null;
+  product_id: number | null;
+  quantity: number;
+  serial_numbers: string[];
+}
+
 export default function InboundPage() {
   return (
     <AccessControlWrapper pagePath="inventory/inbound">
@@ -60,7 +68,7 @@ export default function InboundPage() {
 function InboundContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<{[key: number]: Product[]}>({});
   const [inboundTransactions, setInboundTransactions] = useState<InboundTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -75,13 +83,15 @@ function InboundContent() {
   const [canMarkAsStored, setCanMarkAsStored] = useState(false);
   
   // Form state
-  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
-  const [serialNumbers, setSerialNumbers] = useState<string[]>(['']);
   const [expectedArrivalStart, setExpectedArrivalStart] = useState('');
   const [expectedArrivalEnd, setExpectedArrivalEnd] = useState('');
-  const [batchNumber, setBatchNumber] = useState('');
+  const [productEntries, setProductEntries] = useState<ProductEntry[]>([{ 
+    id: Date.now().toString(), 
+    provider_id: null, 
+    product_id: null, 
+    quantity: 1, 
+    serial_numbers: [''] 
+  }]);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -187,6 +197,30 @@ function InboundContent() {
     }
   };
 
+  // Fetch products for a specific provider
+  const fetchProductsByProvider = async (providerId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/products`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch products for provider');
+      const data = await response.json();
+      setFilteredProducts(prev => ({
+        ...prev,
+        [providerId]: data
+      }));
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load products for selected provider',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const fetchInboundTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -206,36 +240,6 @@ function InboundContent() {
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Filter products when provider is selected
-  useEffect(() => {
-    if (selectedProviderId) {
-      // Fetch products for this specific provider
-      fetchProductsByProvider(selectedProviderId);
-    } else {
-      setFilteredProducts([]);
-    }
-  }, [selectedProviderId]);
-
-  const fetchProductsByProvider = async (providerId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/products`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch products for provider');
-      const data = await response.json();
-      setFilteredProducts(data);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load products for selected provider',
-        variant: 'destructive',
-      });
     }
   };
 
@@ -264,19 +268,21 @@ function InboundContent() {
       const data = await response.json();
       
       setEditingTransactionId(transaction.id);
-      // Find provider by name
-      const provider = providers.find(p => p.name === transaction.provider_name);
-      if (provider) {
-        setSelectedProviderId(provider.id);
-      }
-      setSelectedProductId(transaction.product_id);
-      setQuantity(transaction.quantity);
-      setSerialNumbers(data.serial_numbers && data.serial_numbers.length > 0 
-        ? data.serial_numbers 
-        : Array(transaction.quantity).fill(''));
+      // For editing, we'll populate the form with a single product entry
       setExpectedArrivalStart(transaction.expected_arrival_start.split('T')[0]);
       setExpectedArrivalEnd(transaction.expected_arrival_end.split('T')[0]);
-      setBatchNumber(data.batch_number || '');
+      
+      // Create a single product entry for editing
+      setProductEntries([{
+        id: Date.now().toString(),
+        provider_id: providers.find(p => p.name === transaction.provider_name)?.id || null,
+        product_id: transaction.product_id,
+        quantity: transaction.quantity,
+        serial_numbers: data.serial_numbers && data.serial_numbers.length > 0 
+          ? data.serial_numbers 
+          : Array(transaction.quantity).fill('')
+      }]);
+      
       setIsEditing(true);
       setIsAdding(true);
     } catch (error) {
@@ -327,115 +333,188 @@ function InboundContent() {
     }
   };
 
-  const handleQuantityChange = (value: number) => {
-    setQuantity(value);
-    // Adjust serial numbers array to match quantity
-    setSerialNumbers(prev => {
-      const newSerialNumbers = [...prev];
-      if (value > prev.length) {
-        // Add new empty serial numbers
-        return [...newSerialNumbers, ...Array(value - prev.length).fill('')];
-      } else if (value < prev.length) {
-        // Remove extra serial numbers
-        return newSerialNumbers.slice(0, value);
+  const handleQuantityChange = (entryId: string, value: number) => {
+    setProductEntries(prev => prev.map(entry => {
+      if (entry.id === entryId) {
+        // Adjust serial numbers array to match quantity
+        const newSerialNumbers = [...entry.serial_numbers];
+        if (value > entry.serial_numbers.length) {
+          // Add new empty serial numbers
+          return { 
+            ...entry, 
+            quantity: value,
+            serial_numbers: [...newSerialNumbers, ...Array(value - entry.serial_numbers.length).fill('')]
+          };
+        } else if (value < entry.serial_numbers.length) {
+          // Remove extra serial numbers
+          return { 
+            ...entry, 
+            quantity: value,
+            serial_numbers: newSerialNumbers.slice(0, value)
+          };
+        }
+        return { ...entry, quantity: value };
       }
-      return newSerialNumbers;
-    });
+      return entry;
+    }));
   };
 
-  const handleSerialNumberChange = (index: number, value: string) => {
-    const newSerialNumbers = [...serialNumbers];
-    newSerialNumbers[index] = value;
-    setSerialNumbers(newSerialNumbers);
+  const handleSerialNumberChange = (entryId: string, index: number, value: string) => {
+    setProductEntries(prev => prev.map(entry => {
+      if (entry.id === entryId) {
+        const newSerialNumbers = [...entry.serial_numbers];
+        newSerialNumbers[index] = value;
+        return { ...entry, serial_numbers: newSerialNumbers };
+      }
+      return entry;
+    }));
+  };
+
+  // State to track if we're adding multiple products from the same provider
+  const [sameProviderMode, setSameProviderMode] = useState(false);
+  const [commonProviderId, setCommonProviderId] = useState<number | null>(null);
+
+  const handleProviderChange = (entryId: string, providerId: number) => {
+    setProductEntries(prev => prev.map(entry => {
+      // If same provider mode is enabled, update all entries with the same provider
+      if (sameProviderMode && entry.provider_id !== providerId) {
+        // Fetch products for this provider only once
+        if (entry.id === entryId) {
+          fetchProductsByProvider(providerId);
+        }
+        return { 
+          ...entry, 
+          provider_id: providerId,
+          product_id: null
+        };
+      } else if (entry.id === entryId) {
+        // When provider changes, reset product selection and fetch products for this provider
+        fetchProductsByProvider(providerId);
+        return { 
+          ...entry, 
+          provider_id: providerId,
+          product_id: null
+        };
+      }
+      return entry;
+    }));
+  };
+
+  const handleProductChange = (entryId: string, productId: number) => {
+    setProductEntries(prev => prev.map(entry => {
+      if (entry.id === entryId) {
+        return { ...entry, product_id: productId };
+      }
+      return entry;
+    }));
+  };
+
+  const addProductEntry = () => {
+    setProductEntries(prev => [
+      ...prev,
+      { 
+        id: Date.now().toString(), 
+        provider_id: sameProviderMode && commonProviderId ? commonProviderId : null, 
+        product_id: null, 
+        quantity: 1, 
+        serial_numbers: [''] 
+      }
+    ]);
+  };
+
+  const removeProductEntry = (entryId: string) => {
+    if (productEntries.length > 1) {
+      setProductEntries(prev => prev.filter(entry => entry.id !== entryId));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!selectedProviderId || !selectedProductId || quantity <= 0 || !expectedArrivalStart || !expectedArrivalEnd) {
+    if (!expectedArrivalStart || !expectedArrivalEnd) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in arrival dates',
         variant: 'destructive',
       });
       return;
     }
     
-    // Get provider name
-    const provider = providers.find(p => p.id === selectedProviderId);
-    if (!provider) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please select a valid provider',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Get product
-    const product = products.find(p => p.id === selectedProductId);
-    if (!product) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please select a valid product',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Check for duplicate serial numbers
-    const nonEmptySerials = serialNumbers.filter(sn => sn.trim() !== '');
-    if (new Set(nonEmptySerials).size !== nonEmptySerials.length) {
-      toast({
-        title: 'Validation Error',
-        description: 'Serial numbers must be unique',
-        variant: 'destructive',
-      });
-      return;
+    // Validate each product entry
+    for (const entry of productEntries) {
+      if (!entry.provider_id || !entry.product_id || entry.quantity <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all required fields for all products',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Check for duplicate serial numbers within this entry
+      const nonEmptySerials = entry.serial_numbers.filter(sn => sn.trim() !== '');
+      if (new Set(nonEmptySerials).size !== nonEmptySerials.length) {
+        toast({
+          title: 'Validation Error',
+          description: 'Serial numbers must be unique within each product entry',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     
     try {
       const token = localStorage.getItem('token');
-      const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing 
-        ? `http://localhost:4000/api/inventory/inbound/${editingTransactionId}` 
-        : 'http://localhost:4000/api/inventory/inbound';
       
-      const response = await fetch(url, {
-        method,
+      // Prepare data for bulk submission
+      const transactions = productEntries.map(entry => ({
+        product_id: entry.product_id,
+        quantity: entry.quantity,
+        serial_numbers: entry.serial_numbers,
+        provider_id: entry.provider_id
+      }));
+      
+      const requestData = {
+        transactions,
+        expected_arrival_start: expectedArrivalStart,
+        expected_arrival_end: expectedArrivalEnd
+      };
+      
+      // Submit all entries as bulk transaction
+      const response = await fetch('http://localhost:4000/api/inventory/inbound/bulk', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          product_id: selectedProductId,
-          quantity,
-          serial_numbers: serialNumbers,
-          provider_id: selectedProviderId,
-          expected_arrival_start: expectedArrivalStart,
-          expected_arrival_end: expectedArrivalEnd,
-          batch_number: batchNumber
-        }),
+        body: JSON.stringify(requestData),
       });
-
-      if (!response.ok) throw new Error(isEditing ? 'Failed to update inbound transaction' : 'Failed to add inbound transaction');
-
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add inbound transactions');
+      }
+      
+      const responseData = await response.json();
+      
+      // Show success message with batch number
       toast({ 
         title: 'Success', 
-        description: isEditing ? 'Inbound transaction updated successfully' : 'Inbound transaction added successfully' 
+        description: `Inbound transactions added successfully with batch number: ${responseData.batch_number}`
       });
       
       // Reset form
-      setSelectedProviderId(null);
-      setSelectedProductId(null);
-      setQuantity(1);
-      setSerialNumbers(['']);
       setExpectedArrivalStart('');
       setExpectedArrivalEnd('');
+      setProductEntries([{ 
+        id: Date.now().toString(), 
+        provider_id: null, 
+        product_id: null, 
+        quantity: 1, 
+        serial_numbers: [''] 
+      }]);
       setIsAdding(false);
-      setIsEditing(false);
-      setEditingTransactionId(null);
       
       // Refresh transactions
       fetchInboundTransactions();
@@ -446,6 +525,41 @@ function InboundContent() {
         variant: 'destructive',
       });
     }
+  };
+
+  // Function to toggle same provider mode
+  const toggleSameProviderMode = () => {
+    const newMode = !sameProviderMode;
+    setSameProviderMode(newMode);
+    
+    if (newMode && productEntries.length > 0 && productEntries[0].provider_id) {
+      // Enable same provider mode and set common provider
+      setCommonProviderId(productEntries[0].provider_id);
+    } else if (!newMode) {
+      // Disable same provider mode
+      setCommonProviderId(null);
+    }
+  };
+
+  // Handle common provider change when in same provider mode
+  const handleCommonProviderChange = (providerId: number) => {
+    setCommonProviderId(providerId);
+    handleProviderChange(productEntries[0]?.id || '', providerId);
+  };
+
+  const resetForm = () => {
+    setIsAdding(false);
+    setIsEditing(false);
+    setEditingTransactionId(null);
+    setExpectedArrivalStart('');
+    setExpectedArrivalEnd('');
+    setProductEntries([{ 
+      id: Date.now().toString(), 
+      provider_id: null, 
+      product_id: null, 
+      quantity: 1, 
+      serial_numbers: [''] 
+    }]);
   };
 
   const handleMarkAsStored = async (id: number) => {
@@ -481,19 +595,6 @@ function InboundContent() {
         variant: 'destructive',
       });
     }
-  };
-
-  const resetForm = () => {
-    setIsAdding(false);
-    setIsEditing(false);
-    setEditingTransactionId(null);
-    setSelectedProviderId(null);
-    setSelectedProductId(null);
-    setQuantity(1);
-    setSerialNumbers(['']);
-    setExpectedArrivalStart('');
-    setExpectedArrivalEnd('');
-    setBatchNumber('');
   };
 
   return (
@@ -548,62 +649,11 @@ function InboundContent() {
         {isAdding && canAddTransaction && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>{isEditing ? 'Edit Inbound Transaction' : 'Add New Inbound Transaction'}</CardTitle>
+              <CardTitle>Add New Inbound Transaction</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="provider">Provider *</Label>
-                    <Select 
-                      value={selectedProviderId?.toString() || ''} 
-                      onValueChange={(value) => setSelectedProviderId(parseInt(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {providers.map((provider) => (
-                          <SelectItem key={provider.id} value={provider.id.toString()}>
-                            {provider.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="product">Product *</Label>
-                    <Select 
-                      value={selectedProductId?.toString() || ''} 
-                      onValueChange={(value) => setSelectedProductId(parseInt(value))}
-                      disabled={!selectedProviderId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={selectedProviderId ? "Select a product" : "Select a provider first"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredProducts.map((product) => (
-                          <SelectItem key={product.id} value={product.id.toString()}>
-                            {product.name} ({product.part_number})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
-                      required
-                    />
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="arrivalStart">Expected Arrival Start *</Label>
                     <Input
@@ -625,42 +675,165 @@ function InboundContent() {
                       required
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="batchNumber">Batch Number</Label>
-                    <Input
-                      id="batchNumber"
-                      value={batchNumber}
-                      onChange={(e) => setBatchNumber(e.target.value)}
-                      placeholder="Enter batch number (optional)"
-                    />
-                  </div>
                 </div>
 
-                {quantity > 0 && (
+                {/* Same Provider Mode Toggle */}
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="sameProviderMode"
+                    checked={sameProviderMode}
+                    onChange={toggleSameProviderMode}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="sameProviderMode">
+                    Add multiple products from the same provider
+                  </Label>
+                </div>
+
+                {/* Common Provider Selector when in same provider mode */}
+                {sameProviderMode && (
                   <div className="space-y-2">
-                    <Label>Serial Numbers</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {serialNumbers.map((serial, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <span className="text-sm text-muted-foreground">#{index + 1}</span>
-                          <Input
-                            value={serial}
-                            onChange={(e) => handleSerialNumberChange(index, e.target.value)}
-                            placeholder={`Serial #${index + 1}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <Label htmlFor="commonProvider">Common Provider *</Label>
+                    <Select 
+                      value={commonProviderId?.toString() || ''} 
+                      onValueChange={(value) => handleCommonProviderChange(parseInt(value))}
+                    >
+                      <SelectTrigger id="commonProvider">
+                        <SelectValue placeholder="Select a provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.map((provider) => (
+                          <SelectItem key={provider.id} value={provider.id.toString()}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Products</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addProductEntry}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Product
+                    </Button>
+                  </div>
+                  
+                  {productEntries.map((entry, index) => (
+                    <div key={entry.id} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-medium">Product #{index + 1}</h3>
+                        {productEntries.length > 1 && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => removeProductEntry(entry.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {!sameProviderMode ? (
+                          // Regular provider selector when not in same provider mode
+                          <div className="space-y-2">
+                            <Label htmlFor={`provider-${entry.id}`}>Provider *</Label>
+                            <Select 
+                              value={entry.provider_id?.toString() || ''} 
+                              onValueChange={(value) => handleProviderChange(entry.id, parseInt(value))}
+                            >
+                              <SelectTrigger id={`provider-${entry.id}`}>
+                                <SelectValue placeholder="Select a provider" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {providers.map((provider) => (
+                                  <SelectItem key={provider.id} value={provider.id.toString()}>
+                                    {provider.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          // Display common provider when in same provider mode
+                          <div className="space-y-2">
+                            <Label>Provider</Label>
+                            <div className="p-2 bg-gray-100 rounded">
+                              {providers.find(p => p.id === commonProviderId)?.name || 'Not selected'}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ... existing product selector ... */}
+                        <div className="space-y-2">
+                          <Label htmlFor={`product-${entry.id}`}>Product *</Label>
+                          <Select 
+                            value={entry.product_id?.toString() || ''} 
+                            onValueChange={(value) => handleProductChange(entry.id, parseInt(value))}
+                            disabled={!entry.provider_id}
+                          >
+                            <SelectTrigger id={`product-${entry.id}`}>
+                              <SelectValue placeholder={entry.provider_id ? "Select a product" : "Select a provider first"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {entry.provider_id && filteredProducts[entry.provider_id] ? (
+                                filteredProducts[entry.provider_id].map((product) => (
+                                  <SelectItem key={product.id} value={product.id.toString()}>
+                                    {product.name} ({product.part_number})
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="" disabled>No products available</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`quantity-${entry.id}`}>Quantity *</Label>
+                          <Input
+                            id={`quantity-${entry.id}`}
+                            type="number"
+                            min="1"
+                            value={entry.quantity}
+                            onChange={(e) => handleQuantityChange(entry.id, parseInt(e.target.value) || 1)}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {entry.quantity > 0 && (
+                        <div className="space-y-2">
+                          <Label>Serial Numbers</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {entry.serial_numbers.map((serial, index) => (
+                              <div key={index} className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground">#{index + 1}</span>
+                                <Input
+                                  value={serial}
+                                  onChange={(e) => handleSerialNumberChange(entry.id, index, e.target.value)}
+                                  placeholder={`Serial #${index + 1}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
                 <div className="flex justify-end space-x-2">
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Cancel
                   </Button>
                   <Button type="submit">
-                    {isEditing ? 'Update Transaction' : 'Add Transaction'}
+                    Add Transactions
                   </Button>
                 </div>
               </form>
@@ -685,6 +858,7 @@ function InboundContent() {
                     <TableHead>Quantity</TableHead>
                     <TableHead>Provider</TableHead>
                     <TableHead>Expected Arrival</TableHead>
+                    <TableHead>Batch Number</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -743,6 +917,7 @@ function InboundContent() {
                           </span>
                         </div>
                       </TableCell>
+                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
                       <TableCell className="status-cell">
                         <div className="flex items-center">
                           <Badge 

@@ -22,6 +22,7 @@ interface InboundTransaction {
   status: 'Incoming' | 'Stored' | 'Outgoing';
   created_at: string;
   serial_numbers: string[] | null;
+  batch_number?: string;
 }
 
 export default function InboundTransactionDetailsPage() {
@@ -207,6 +208,12 @@ export default function InboundTransactionDetailsPage() {
                   <p className="text-sm text-muted-foreground">Created At</p>
                   <p className="font-medium">{format(parseISO(transaction.created_at), 'MMM d, yyyy h:mm a')}</p>
                 </div>
+                {transaction.batch_number && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Batch Number</p>
+                    <p className="font-medium">{transaction.batch_number}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

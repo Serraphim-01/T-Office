@@ -352,7 +352,6 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalStart = row.expected_arrival_start || row['Expected Arrival Start'] || '';
                   const expectedArrivalEnd = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const inboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
-                  const batchNumber = row.batch_number || row['Batch Number'] || '';
 
                   // Validate required fields
                   if (!inboundPartNumber || !inboundQuantity || !providerName || !expectedArrivalStart || !expectedArrivalEnd) {
@@ -385,13 +384,17 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   const inboundProductId = inboundProductResult.rows[0].id;
 
-                  // Insert inbound transaction
+                  // Generate automatic batch number: BATCH-{product_id}-{timestamp}
+                  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                  const autoBatchNumber = `BATCH-${inboundProductId}-${timestamp}`;
+
+                  // Insert inbound transaction with auto-generated batch number
                   const inboundResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
                     (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
                     VALUES ($1, $2, $3, $4, $5, $6, $7) 
                     RETURNING id`,
-                    [inboundProductId, inboundQuantity, providerId, expectedArrivalStart, expectedArrivalEnd, 'Incoming', batchNumber]
+                    [inboundProductId, inboundQuantity, providerId, expectedArrivalStart, expectedArrivalEnd, 'Incoming', autoBatchNumber]
                   );
 
                   const inboundId = inboundResult.rows[0].id;
@@ -421,7 +424,6 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalEndStored = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const arrivalDate = row.arrival_date || row['Arrival Date'] || '';
                   const storedSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
-                  const batchNumberStored = row.batch_number || row['Batch Number'] || '';
 
                   // Validate required fields
                   if (!storedPartNumber || !storedQuantity || !storedProviderName || !expectedArrivalStartStored || !expectedArrivalEndStored || !arrivalDate) {
@@ -454,13 +456,17 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   const storedProductId = storedProductResult.rows[0].id;
 
-                  // Insert stored transaction
+                  // Generate automatic batch number: BATCH-{product_id}-{timestamp}
+                  const storedTimestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                  const autoBatchNumberStored = `BATCH-${storedProductId}-${storedTimestamp}`;
+
+                  // Insert stored transaction with auto-generated batch number
                   const storedResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
                     (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, batch_number) 
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
                     RETURNING id`,
-                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored', batchNumberStored]
+                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored', autoBatchNumberStored]
                   );
 
                   const storedId = storedResult.rows[0].id;
