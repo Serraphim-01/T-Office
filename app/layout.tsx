@@ -3,10 +3,10 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { UIProvider } from '@/lib/ui-context';
-import { NotificationProvider } from '@/lib/notification-context'; // Import our notification provider
+import { NotificationProvider } from '@/lib/notification-context';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAProvider } from '@/components/pwa-provider';
-import '@/lib/theme-utils'; // Import theme utilities for early theme application
+import '@/lib/theme-utils';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <UIProvider>
           <AuthProvider>
-            <NotificationProvider> {/* Wrap with our notification provider */}
+            <NotificationProvider>
               <PWAProvider>
                 {children}
                 <Toaster />

@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useUI } from '@/lib/ui-context';
+import { useZoom } from '@/components/zoom-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { DashboardLayout } from '@/components/dashboard-layout';
+import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 // Utility function to convert hex to HSL
 function hexToHsl(hex: string): string {
@@ -63,6 +66,7 @@ function hslToHex(hsl: string): string {
 
 export default function SettingsPage() {
   const { theme, updateTheme, resetTheme } = useUI();
+  const { zoomLevel, setZoomLevel, increaseZoom, decreaseZoom, resetZoom } = useZoom();
   const [tempTheme, setTempTheme] = useState(theme);
   const [inputFormats, setInputFormats] = useState<Record<string, 'hsl' | 'hex' | 'rgb'>>(() =>
     Object.keys(theme).reduce((acc, key) => ({ ...acc, [key]: 'hsl' }), {})
@@ -169,6 +173,69 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Time before automatic refresh when feature updates are detected (5-60 seconds)
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Display Settings */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Display Settings</CardTitle>
+            <CardDescription>
+              Adjust the display zoom level for better visibility.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label>Zoom Level</Label>
+                <span className="text-sm font-medium">{zoomLevel}%</span>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={decreaseZoom}
+                  disabled={zoomLevel <= 50}
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                
+                <Slider
+                  value={[zoomLevel]}
+                  onValueChange={(value) => setZoomLevel(value[0])}
+                  min={50}
+                  max={200}
+                  step={5}
+                  className="flex-1"
+                />
+                
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={increaseZoom}
+                  disabled={zoomLevel >= 200}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="flex justify-between">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={resetZoom}
+                  className="flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset Zoom
+                </Button>
+                
+                <div className="text-sm text-muted-foreground">
+                  Use Ctrl + +/- to zoom
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

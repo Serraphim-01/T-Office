@@ -217,7 +217,7 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
   }
 };
 
-export function AccessControlledNav() {
+export function AccessControlledNav({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemClick?: () => void; }) {
   const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const [accessibleItems, setAccessibleItems] = useState<typeof menuItems>([]);
@@ -294,8 +294,79 @@ export function AccessControlledNav() {
     );
   }
 
+  if (collapsed) {
+    // Collapsed view - only show icons
+    return (
+      <nav className="flex flex-col items-center py-4 space-y-2">
+        {accessibleItems.map((item) => {
+          const Icon = item.icon;
+          const hasChildren = item.children && item.children.length > 0;
+          
+          return (
+            <div key={item.href || item.title} className="relative group">
+              {hasChildren ? (
+                // Parent items with children
+                <div
+                  onClick={() => toggleExpand(item.title)}
+                  className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted cursor-pointer",
+                    isActive(item.href) && "bg-muted text-primary"
+                  )}
+                  title={item.title}
+                >
+                  {Icon && <Icon className="h-5 w-5" />}
+                </div>
+              ) : (
+                // Items without children
+                <Link
+                  href={item.href}
+                  onClick={onItemClick}
+                  className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted",
+                    isActive(item.href) && "bg-muted text-primary"
+                  )}
+                  title={item.title}
+                >
+                  {Icon && <Icon className="h-5 w-5" />}
+                </Link>
+              )}
+              
+              {/* Tooltip for collapsed state */}
+              <div className="absolute left-full ml-2 top-0 hidden group-hover:block bg-background border border-border shadow-lg rounded-md px-3 py-2 text-sm whitespace-nowrap z-50">
+                {item.title}
+              </div>
+              
+              {/* Expanded children in collapsed mode */}
+              {hasChildren && expandedItems.has(item.title) && (
+                <div className="absolute left-full ml-2 top-0 bg-background border border-border shadow-lg rounded-md py-2 z-50 w-48">
+                  {item.children?.map((child) => {
+                    const ChildIcon = child.icon || Icon;
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={onItemClick}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted transition-colors",
+                          isActive(child.href) && "bg-muted text-primary"
+                        )}
+                      >
+                        {ChildIcon && <ChildIcon className="h-4 w-4" />}
+                        <span>{child.title}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
-    <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+    <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
       {accessibleItems.map((item) => {
         const Icon = item.icon;
         const hasChildren = item.children && item.children.length > 0;
@@ -327,6 +398,7 @@ export function AccessControlledNav() {
               // Items without children are clickable
               <Link
                 href={item.href}
+                onClick={onItemClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
                   isActive(item.href) && "bg-muted text-primary"
@@ -345,6 +417,7 @@ export function AccessControlledNav() {
                     <Link
                       key={child.href}
                       href={child.href}
+                      onClick={onItemClick}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary text-sm",
                         isActive(child.href) && "bg-muted text-primary"

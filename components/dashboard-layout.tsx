@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlledNav } from './access-controlled-nav';
 import { NotificationPanel } from './notification-panel';
 import { Button } from './ui/button';
-import { Bell, Menu, X } from 'lucide-react';
+import { Bell, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNotification } from '@/lib/notification-context';
 import { RefreshCountdown } from './refresh-countdown';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const { unreadCount } = useNotification();
   const pathname = usePathname();
@@ -20,6 +21,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Function to handle refresh
   const handleRefresh = () => {
     window.location.reload();
+  };
+
+  // Toggle sidebar collapse state
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   return (
@@ -37,29 +43,56 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+        className={`fixed inset-y-0 left-0 z-50 bg-background border-r border-border transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } ${sidebarCollapsed ? 'w-16' : 'w-64'}`}
       >
-        <div className="flex items-center justify-between h-16 px-4 border-b border-border">
-          <div className="flex items-center">
-            <div className="bg-primary text-primary-foreground rounded-md p-2">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </div>
-            <span className="ml-2 text-xl font-bold">Task Office</span>
-          </div>
+        <div className={`flex items-center ${sidebarCollapsed ? 'justify-center h-16' : 'justify-between h-16 px-4'} border-b border-border`}>
+          {!sidebarCollapsed ? (
+            <>
+              <div className="flex items-center">
+                <div className="bg-primary text-primary-foreground rounded-md p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                </div>
+                <span className="ml-2 text-xl font-bold">Task Office</span>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </>
+          ) : (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+            className="hidden lg:flex"
+            onClick={toggleSidebarCollapse}
           >
-            <X className="h-6 w-6" />
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-5 w-5" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
           </Button>
         </div>
-        <AccessControlledNav onItemClick={() => setSidebarOpen(false)} />
+        <div className={sidebarCollapsed ? "py-4" : ""}>
+          <AccessControlledNav collapsed={sidebarCollapsed} onItemClick={() => setSidebarOpen(false)} />
+        </div>
       </div>
 
       {/* Main content */}
