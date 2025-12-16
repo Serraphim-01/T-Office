@@ -206,6 +206,31 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the transactions
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_inbound_created',
+            title: 'New Inbound Transactions Created',
+            message: `${transactions.length} new inbound transactions have been created with batch number ${batch_number}.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending inbound transaction creation notifications:', notificationError);
+    }
+    
     res.status(201).json({ 
       transactions: results, 
       batch_number, 

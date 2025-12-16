@@ -484,3 +484,33 @@ export async function getUsersToNotifyOnSupportRemoval(pool, userId, supportStaf
     return [];
   }
 }
+
+// Helper function to get all users to notify for inventory product operations
+export async function getUsersToNotifyOnInventoryProducts(pool) {
+  try {
+    // Get users with inventory/products access
+    const usersWithInventoryProductsAccess = await getUsersWithPageAccess(pool, 'inventory/products');
+    
+    return [...new Set(usersWithInventoryProductsAccess)];
+  } catch (err) {
+    console.error('Error getting users to notify on inventory products:', err);
+    return [];
+  }
+}
+
+// Helper function to get all users to notify for inventory inbound operations
+export async function getUsersToNotifyOnInventoryInbound(pool) {
+  try {
+    // Get users with inventory/inbound or inventory/products access
+    const usersWithInventoryInboundAccess = await getUsersWithPageAccess(pool, 'inventory/inbound');
+    const usersWithInventoryProductsAccess = await getUsersWithPageAccess(pool, 'inventory/products');
+    
+    // Combine and deduplicate
+    const allUsersToNotify = [...new Set([...usersWithInventoryInboundAccess, ...usersWithInventoryProductsAccess])];
+    
+    return allUsersToNotify;
+  } catch (err) {
+    console.error('Error getting users to notify on inventory inbound:', err);
+    return [];
+  }
+}

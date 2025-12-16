@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut, User, UserPlus, UserMinus, UserX } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut, User, UserPlus, UserMinus, UserX, Package, Truck, Archive, Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -113,6 +113,21 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
     } else if (notification.type === 'feature_update') {
       // Feature update notifications are department-specific and should not navigate
       // The cursor is already set to default for these notifications
+    } else if (notification.type.startsWith('inventory_')) {
+      // Navigate to the appropriate inventory page based on notification type
+      if (notification.type.includes('export')) {
+        // For export notifications, go to products page
+        router.push('/inventory/products');
+      } else if (notification.type.includes('import')) {
+        // For import notifications, go to products page
+        router.push('/inventory/products');
+      } else if (notification.type.includes('inbound')) {
+        // For inbound notifications, go to inbound page
+        router.push('/inventory/inbound');
+      } else {
+        // For other inventory notifications, go to products page
+        router.push('/inventory/products');
+      }
     }
     
     // Only close the panel for actionable notifications
@@ -290,6 +305,14 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                             <UserPlus className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
                           ) : notification.type === 'support_removed' ? (
                             <UserMinus className="h-4 w-4 mr-2 text-orange-500 mt-0.5" />
+                          ) : notification.type === 'inventory_provider_created' || notification.type === 'inventory_product_created' ? (
+                            <Package className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
+                          ) : notification.type === 'inventory_inbound_created' ? (
+                            <Truck className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                          ) : notification.type === 'inventory_import_completed' || notification.type === 'inventory_comprehensive_import_completed' ? (
+                            <Archive className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
+                          ) : notification.type === 'inventory_export_completed' ? (
+                            <Send className="h-4 w-4 mr-2 text-indigo-500 mt-0.5" />
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
                           ) : (

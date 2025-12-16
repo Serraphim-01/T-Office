@@ -287,6 +287,31 @@ router.post('/products/import', authenticateJWT, upload.single('file'), async (r
         // Clean up uploaded file
         fs.unlinkSync(filePath);
 
+        // Send notification to users with inventory/products access
+        try {
+          // Import the sendNotification function and helper functions
+          const { sendNotification } = await import('../index.js');
+          const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+          
+          // Get users to notify
+          const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+          
+          // Send notification to each user
+          for (const notifyUserId of usersToNotify) {
+            // Don't notify the user who performed the import
+            if (notifyUserId != req.user.userId) {
+              await sendNotification(notifyUserId, {
+                type: 'inventory_import_completed',
+                title: 'CSV Import Completed',
+                message: `CSV import completed with ${successCount} successful imports and ${errorCount} errors.`,
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.error('Error sending import completion notifications:', notificationError);
+        }
+
         // Return results
         res.json({
           message: 'CSV import completed',
@@ -760,6 +785,36 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
           // Clean up uploaded file
           fs.unlinkSync(filePath);
 
+          // Send notification to users with inventory/products access
+          try {
+            // Import the sendNotification function and helper functions
+            const { sendNotification } = await import('../index.js');
+            const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+            
+            // Get users to notify
+            const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+            
+            const totalSuccess = successCount.products + successCount.inbound + 
+                                successCount.stored + successCount.outbound;
+            const totalErrors = errorCount.products + errorCount.inbound + 
+                               errorCount.stored + errorCount.outbound;
+            
+            // Send notification to each user
+            for (const notifyUserId of usersToNotify) {
+              // Don't notify the user who performed the import
+              if (notifyUserId != req.user.userId) {
+                await sendNotification(notifyUserId, {
+                  type: 'inventory_comprehensive_import_completed',
+                  title: 'Comprehensive CSV Import Completed',
+                  message: `Comprehensive CSV import completed with ${totalSuccess} successful imports and ${totalErrors} errors.`,
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+          } catch (notificationError) {
+            console.error('Error sending comprehensive import completion notifications:', notificationError);
+          }
+
           // Return results
           res.json({
             message: 'Comprehensive CSV import completed',
@@ -842,6 +897,31 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
         `);
         data = providersProductsResult.rows;
         filename = 'providers_products_export.csv';
+        
+        // Send notification to users with inventory/products access
+        try {
+          // Import the sendNotification function and helper functions
+          const { sendNotification } = await import('../../index.js');
+          const { getUsersToNotifyOnInventoryProducts } = await import('../../utils/helpers.js');
+          
+          // Get users to notify
+          const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+          
+          // Send notification to each user
+          for (const notifyUserId of usersToNotify) {
+            // Don't notify the user who performed the export
+            if (notifyUserId != req.user.userId) {
+              await sendNotification(notifyUserId, {
+                type: 'inventory_export_completed',
+                title: 'Providers & Products Export Completed',
+                message: 'Providers and products export has been completed.',
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.error('Error sending export completion notifications:', notificationError);
+        }
         break;
 
       case 'comprehensive':
@@ -993,6 +1073,31 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
         `);
         data = comprehensiveResult.rows;
         filename = 'comprehensive_export.csv';
+        
+        // Send notification to users with inventory/products access
+        try {
+          // Import the sendNotification function and helper functions
+          const { sendNotification } = await import('../../index.js');
+          const { getUsersToNotifyOnInventoryProducts } = await import('../../utils/helpers.js');
+          
+          // Get users to notify
+          const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+          
+          // Send notification to each user
+          for (const notifyUserId of usersToNotify) {
+            // Don't notify the user who performed the export
+            if (notifyUserId != req.user.userId) {
+              await sendNotification(notifyUserId, {
+                type: 'inventory_export_completed',
+                title: 'Comprehensive Export Completed',
+                message: 'Comprehensive export has been completed.',
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.error('Error sending export completion notifications:', notificationError);
+        }
         break;
 
       case 'products':
@@ -1010,21 +1115,48 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
             p.name as product_name,
             p.part_number as product_part_number,
             i.quantity,
-            i.provider,
+            pr.name as provider,
             i.expected_arrival_start,
             i.expected_arrival_end,
             i.status,
             i.created_at,
+            i.batch_number,
             ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), ', ') as serial_numbers
           FROM inbound_transactions i
           JOIN products p ON i.product_id = p.id
+          LEFT JOIN providers pr ON i.provider_id = pr.id
           LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
           WHERE i.status = 'Incoming'
-          GROUP BY i.id, p.name, p.part_number
+          GROUP BY i.id, p.name, p.part_number, pr.name
           ORDER BY i.created_at DESC
         `);
         data = inboundResult.rows;
         filename = 'inbound_transactions_export.csv';
+        
+        // Send notification to users with inventory/inbound or inventory/products access
+        try {
+          // Import the sendNotification function and helper functions
+          const { sendNotification } = await import('../../index.js');
+          const { getUsersToNotifyOnInventoryInbound } = await import('../../utils/helpers.js');
+          
+          // Get users to notify
+          const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+          
+          // Send notification to each user
+          for (const notifyUserId of usersToNotify) {
+            // Don't notify the user who performed the export
+            if (notifyUserId != req.user.userId) {
+              await sendNotification(notifyUserId, {
+                type: 'inventory_export_completed',
+                title: 'Inbound Transactions Export Completed',
+                message: 'Inbound transactions export has been completed.',
+                timestamp: new Date().toISOString()
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.error('Error sending export completion notifications:', notificationError);
+        }
         break;
 
       case 'stored':
@@ -1034,16 +1166,18 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
             p.name as product_name,
             p.part_number as product_part_number,
             i.quantity,
-            i.provider,
+            pr.name as provider,
             i.arrival_date,
             i.status,
             i.created_at,
+            i.batch_number,
             ARRAY_TO_STRING(ARRAY_AGG(isn.serial_number), ', ') as serial_numbers
           FROM inbound_transactions i
           JOIN products p ON i.product_id = p.id
+          LEFT JOIN providers pr ON i.provider_id = pr.id
           LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
           WHERE i.status = 'Stored'
-          GROUP BY i.id, p.name, p.part_number
+          GROUP BY i.id, p.name, p.part_number, pr.name
           ORDER BY i.arrival_date DESC
         `);
         data = storedResult.rows;
@@ -1064,12 +1198,14 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
             o.delivery_datetime,
             o.status,
             o.created_at,
+            o.inbound_price,
+            o.outbound_price,
             ARRAY_TO_STRING(ARRAY_AGG(osn.serial_number), ', ') as serial_numbers
           FROM outbound_transactions o
           JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
           JOIN products p ON i.product_id = p.id
           LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
-          GROUP BY o.id, p.name, p.part_number
+          GROUP BY o.id, p.name, p.part_number, o.inbound_price, o.outbound_price
           ORDER BY o.created_at DESC
         `);
         data = outboundResult.rows;
@@ -1136,7 +1272,35 @@ router.post('/providers', authenticateJWT, async (req, res) => {
        official_contact_name, official_contact_email, official_contact_phone,
        organization_contact_name, organization_contact_email, organization_contact_phone]
     );
-    res.status(201).json(result.rows[0]);
+    
+    const newProvider = result.rows[0];
+    
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the provider
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_provider_created',
+            title: 'New Provider Created',
+            message: `A new provider "${name}" has been created in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending provider creation notifications:', notificationError);
+    }
+    
+    res.status(201).json(newProvider);
   } catch (error) {
     console.error('Error adding provider:', error);
     if (error.code === '23505') { // Unique constraint violation
@@ -1278,6 +1442,31 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
     );
     
     const product = productResult.rows[0];
+    
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the product
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_created',
+            title: 'New Product Created',
+            message: `A new product "${name}" has been created under provider "${provider.name}" in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product creation notifications:', notificationError);
+    }
     
     // Return the created product with provider info
     res.status(201).json({
