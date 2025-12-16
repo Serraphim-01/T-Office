@@ -312,6 +312,8 @@ const hasPageAccess = async (userId, pageName) => {
 export const sendNotification = async (userId, notification) => {
   // Check if user is connected and on the chat page
   const client = connectedClients.get(userId);
+  
+  // Only skip chat notifications if user is already in chat
   if (client && client.currentPage === '/chat' && notification.type === 'chat_message') {
     // Don't send chat notifications if user is already in chat
     console.log(`Skipping notification for user ${userId} as they are already in chat`);
@@ -334,6 +336,40 @@ export const sendNotification = async (userId, notification) => {
     if (!hasAccess) {
       // User doesn't have access to clock notifications, don't send them
       console.log(`Skipping clock notification for user ${userId} due to lack of feature access`);
+      return;
+    }
+  }
+  
+  // Check feature access for HR users notifications
+  if (notification.type === 'lesson_completed' || notification.type === 'clock_in' || notification.type === 'clock_out') {
+    const hasAccess = await hasPageAccess(userId, 'hr/users');
+    if (!hasAccess) {
+      // User doesn't have access to HR users features, don't send them
+      console.log(`Skipping HR notification for user ${userId} due to lack of feature access`);
+      return;
+    }
+  }
+  
+  // Check feature access for inventory notifications
+  if (notification.type.startsWith('inventory_')) {
+    // For inventory notifications, check if user has access to either inventory/products or inventory/inbound
+    let hasAccess = false;
+    
+    if (notification.type.includes('inbound') || 
+        notification.type.includes('stored') || 
+        notification.type.includes('export')) {
+      // Check both inventory/inbound and inventory/products access
+      const hasInboundAccess = await hasPageAccess(userId, 'inventory/inbound');
+      const hasProductsAccess = await hasPageAccess(userId, 'inventory/products');
+      hasAccess = hasInboundAccess || hasProductsAccess;
+    } else {
+      // For other inventory notifications, check inventory/products access
+      hasAccess = await hasPageAccess(userId, 'inventory/products');
+    }
+    
+    if (!hasAccess) {
+      // User doesn't have access to inventory features, don't send them
+      console.log(`Skipping inventory notification for user ${userId} due to lack of feature access`);
       return;
     }
   }

@@ -1349,6 +1349,31 @@ router.put('/providers/:id', authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the provider
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_provider_updated',
+            title: 'Provider Updated',
+            message: `Provider "${name}" has been updated in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending provider update notifications:', notificationError);
+    }
+    
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating provider:', error);
@@ -1365,6 +1390,10 @@ router.delete('/providers/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
   
   try {
+    // Get provider name before deletion for notification
+    const providerResult = await req.pool.query('SELECT name FROM providers WHERE id = $1', [id]);
+    const providerName = providerResult.rowCount > 0 ? providerResult.rows[0].name : 'Unknown Provider';
+    
     // Check if provider has any associated inbound transactions
     const checkResult = await req.pool.query(
       'SELECT COUNT(*) as count FROM inbound_transactions WHERE provider_id = $1',
@@ -1379,6 +1408,31 @@ router.delete('/providers/:id', authenticateJWT, async (req, res) => {
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who deleted the provider
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_provider_deleted',
+            title: 'Provider Deleted',
+            message: `Provider "${providerName}" has been deleted from the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending provider deletion notifications:', notificationError);
     }
     
     res.status(204).send();
@@ -1492,7 +1546,7 @@ router.post('/providers/:providerId/assign-user', authenticateJWT, async (req, r
   try {
     // Check if provider exists
     const providerCheck = await req.pool.query(
-      'SELECT id FROM providers WHERE id = $1',
+      'SELECT id, name FROM providers WHERE id = $1',
       [providerId]
     );
     
@@ -1500,15 +1554,19 @@ router.post('/providers/:providerId/assign-user', authenticateJWT, async (req, r
       return res.status(404).json({ error: 'Provider not found' });
     }
     
+    const providerName = providerCheck.rows[0].name;
+    
     // Check if user exists
     const userCheck = await req.pool.query(
-      'SELECT id FROM users WHERE id = $1',
+      'SELECT id, full_name FROM users WHERE id = $1',
       [userId]
     );
     
     if (userCheck.rowCount === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
+    
+    const userName = userCheck.rows[0].full_name;
     
     // Create assignment
     const result = await req.pool.query(
@@ -1519,6 +1577,37 @@ router.post('/providers/:providerId/assign-user', authenticateJWT, async (req, r
        RETURNING id, provider_id, user_id, assignment_type, created_at, updated_at`,
       [providerId, userId, assignmentType]
     );
+    
+    // Send notification to the assigned user
+    try {
+      // Import the sendNotification function
+      const { sendNotification } = await import('../index.js');
+      
+      // Don't notify the user who performed the assignment if it's the same user
+      if (userId != req.user.userId) {
+        await sendNotification(userId, {
+          type: 'inventory_provider_assigned',
+          title: 'Assigned to Provider',
+          message: `You have been assigned to provider "${providerName}".`,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Get the support staff for the assigned user and notify them
+      const { getSupportStaffForUser } = await import('../utils/helpers.js');
+      const supportStaffId = await getSupportStaffForUser(req.pool, userId);
+      
+      if (supportStaffId && supportStaffId != req.user.userId) {
+        await sendNotification(supportStaffId, {
+          type: 'inventory_provider_assigned_support',
+          title: 'User Assigned to Provider',
+          message: `User "${userName}" has been assigned to provider "${providerName}".`,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending provider assignment notifications:', notificationError);
+    }
     
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -1567,6 +1656,146 @@ router.get('/providers/:providerId/assigned-users', authenticateJWT, async (req,
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching assigned users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get a specific product by ID
+router.get('/products/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const result = await req.pool.query(
+      `SELECT id, name, part_number, product_type, default_unit_price, created_at, updated_at,
+              provider_id
+       FROM products WHERE id = $1`,
+      [id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'A product with this part number already exists' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// Update a product
+router.put('/products/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
+  
+  // Validate input
+  if (!name || !part_number || !product_type || !provider_id) {
+    return res.status(400).json({ error: 'Name, part number, product type, and provider are required' });
+  }
+  
+  try {
+    // Verify provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [provider_id]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(400).json({ error: 'Invalid provider ID' });
+    }
+    
+    const result = await req.pool.query(
+      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, part_number, product_type, default_unit_price',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00, id]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the product
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_updated',
+            title: 'Product Updated',
+            message: `Product "${name}" has been updated in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product update notifications:', notificationError);
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'A product with this part number already exists' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+// Delete a product
+router.delete('/products/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Get product name before deletion for notification
+    const productResult = await req.pool.query('SELECT name FROM products WHERE id = $1', [id]);
+    const productName = productResult.rowCount > 0 ? productResult.rows[0].name : 'Unknown Product';
+    
+    const result = await req.pool.query('DELETE FROM products WHERE id = $1', [id]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Send notification to users with inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who deleted the product
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_deleted',
+            title: 'Product Deleted',
+            message: `Product "${productName}" has been deleted from the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product deletion notifications:', notificationError);
+    }
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting product:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

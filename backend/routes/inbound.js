@@ -352,6 +352,31 @@ router.put('/:id', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_inbound_updated',
+            title: 'Inbound Transaction Updated',
+            message: `An inbound transaction has been updated with batch number ${batch_number}.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending inbound transaction update notifications:', notificationError);
+    }
+    
     res.json({ message: 'Inbound transaction updated successfully' });
   } catch (error) {
     // Rollback transaction on error
@@ -393,6 +418,97 @@ router.delete('/:id', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who deleted the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_inbound_deleted',
+            title: 'Inbound Transaction Deleted',
+            message: `An inbound transaction has been deleted.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending inbound transaction deletion notifications:', notificationError);
+    }
+    
+    res.json({ message: 'Transaction deleted successfully' });
+  } catch (error) {
+    // Rollback transaction on error
+    await req.pool.query('ROLLBACK');
+    console.error('Error deleting transaction:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete a stored transaction
+router.delete('/store/:id', authenticateJWT, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Check if transaction is in Stored status
+    const checkResult = await req.pool.query(
+      'SELECT id FROM inbound_transactions WHERE id = $1 AND status = $2',
+      [id, 'Stored']
+    );
+    
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Stored transaction not found' });
+    }
+    
+    // Start transaction
+    await req.pool.query('BEGIN');
+    
+    // Delete serial numbers first (due to foreign key constraint)
+    await req.pool.query('DELETE FROM inbound_serial_numbers WHERE transaction_id = $1', [id]);
+    
+    // Delete the transaction
+    const result = await req.pool.query('DELETE FROM inbound_transactions WHERE id = $1', [id]);
+    
+    if (result.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    // Commit transaction
+    await req.pool.query('COMMIT');
+    
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who deleted the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_stored_deleted',
+            title: 'Stored Transaction Deleted',
+            message: `A stored transaction has been deleted.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending stored transaction deletion notifications:', notificationError);
+    }
+    
     res.json({ message: 'Transaction deleted successfully' });
   } catch (error) {
     // Rollback transaction on error
@@ -431,6 +547,31 @@ router.post('/:id/store', authenticateJWT, async (req, res) => {
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Transaction not found or already stored' });
+    }
+    
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who stored the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_inbound_stored',
+            title: 'Inbound Transaction Stored',
+            message: `An inbound transaction has been marked as stored.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending inbound transaction stored notifications:', notificationError);
     }
     
     res.json({ message: 'Transaction marked as stored' });
@@ -624,47 +765,6 @@ router.post('/store/:id/outbound', authenticateJWT, async (req, res) => {
     res.json({ message: 'Transaction set as outbound' });
   } catch (error) {
     console.error('Error setting transaction as outbound:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Delete a stored transaction
-router.delete('/store/:id', authenticateJWT, async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    // Check if transaction is in Stored status
-    const checkResult = await req.pool.query(
-      'SELECT id FROM inbound_transactions WHERE id = $1 AND status = $2',
-      [id, 'Stored']
-    );
-    
-    if (checkResult.rowCount === 0) {
-      return res.status(404).json({ error: 'Stored transaction not found' });
-    }
-    
-    // Start transaction
-    await req.pool.query('BEGIN');
-    
-    // Delete serial numbers first (due to foreign key constraint)
-    await req.pool.query('DELETE FROM inbound_serial_numbers WHERE transaction_id = $1', [id]);
-    
-    // Delete the transaction
-    const result = await req.pool.query('DELETE FROM inbound_transactions WHERE id = $1', [id]);
-    
-    if (result.rowCount === 0) {
-      await req.pool.query('ROLLBACK');
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-    
-    // Commit transaction
-    await req.pool.query('COMMIT');
-    
-    res.json({ message: 'Transaction deleted successfully' });
-  } catch (error) {
-    // Rollback transaction on error
-    await req.pool.query('ROLLBACK');
-    console.error('Error deleting transaction:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

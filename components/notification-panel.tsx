@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut, User, UserPlus, UserMinus, UserX, Package, Truck, Archive, Send } from 'lucide-react';
+import { X, MessageCircle, CheckCircle, AlertCircle, Pause, Play, Shield, BookOpen, LogIn, LogOut, User, UserPlus, UserMinus, UserX, Package, Truck, Archive, Send, Edit, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -165,6 +165,12 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       groupKey += `_${notification.department}`;
     }
     
+    // Do NOT group inventory notifications to ensure each is shown separately
+    if (notification.type.startsWith('inventory_')) {
+      // Use a unique key for each inventory notification to prevent grouping
+      groupKey += `_${notification.id}_${notification.timestamp}`;
+    }
+    
     if (!groups[groupKey]) {
       groups[groupKey] = [];
     }
@@ -307,12 +313,18 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                             <UserMinus className="h-4 w-4 mr-2 text-orange-500 mt-0.5" />
                           ) : notification.type === 'inventory_provider_created' || notification.type === 'inventory_product_created' ? (
                             <Package className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
-                          ) : notification.type === 'inventory_inbound_created' ? (
+                          ) : notification.type === 'inventory_inbound_created' || notification.type === 'inventory_inbound_updated' || notification.type === 'inventory_inbound_stored' ? (
                             <Truck className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
+                          ) : notification.type === 'inventory_inbound_deleted' || notification.type === 'inventory_stored_deleted' || notification.type === 'inventory_product_deleted' || notification.type === 'inventory_provider_deleted' ? (
+                            <Trash2 className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
+                          ) : notification.type === 'inventory_product_updated' || notification.type === 'inventory_provider_updated' ? (
+                            <Edit className="h-4 w-4 mr-2 text-yellow-500 mt-0.5" />
                           ) : notification.type === 'inventory_import_completed' || notification.type === 'inventory_comprehensive_import_completed' ? (
                             <Archive className="h-4 w-4 mr-2 text-purple-500 mt-0.5" />
                           ) : notification.type === 'inventory_export_completed' ? (
                             <Send className="h-4 w-4 mr-2 text-indigo-500 mt-0.5" />
+                          ) : notification.type === 'inventory_provider_assigned' || notification.type === 'inventory_provider_assigned_support' ? (
+                            <UserPlus className="h-4 w-4 mr-2 text-blue-500 mt-0.5" />
                           ) : notification.type === 'success' ? (
                             <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
                           ) : (

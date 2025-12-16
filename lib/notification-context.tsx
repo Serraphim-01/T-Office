@@ -169,6 +169,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               }
             }
             
+            // Check inventory notification access
+            if (notification.type.startsWith('inventory_')) {
+              // For inventory notifications, check if user has access to either inventory/products or inventory/inbound
+              let hasAccess = false;
+              
+              if (notification.type.includes('inbound') || 
+                  notification.type.includes('stored') || 
+                  notification.type.includes('export')) {
+                // Check both inventory/inbound and inventory/products access
+                const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+                const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+                hasAccess = hasInboundAccess || hasProductsAccess;
+              } else {
+                // For other inventory notifications, check inventory/products access
+                hasAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+              }
+              
+              if (!hasAccess) {
+                shouldInclude = false;
+              }
+            }
+            
             if (shouldInclude) {
               filteredNotifications.push(notification);
             }
@@ -268,10 +290,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           hasHRUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
         }
         
-        // Show toast notification for location-related, chat, HR users, and relevant feature update notifications
+        // Check feature access for inventory notifications
+        let hasInventoryAccess = true;
+        if (user && notificationData.type.startsWith('inventory_')) {
+          // For inventory notifications, check if user has access to either inventory/products or inventory/inbound
+          if (notificationData.type.includes('inbound') || 
+              notificationData.type.includes('stored') || 
+              notificationData.type.includes('export')) {
+            // Check both inventory/inbound and inventory/products access
+            const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+            const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+            hasInventoryAccess = hasInboundAccess || hasProductsAccess;
+          } else {
+            // For other inventory notifications, check inventory/products access
+            hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+          }
+        }
+        
+        // Show toast notification for location-related, chat, HR users, inventory, and relevant feature update notifications
         if ((hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) || 
             (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
             (hasHRUsersAccess && (notificationData.type === 'lesson_completed' || notificationData.type === 'clock_in' || notificationData.type === 'clock_out')) ||
+            (hasInventoryAccess && notificationData.type.startsWith('inventory_')) ||
             (notificationData.type === 'feature_update' && isRelevantFeatureUpdate)) {
           toast({
             title: notificationData.title,
@@ -299,6 +339,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           (hasChatNotificationAccess && (notificationData.type === 'chat_message' || notificationData.type === 'chat_status')) ||
           (hasClockNotificationAccess && (notificationData.type === 'location_created' || notificationData.type === 'location_deleted')) ||
           (hasHRUsersAccess && (notificationData.type === 'lesson_completed' || notificationData.type === 'clock_in' || notificationData.type === 'clock_out')) ||
+          (hasInventoryAccess && notificationData.type.startsWith('inventory_')) ||
           (notificationData.type === 'feature_update' && isRelevantFeatureUpdate);
         
         if (!shouldAddNotification) {
@@ -307,7 +348,32 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         
         // Use functional update to get the latest notifications state
         setNotifications(prevNotifications => {
-          // Check if this notification already exists in our list
+          // For inventory notifications, don't check for duplicates to ensure each is shown separately
+          if (notificationData.type.startsWith('inventory_')) {
+            const newNotification: Notification = {
+              ...notificationData,
+              id: Math.random().toString(36).substr(2, 9),
+              read: false
+            };
+            
+            // Play notification sound for new notifications
+            playNotificationSound();
+            
+            // Add new notification at the beginning and re-sort
+            const updatedNotifications = [newNotification, ...prevNotifications];
+            
+            // Sort by read status first (unread first), then by timestamp descending (newest first)
+            return updatedNotifications.sort((a, b) => {
+              // Unread notifications come first
+              if (a.read === b.read) {
+                // If both have same read status, sort by timestamp (newest first)
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+              }
+              return a.read ? 1 : -1;
+            });
+          }
+          
+          // Check if this notification already exists in our list for non-inventory notifications
           // Only check against database notifications (permanent ones with numeric IDs)
           const exists = prevNotifications.some(n => 
             n.title === notificationData.title && 
@@ -415,6 +481,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       hasHRUsersAccess = await hasPageAccess(user.id.toString(), 'hr/users');
     }
     
+    // Check feature access for inventory notifications
+    let hasInventoryAccess = true;
+    if (user && notification.type.startsWith('inventory_')) {
+      // For inventory notifications, check if user has access to either inventory/products or inventory/inbound
+      if (notification.type.includes('inbound') || 
+          notification.type.includes('stored') || 
+          notification.type.includes('export')) {
+        // Check both inventory/inbound and inventory/products access
+        const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+        const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+        hasInventoryAccess = hasInboundAccess || hasProductsAccess;
+      } else {
+        // For other inventory notifications, check inventory/products access
+        hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+      }
+    }
+    
     // If user doesn't have access to chat notifications, don't add them
     if (!hasChatNotificationAccess && (notification.type === 'chat_message' || notification.type === 'chat_status')) {
       return;
@@ -430,6 +513,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // If user doesn't have access to inventory features, don't add those notifications
+    if (!hasInventoryAccess && notification.type.startsWith('inventory_')) {
+      return;
+    }
+    
     // If feature update notification is not relevant to the user's department, don't add it
     if (!isRelevantFeatureUpdate && notification.type === 'feature_update') {
       return;
@@ -437,13 +525,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     
     // Check if a similar notification already exists (to prevent duplicates)
     // But only check against database notifications (permanent ones with numeric IDs)
-    const isDuplicate = notifications.some(n => 
-      n.title === notification.title && 
-      n.message === notification.message &&
-      n.type === notification.type &&
-      !isNaN(Number(n.id)) && // Only check against permanent notifications
-      Math.abs(new Date(n.timestamp).getTime() - new Date(notification.timestamp).getTime()) < 5000 // Within 5 seconds
-    );
+    // For inventory notifications, don't check for duplicates to ensure each is shown separately
+    let isDuplicate = false;
+    if (!notification.type.startsWith('inventory_')) {
+      isDuplicate = notifications.some(n => 
+        n.title === notification.title && 
+        n.message === notification.message &&
+        n.type === notification.type &&
+        !isNaN(Number(n.id)) && // Only check against permanent notifications
+        Math.abs(new Date(n.timestamp).getTime() - new Date(notification.timestamp).getTime()) < 5000 // Within 5 seconds
+      );
+    }
     
     if (isDuplicate) {
       console.log('Skipping duplicate notification:', notification);
