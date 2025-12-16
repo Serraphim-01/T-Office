@@ -311,7 +311,8 @@ export async function getUsersWithPageAccess(pool, pageName) {
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN role_page_access rpa ON r.id = rpa.role_id AND rpa.page_name = $1
-      LEFT JOIN department_page_access dpa ON r.department_id = dpa.department_id AND dpa.page_name = $1
+      LEFT JOIN departments d ON u.department = d.name
+      LEFT JOIN department_page_access dpa ON d.id = dpa.department_id AND dpa.page_name = $1
       WHERE (rpa.page_name = $1 OR dpa.page_name = $1) AND u.active = true
     `, [pageName]);
     

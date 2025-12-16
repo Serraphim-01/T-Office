@@ -729,7 +729,7 @@ router.get('/providers/:providerId/products', authenticateJWT, async (req, res) 
     
     // Get products associated with this provider through inbound transactions
     const result = await req.pool.query(
-      `SELECT DISTINCT p.id, p.name, p.part_number
+      `SELECT DISTINCT p.id, p.name, p.part_number, p.default_unit_price
        FROM products p
        JOIN inbound_transactions it ON p.id = it.product_id
        WHERE it.provider_id = $1

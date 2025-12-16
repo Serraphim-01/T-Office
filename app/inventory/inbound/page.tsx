@@ -27,6 +27,7 @@ interface Product {
   id: number;
   name: string;
   part_number: string;
+  default_unit_price?: number;
 }
 
 interface Provider {
@@ -55,6 +56,7 @@ interface ProductEntry {
   product_id: number | null;
   quantity: number;
   serial_numbers: string[];
+  default_unit_price?: number;
 }
 
 export default function InboundPage() {
@@ -272,15 +274,25 @@ function InboundContent() {
       setExpectedArrivalStart(transaction.expected_arrival_start.split('T')[0]);
       setExpectedArrivalEnd(transaction.expected_arrival_end.split('T')[0]);
       
+      // Find the product to get its default unit price
+      const providerId = providers.find(p => p.name === transaction.provider_name)?.id || null;
+      let defaultUnitPrice = 0;
+      
+      if (providerId && filteredProducts[providerId]) {
+        const product = filteredProducts[providerId].find(p => p.id === transaction.product_id);
+        defaultUnitPrice = product?.default_unit_price || 0;
+      }
+      
       // Create a single product entry for editing
       setProductEntries([{
         id: Date.now().toString(),
-        provider_id: providers.find(p => p.name === transaction.provider_name)?.id || null,
+        provider_id: providerId,
         product_id: transaction.product_id,
         quantity: transaction.quantity,
         serial_numbers: data.serial_numbers && data.serial_numbers.length > 0 
           ? data.serial_numbers 
-          : Array(transaction.quantity).fill('')
+          : Array(transaction.quantity).fill(''),
+        default_unit_price: defaultUnitPrice
       }]);
       
       setIsEditing(true);
@@ -400,9 +412,19 @@ function InboundContent() {
     }));
   };
 
-  const handleProductChange = (entryId: string, productId: number) => {
+  const handleProductChange = async (entryId: string, productId: number) => {
     setProductEntries(prev => prev.map(entry => {
       if (entry.id === entryId) {
+        // Find the product to get its default unit price
+        const providerId = entry.provider_id;
+        if (providerId && filteredProducts[providerId]) {
+          const product = filteredProducts[providerId].find(p => p.id === productId);
+          return { 
+            ...entry, 
+            product_id: productId,
+            default_unit_price: product?.default_unit_price || 0
+          };
+        }
         return { ...entry, product_id: productId };
       }
       return entry;
@@ -467,42 +489,74 @@ function InboundContent() {
     try {
       const token = localStorage.getItem('token');
       
-      // Prepare data for bulk submission
-      const transactions = productEntries.map(entry => ({
-        product_id: entry.product_id,
-        quantity: entry.quantity,
-        serial_numbers: entry.serial_numbers,
-        provider_id: entry.provider_id
-      }));
-      
-      const requestData = {
-        transactions,
-        expected_arrival_start: expectedArrivalStart,
-        expected_arrival_end: expectedArrivalEnd
-      };
-      
-      // Submit all entries as bulk transaction
-      const response = await fetch('http://localhost:4000/api/inventory/inbound/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestData),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add inbound transactions');
+      if (isEditing && editingTransactionId && productEntries.length === 1) {
+        // Update existing transaction (single entry only)
+        const entry = productEntries[0];
+        const requestData = {
+          product_id: entry.product_id,
+          quantity: entry.quantity,
+          serial_numbers: entry.serial_numbers,
+          provider_id: entry.provider_id,
+          expected_arrival_start: expectedArrivalStart,
+          expected_arrival_end: expectedArrivalEnd
+        };
+        
+        const response = await fetch(`http://localhost:4000/api/inventory/inbound/${editingTransactionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(requestData),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update inbound transaction');
+        }
+        
+        toast({ 
+          title: 'Success', 
+          description: 'Inbound transaction updated successfully'
+        });
+      } else {
+        // Create new transactions (bulk)
+        const transactions = productEntries.map(entry => ({
+          product_id: entry.product_id,
+          quantity: entry.quantity,
+          serial_numbers: entry.serial_numbers,
+          provider_id: entry.provider_id
+        }));
+        
+        const requestData = {
+          transactions,
+          expected_arrival_start: expectedArrivalStart,
+          expected_arrival_end: expectedArrivalEnd
+        };
+        
+        // Submit all entries as bulk transaction
+        const response = await fetch('http://localhost:4000/api/inventory/inbound/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(requestData),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to add inbound transactions');
+        }
+        
+        const responseData = await response.json();
+        
+        // Show success message with batch number
+        toast({ 
+          title: 'Success', 
+          description: `Inbound transactions added successfully with batch number: ${responseData.batch_number}`
+        });
       }
-      
-      const responseData = await response.json();
-      
-      // Show success message with batch number
-      toast({ 
-        title: 'Success', 
-        description: `Inbound transactions added successfully with batch number: ${responseData.batch_number}`
-      });
       
       // Reset form
       setExpectedArrivalStart('');
@@ -515,6 +569,8 @@ function InboundContent() {
         serial_numbers: [''] 
       }]);
       setIsAdding(false);
+      setIsEditing(false);
+      setEditingTransactionId(null);
       
       // Refresh transactions
       fetchInboundTransactions();
@@ -769,7 +825,6 @@ function InboundContent() {
                           </div>
                         )}
 
-                        {/* ... existing product selector ... */}
                         <div className="space-y-2">
                           <Label htmlFor={`product-${entry.id}`}>Product *</Label>
                           <Select 
@@ -805,22 +860,42 @@ function InboundContent() {
                             required
                           />
                         </div>
+                        
+                        {entry.default_unit_price !== undefined && (
+                          <div className="space-y-2">
+                            <Label>Unit Price</Label>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-muted-foreground">₦</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={entry.default_unit_price}
+                                onChange={(e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  setProductEntries(prev => prev.map(item => 
+                                    item.id === entry.id 
+                                      ? { ...item, default_unit_price: newPrice } 
+                                      : item
+                                  ));
+                                }}
+                                className="w-32"
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                (Default: ₦{(entry.default_unit_price || 0).toFixed(2)})
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {entry.quantity > 0 && (
-                        <div className="space-y-2">
-                          <Label>Serial Numbers</Label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {entry.serial_numbers.map((serial, index) => (
-                              <div key={index} className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground">#{index + 1}</span>
-                                <Input
-                                  value={serial}
-                                  onChange={(e) => handleSerialNumberChange(entry.id, index, e.target.value)}
-                                  placeholder={`Serial #${index + 1}`}
-                                />
-                              </div>
-                            ))}
+                      {entry.quantity > 0 && entry.default_unit_price !== undefined && (
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Total Price:</span>
+                            <span className="font-bold text-lg">
+                              ₦{(entry.quantity * (entry.default_unit_price || 0)).toFixed(2)}
+                            </span>
                           </div>
                         </div>
                       )}

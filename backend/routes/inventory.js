@@ -47,15 +47,27 @@ router.get('/providers', authenticateJWT, async (req, res) => {
   }
 });
 
-// Get products by provider
+// Get products by provider ID
 router.get('/providers/:providerId/products', authenticateJWT, async (req, res) => {
   const { providerId } = req.params;
   
   try {
+    // First verify the provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [providerId]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Get products associated with this provider
     const result = await req.pool.query(
-      `SELECT p.id, p.name, p.part_number, p.product_type
+      `SELECT DISTINCT p.id, p.name, p.part_number, p.default_unit_price
        FROM products p
-       WHERE p.provider_id = $1
+       JOIN inbound_transactions it ON p.id = it.product_id
+       WHERE it.provider_id = $1
        ORDER BY p.name`,
       [providerId]
     );
