@@ -698,13 +698,15 @@ router.get('/store/product/:productId/serials', authenticateJWT, async (req, res
       SELECT 
         i.id as transaction_id,
         pr.name as provider_name,
+        i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
-      GROUP BY i.id, pr.name
+      GROUP BY i.id, pr.name, i.batch_number, i.unit_price
       ORDER BY pr.name
     `, [productId, 'Stored']);
     
