@@ -181,9 +181,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
                 const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
                 hasAccess = hasInboundAccess || hasProductsAccess;
-              } else if (notification.type.includes('product_deleted')) {
-                // For product deletion notifications, ensure all users with products access see it
-                hasAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+              } else if (notification.type.includes('product_')) {
+                // For all product-related notifications (created, updated, deleted), check both access types
+                const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+                const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+                hasAccess = hasInboundAccess || hasProductsAccess;
               } else {
                 // For other inventory notifications, check inventory/products access
                 hasAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
@@ -304,9 +306,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
             const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
             hasInventoryAccess = hasInboundAccess || hasProductsAccess;
-          } else if (notificationData.type.includes('product_deleted')) {
-            // For product deletion notifications, ensure all users with products access see it
-            hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+          } else if (notificationData.type.includes('product_')) {
+            // For all product-related notifications (created, updated, deleted), check both access types
+            const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+            const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+            hasInventoryAccess = hasInboundAccess || hasProductsAccess;
           } else {
             // For other inventory notifications, check inventory/products access
             hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
@@ -498,9 +502,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
         const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
         hasInventoryAccess = hasInboundAccess || hasProductsAccess;
-      } else if (notification.type.includes('product_deleted')) {
-        // For product deletion notifications, ensure all users with products access see it
-        hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+      } else if (notification.type.includes('product_')) {
+        // For all product-related notifications (created, updated, deleted), check both access types
+        const hasInboundAccess = await hasPageAccess(user.id.toString(), 'inventory/inbound');
+        const hasProductsAccess = await hasPageAccess(user.id.toString(), 'inventory/products');
+        hasInventoryAccess = hasInboundAccess || hasProductsAccess;
       } else {
         // For other inventory notifications, check inventory/products access
         hasInventoryAccess = await hasPageAccess(user.id.toString(), 'inventory/products');

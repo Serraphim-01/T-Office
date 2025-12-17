@@ -224,6 +224,38 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     
+    // Send notification to users with inventory/products or inventory/inbound access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify (both inventory/products and inventory/inbound users)
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      console.log('Product update - Users to notify:', usersToNotify);
+      console.log('Product update - Current user ID:', req.user.userId);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the product
+        // Convert both IDs to strings for comparison
+        if (notifyUserId.toString() != req.user.userId.toString()) {
+          console.log('Sending product update notification to user:', notifyUserId);
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_updated',
+            title: 'Product Updated',
+            message: `Product "${name}" has been updated in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        } else {
+          console.log('Skipping notification for user who made the update:', notifyUserId);
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product update notifications:', notificationError);
+    }
+    
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating product:', error);

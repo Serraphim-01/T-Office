@@ -347,6 +347,11 @@ export const sendNotification = async (userId, notification) => {
       const hasInboundAccess = await hasPageAccess(userId, 'inventory/inbound');
       const hasProductsAccess = await hasPageAccess(userId, 'inventory/products');
       hasAccess = hasInboundAccess || hasProductsAccess;
+    } else if (notification.type.includes('product_')) {
+      // For all product-related notifications (created, updated, deleted), check both access types
+      const hasInboundAccess = await hasPageAccess(userId, 'inventory/inbound');
+      const hasProductsAccess = await hasPageAccess(userId, 'inventory/products');
+      hasAccess = hasInboundAccess || hasProductsAccess;
     } else {
       // For other inventory notifications, check inventory/products access
       hasAccess = await hasPageAccess(userId, 'inventory/products');
