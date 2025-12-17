@@ -140,9 +140,6 @@ router.put("/departments/:id", authenticateJWT, async (req, res) => {
       [name, oldName]
     );
 
-    // Log the change for auditing purposes
-    console.log(`Department renamed from '${oldName}' to '${name}'. Updated ${result.rowCount} department record and all associated users.`);
-
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error renaming department:', err);
@@ -330,9 +327,6 @@ router.put("/roles/:roleId", authenticateJWT, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Role not found" });
     }
-
-    // Log the role update for debugging
-    console.log(`Role ${roleId} updated: name changed from '${roleResult.rows[0].name}' to '${name}', is_default: ${shouldBeDefault}`);
 
     res.json(result.rows[0]);
   } catch (err) {

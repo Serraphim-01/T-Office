@@ -23,7 +23,6 @@ router.get('/products', authenticateJWT, async (req, res) => {
        ORDER BY p.name`
     );
     
-    console.log('Products query result:', result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -47,7 +46,7 @@ router.get('/providers', authenticateJWT, async (req, res) => {
   }
 });
 
-// Get products by provider ID
+// Get products by provider ID (only those with inbound transactions)
 router.get('/providers/:providerId/products', authenticateJWT, async (req, res) => {
   const { providerId } = req.params;
   
@@ -74,6 +73,36 @@ router.get('/providers/:providerId/products', authenticateJWT, async (req, res) 
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching products by provider:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get all products for a specific provider (regardless of transactions)
+router.get('/providers/:providerId/all-products', authenticateJWT, async (req, res) => {
+  const { providerId } = req.params;
+  
+  try {
+    // First verify the provider exists
+    const providerCheck = await req.pool.query(
+      'SELECT id FROM providers WHERE id = $1',
+      [providerId]
+    );
+    
+    if (providerCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'Provider not found' });
+    }
+    
+    // Get all products for this provider
+    const result = await req.pool.query(
+      `SELECT p.id, p.name, p.part_number, p.default_unit_price
+       FROM products p
+       WHERE p.provider_id = $1
+       ORDER BY p.name`,
+      [providerId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching all products by provider:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

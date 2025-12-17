@@ -19,8 +19,6 @@ const pool = new Pool({
 
 async function addTestAttendance() {
   try {
-    console.log('Adding test attendance records to auto_attendance table...');
-    
     // First, we need to create a location event to reference
     const locationEventResult = await pool.query(
       `INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude) 
@@ -44,17 +42,17 @@ async function addTestAttendance() {
        [locationEventId]
     );
     
-    console.log('Test attendance records added:', result.rows);
+    // Test attendance records added
     
     // Verify the records were added
     const verifyResult = await pool.query(
       'SELECT * FROM auto_attendance WHERE user_id = 1 ORDER BY timestamp DESC'
     );
     
-    console.log('All attendance records for user 1:', verifyResult.rows);
+    // All attendance records for user 1
     
   } catch (error) {
-    console.error('Error adding test attendance records:', error);
+    // Error adding test attendance records
   } finally {
     await pool.end();
   }

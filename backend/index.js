@@ -51,11 +51,9 @@ try {
 
   // Test the connection
   pool.on('error', (err) => {
-    console.error('Database connection error:', err.message);
     process.exit(1);
   });
 } catch (err) {
-  console.error('Database setup failed:', err.message);
   process.exit(1);
 }
 
@@ -88,12 +86,9 @@ const connectedClients = new Map();
 
 // Handle WebSocket connections
 io.on('connection', (socket) => {
-  console.log('New client connected:', socket.id);
-  
   // Register user with their socket
   socket.on('register_user', (userId) => {
     connectedClients.set(userId, { socketId: socket.id, currentPage: '' });
-    console.log(`User ${userId} registered with socket ${socket.id}`);
   });
   
   // Update user's current page
@@ -103,17 +98,14 @@ io.on('connection', (socket) => {
       const client = connectedClients.get(userId);
       client.currentPage = page;
       connectedClients.set(userId, client);
-      console.log(`User ${userId} is now on page ${page}`);
     } else {
       // If user is not registered yet, register them now
       connectedClients.set(userId, { socketId: socket.id, currentPage: page });
-      console.log(`User ${userId} registered and set to page ${page}`);
     }
   });
   
   // Handle disconnections
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
     // Remove client from connected clients
     for (let [userId, client] of connectedClients.entries()) {
       if (client.socketId === socket.id) {
@@ -149,7 +141,6 @@ const saveNotificationToDB = async (userId, notification) => {
     );
     return result.rows[0];
   } catch (err) {
-    console.error('Error saving notification to database:', err);
     return null;
   }
 };
@@ -195,7 +186,6 @@ const fetchUserNotifications = async (userId) => {
       return notification;
     });
   } catch (err) {
-    console.error('Error fetching notifications from database:', err);
     return [];
   }
 };
@@ -210,7 +200,7 @@ const markNotificationAsReadInDB = async (notificationId, userId) => {
       [notificationId, userId]
     );
   } catch (err) {
-    console.error('Error marking notification as read in database:', err);
+    // Silently fail
   }
 };
 
@@ -224,7 +214,7 @@ const markAllNotificationsAsReadInDB = async (userId) => {
       [userId]
     );
   } catch (err) {
-    console.error('Error marking all notifications as read in database:', err);
+    // Silently fail
   }
 };
 
@@ -237,7 +227,7 @@ const clearReadNotificationsFromDB = async (userId) => {
       [userId]
     );
   } catch (err) {
-    console.error('Error clearing read notifications from database:', err);
+    // Silently fail
   }
 };
 
@@ -303,7 +293,6 @@ const hasPageAccess = async (userId, pageName) => {
     
     return false;
   } catch (err) {
-    console.error('Error checking page access:', err);
     return false;
   }
 };
@@ -316,7 +305,6 @@ export const sendNotification = async (userId, notification) => {
   // Only skip chat notifications if user is already in chat
   if (client && client.currentPage === '/chat' && notification.type === 'chat_message') {
     // Don't send chat notifications if user is already in chat
-    console.log(`Skipping notification for user ${userId} as they are already in chat`);
     return;
   }
   
@@ -325,7 +313,6 @@ export const sendNotification = async (userId, notification) => {
     const hasAccess = await hasPageAccess(userId, 'chat/notifications');
     if (!hasAccess) {
       // User doesn't have access to chat notifications, don't send them
-      console.log(`Skipping chat notification for user ${userId} due to lack of feature access`);
       return;
     }
   }
@@ -335,7 +322,6 @@ export const sendNotification = async (userId, notification) => {
     const hasAccess = await hasPageAccess(userId, 'clock/notifications');
     if (!hasAccess) {
       // User doesn't have access to clock notifications, don't send them
-      console.log(`Skipping clock notification for user ${userId} due to lack of feature access`);
       return;
     }
   }
@@ -345,7 +331,6 @@ export const sendNotification = async (userId, notification) => {
     const hasAccess = await hasPageAccess(userId, 'hr/users');
     if (!hasAccess) {
       // User doesn't have access to HR users features, don't send them
-      console.log(`Skipping HR notification for user ${userId} due to lack of feature access`);
       return;
     }
   }
@@ -369,7 +354,6 @@ export const sendNotification = async (userId, notification) => {
     
     if (!hasAccess) {
       // User doesn't have access to inventory features, don't send them
-      console.log(`Skipping inventory notification for user ${userId} due to lack of feature access`);
       return;
     }
   }
@@ -451,11 +435,9 @@ app.post("/api/set-current-page", authenticateJWT, (req, res) => {
       const client = connectedClients.get(userId);
       client.currentPage = page;
       connectedClients.set(userId, client);
-      console.log(`User ${userId} set to page ${page} via API`);
     } else {
       // If user is not registered yet, register them now
       connectedClients.set(userId, { socketId: null, currentPage: page });
-      console.log(`User ${userId} registered and set to page ${page} via API`);
     }
     
     res.json({ message: "Current page updated" });
@@ -468,24 +450,19 @@ app.post("/api/set-current-page", authenticateJWT, (req, res) => {
 // Refresh token route
 app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
   try {
-    console.log('Refresh token request received');
     // Get user info from the authenticated request
     const { userId } = req.user;
-    console.log('User ID from token:', userId);
 
     // Check if userId exists
     if (!userId) {
-      console.error('User ID not found in token during refresh');
       return res.status(400).json({ error: "User ID not found in token" });
     }
 
     // Validate that userId is a valid format
     if (typeof userId !== 'string' && typeof userId !== 'number') {
-      console.error('Invalid user ID format:', userId);
       return res.status(400).json({ error: "Invalid user ID format" });
     }
 
-    console.log('Fetching user data from database for user ID:', userId);
     // Fetch the latest user information from the database
     // Handle cases where role_id might be null or role might not exist
     const userResult = await req.pool.query(
@@ -495,24 +472,17 @@ app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
        WHERE u.id = $1`,
       [userId]
     );
-    console.log('Database query result:', userResult);
 
     if (userResult.rows.length === 0) {
-      console.error('User not found in database during refresh:', userId);
       return res.status(404).json({ error: "User not found" });
     }
 
     const { department, role } = userResult.rows[0];
-    console.log('User data fetched:', { department, role });
 
     // Validate department
     if (!department) {
-      console.error('Department not found for user:', userId);
       return res.status(400).json({ error: "Department not found for user" });
     }
-
-    // Log the refresh for debugging
-    console.log(`Token refresh for user ${userId}: department=${department}, role=${role || 'default'}`);
 
     // Generate a new token with extended expiration and updated information
     const newToken = jwt.sign(
@@ -527,21 +497,10 @@ app.post("/api/refresh-token", authenticateJWT, async (req, res) => {
       }
     );
 
-    console.log('New token generated successfully');
     res.json({ token: newToken });
   } catch (err) {
     console.error('Token refresh error:', err);
-    // Send a more detailed error message
-    if (err instanceof Error) {
-      // Check if it's a database error
-      if (err.message && err.message.includes('database')) {
-        res.status(500).json({ error: "Database error during token refresh", message: err.message, stack: err.stack });
-      } else {
-        res.status(500).json({ error: "Internal server error", message: err.message, stack: err.stack });
-      }
-    } else {
-      res.status(500).json({ error: "Internal server error", details: JSON.stringify(err) });
-    }
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -803,5 +762,5 @@ app.post("/api/log-activity", authenticateJWT, async (req, res) => {
 // Change app.listen to server.listen
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  // Server started
 });

@@ -16,8 +16,6 @@ router.post("/users", authenticateJWT, async (req, res) => {
   const pool = req.pool;
   const { name, email, department, role } = req.body;
 
-  console.log('User creation:', { name, email, department, role });
-
   try {
     // Default password for new users
     const defaultPassword = 'TaskLtd@2025';
@@ -90,7 +88,6 @@ router.post("/users", authenticateJWT, async (req, res) => {
       console.error('Error sending onboarding notifications:', notificationError);
     }
 
-    console.log('User created successfully with default password');
     res.status(201).json({
       id: userId,
       full_name: name,

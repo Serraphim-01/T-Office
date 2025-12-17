@@ -126,9 +126,7 @@ export async function cleanupOldMessages(pool) {
       [cutoffDate.toISOString()]
     );
 
-    if (result.rowCount > 0) {
-      console.log(`Cleaned up ${result.rowCount} old chat messages older than ${lifespanDays} days`);
-    }
+    // Cleanup completed
   } catch (err) {
     console.error('Error cleaning up old messages:', err);
   }
@@ -148,21 +146,14 @@ export function calculateDistance(lat1, lng1, lat2, lng2) {
 
 // Helper function to check if user is within any geofence (global or user locations)
 export async function checkUserInGeofence(pool, userId, userLat, userLng) {
-  console.log(`[GEOFENCE-CHECK] Starting geofence check for user ${userId} at (${userLat}, ${userLng})`);
-
   try {
     // Check global locations
-    console.log(`[GEOFENCE-CHECK] Querying global locations...`);
     const globalLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE is_active = true');
-    console.log(`[GEOFENCE-CHECK] Found ${globalLocations.rows.length} active global locations`);
 
     for (const location of globalLocations.rows) {
-      console.log(`[GEOFENCE-CHECK] Checking global location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
-      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
 
       if (distance <= location.radius_meters) {
-        console.log(`[GEOFENCE-CHECK] User is within global geofence: ${location.name}`);
         return {
           isInGeofence: true,
           locationId: location.id,
@@ -174,17 +165,12 @@ export async function checkUserInGeofence(pool, userId, userLat, userLng) {
     }
 
     // Check user locations
-    console.log(`[GEOFENCE-CHECK] Querying user locations for user ${userId}...`);
     const userLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE created_by = $1 AND is_active = true', [userId]);
-    console.log(`[GEOFENCE-CHECK] Found ${userLocations.rows.length} active user locations`);
 
     for (const location of userLocations.rows) {
-      console.log(`[GEOFENCE-CHECK] Checking user location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
-      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
 
       if (distance <= location.radius_meters) {
-        console.log(`[GEOFENCE-CHECK] User is within user geofence: ${location.name}`);
         return {
           isInGeofence: true,
           locationId: location.id,
@@ -196,7 +182,6 @@ export async function checkUserInGeofence(pool, userId, userLat, userLng) {
     }
 
     // Find nearest location (check both global and user locations)
-    console.log(`[GEOFENCE-CHECK] User not in any geofence, finding nearest location...`);
     let nearestLocation = null;
     let minDistance = Infinity;
 
@@ -228,32 +213,11 @@ export async function checkUserInGeofence(pool, userId, userLat, userLng) {
       }
     }
 
-    console.log(`[GEOFENCE-CHECK] Nearest location:`, nearestLocation);
-
     return {
       isInGeofence: false,
       nearestLocation: nearestLocation
     };
   } catch (err) {
-    console.error(`[GEOFENCE-CHECK] Error checking geofence for user ${userId}:`, {
-      error: err.message,
-      stack: err.stack,
-      code: err.code,
-      detail: err.detail,
-      hint: err.hint,
-      position: err.position,
-      internalPosition: err.internalPosition,
-      internalQuery: err.internalQuery,
-      where: err.where,
-      schema: err.schema,
-      table: err.table,
-      column: err.column,
-      dataType: err.dataType,
-      constraint: err.constraint,
-      file: err.file,
-      line: err.line,
-      routine: err.routine
-    });
     return { isInGeofence: false };
   }
 }
@@ -296,7 +260,6 @@ export async function handleAutomaticAttendance(pool, userId, locationId, eventT
         [userId, locationEventId, attendanceType, `Auto ${attendanceType} at ${locationName}`]
       );
 
-      console.log(`Auto ${attendanceType} recorded for user ${userId} at ${locationName}`);
     }
   } catch (err) {
     console.error('Error handling automatic attendance:', err);

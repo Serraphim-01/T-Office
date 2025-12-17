@@ -22,7 +22,8 @@ interface Product {
   product_type: string;
   created_at: string;
   updated_at: string;
-  default_unit_price?: number;
+  default_unit_price: number;
+  provider_id?: number;
 }
 
 interface Transaction {
@@ -30,7 +31,7 @@ interface Transaction {
   type: 'inbound' | 'stored' | 'outbound';
   quantity: number;
   provider?: string;
-  provider_name?: string; // Added provider_name property
+  provider_name?: string;
   receiver_address?: string;
   expected_arrival_start?: string;
   expected_arrival_end?: string;
@@ -40,14 +41,20 @@ interface Transaction {
   status: string;
   created_at: string;
   serial_numbers: string[] | null;
-  batch_number?: string; // Added batch_number property
-  inbound_price?: number; // Added inbound_price property
-  outbound_price?: number; // Added outbound_price property
+  batch_number?: string;
+  inbound_price?: number;
+  outbound_price?: number;
+}
+
+interface Provider {
+  id: number;
+  name: string;
 }
 
 export default function ProductDetailsPage({ params }: { params: { id: string } }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]); // Added providers state
   const [isLoading, setIsLoading] = useState(true);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -55,12 +62,13 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     name: '',
     part_number: '',
     product_type: '',
-    default_unit_price: 0
+    default_unit_price: 0,
+    provider_id: 0
   });
-  const [canEditProduct, setCanEditProduct] = useState(false); // Added feature access control
+  const [canEditProduct, setCanEditProduct] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth(); // Added user context
+  const { user } = useAuth();
 
   // Check feature access when user loads
   useEffect(() => {
@@ -76,6 +84,27 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     const editProductDetailsAccess = await hasPageAccess(user.id.toString(), 'inventory/products/edit-product');
     
     setCanEditProduct(editProductDetailsAccess);
+  };
+
+  // Fetch providers
+  useEffect(() => {
+    fetchProviders();
+  }, []);
+
+  const fetchProviders = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:4000/api/inventory/providers', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch providers');
+      const data = await response.json();
+      setProviders(data);
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+    }
   };
 
   // Fetch product details
@@ -98,7 +127,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
         name: data.name,
         part_number: data.part_number,
         product_type: data.product_type,
-        default_unit_price: data.default_unit_price || 0
+        default_unit_price: data.default_unit_price || 0,
+        provider_id: data.provider_id || 0
       });
     } catch (error) {
       toast({
@@ -181,7 +211,10 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(editedProduct),
+        body: JSON.stringify({
+          ...editedProduct,
+          provider_id: editedProduct.provider_id || 0 // Ensure provider_id is sent
+        }),
       });
 
       if (!response.ok) throw new Error('Failed to update product');
@@ -379,6 +412,24 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       placeholder="Enter default unit price"
                     />
                   </div>
+                  {/* Added provider selection for editing */}
+                  <div className="space-y-2">
+                    <Label htmlFor="providerId">Provider *</Label>
+                    <select
+                      id="providerId"
+                      value={editedProduct.provider_id}
+                      onChange={(e) => setEditedProduct({...editedProduct, provider_id: parseInt(e.target.value) || 0})}
+                      className="w-full p-2 border rounded"
+                      required
+                    >
+                      <option value="">Select a provider</option>
+                      {providers.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -418,12 +469,23 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     </div>
                   </div>
 
-                  {product.default_unit_price !== undefined && product.default_unit_price > 0 && (
+                  {product && product.default_unit_price > 0 && (
                     <div className="flex items-center space-x-3">
                       <span className="text-lg font-bold text-green-600">₦</span>
                       <div>
                         <p className="text-sm text-muted-foreground">Default Unit Price</p>
                         <p className="font-medium text-green-600">{formatCurrency(product.default_unit_price)}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {product.provider_id && (
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Provider</p>
+                        <p className="font-medium">
+                          {providers.find(p => p.id === product.provider_id)?.name || 'Unknown Provider'}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -477,8 +539,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     <TableHead>Provider</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Batch Number</TableHead> {/* Added Batch Number column */}
-                    <TableHead>Prices</TableHead> {/* Added Prices column */}
+                    <TableHead>Batch Number</TableHead>
+                    <TableHead>Prices</TableHead>
                     <TableHead>Serial Numbers</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -523,8 +585,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell> {/* Added Batch Number cell */}
-                      <TableCell> {/* Added Prices cell */}
+                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
+                      <TableCell>
                         {transaction.type === 'outbound' && (
                           <div className="text-xs">
                             <div>In: {transaction.inbound_price !== undefined ? formatCurrency(transaction.inbound_price) : 'N/A'}</div>

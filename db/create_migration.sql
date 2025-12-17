@@ -392,6 +392,7 @@ CREATE TABLE IF NOT EXISTS inbound_transactions (
     arrival_date DATE,
     status VARCHAR(20) DEFAULT 'Incoming' CHECK (status IN ('Incoming', 'Stored', 'Outbound')),
     batch_number VARCHAR(100),
+    unit_price DECIMAL(10, 2) DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

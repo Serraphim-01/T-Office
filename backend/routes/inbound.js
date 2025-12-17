@@ -19,6 +19,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         i.status,
         i.created_at,
         i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -49,6 +50,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
         i.arrival_date,
         i.status,
         i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -68,7 +70,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
 
 // Add a new inbound transaction
 router.post('/', authenticateJWT, async (req, res) => {
-  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end, unit_price } = req.body;
   
   // Validate input
   if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
@@ -97,10 +99,10 @@ router.post('/', authenticateJWT, async (req, res) => {
     // Insert inbound transaction with auto-generated batch number
     const result = await req.pool.query(`
       INSERT INTO inbound_transactions 
-      (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) 
+      (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number, unit_price) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING id`,
-      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number]
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number, unit_price || 0.00]
     );
     
     const transactionId = result.rows[0].id;
@@ -175,15 +177,15 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
     // Insert all transactions with the same batch number
     const results = [];
     for (const transaction of transactions) {
-      const { product_id, quantity, serial_numbers, provider_id } = transaction;
+      const { product_id, quantity, serial_numbers, provider_id, unit_price } = transaction;
       
       // Insert inbound transaction with auto-generated batch number
       const result = await req.pool.query(`
         INSERT INTO inbound_transactions 
-        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7) 
+        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number, unit_price) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
         RETURNING id`,
-        [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number]
+        [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 'Incoming', batch_number, unit_price || 0.00]
       );
       
       const transactionId = result.rows[0].id;
@@ -262,6 +264,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         i.status,
         i.created_at,
         i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
@@ -285,7 +288,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
 // Update an inbound transaction
 router.put('/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end } = req.body;
+  const { product_id, quantity, serial_numbers, provider_id, expected_arrival_start, expected_arrival_end, unit_price } = req.body;
   
   // Validate input
   if (!product_id || !quantity || !provider_id || !expected_arrival_start || !expected_arrival_end) {
@@ -323,10 +326,10 @@ router.put('/:id', authenticateJWT, async (req, res) => {
     // Update inbound transaction, keeping the existing batch number
     const result = await req.pool.query(`
       UPDATE inbound_transactions 
-      SET product_id = $1, quantity = $2, provider_id = $3, expected_arrival_start = $4, expected_arrival_end = $5, updated_at = NOW()
-      WHERE id = $6 AND status = 'Incoming'
+      SET product_id = $1, quantity = $2, provider_id = $3, expected_arrival_start = $4, expected_arrival_end = $5, updated_at = NOW(), unit_price = $6
+      WHERE id = $7 AND status = 'Incoming'
       RETURNING id`,
-      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, id]
+      [product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, unit_price || 0.00, id]
     );
     
     if (result.rowCount === 0) {

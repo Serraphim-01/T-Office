@@ -13,11 +13,11 @@ export const authenticateJWT = async (req, res, next) => {
 
   if (authHeader) {
     const token = authHeader.split(' ')[1]; // Bearer <token>
-    console.log('Auth header present, token:', token);
+    // Removed verbose logging
 
     try {
       const user = jwt.verify(token, process.env.JWT_SECRET || 'demo-secret');
-      console.log('JWT verified, user:', user);
+      // Removed verbose logging
       req.user = user; // { userId: ..., department: ..., role: ... }
 
       // Validate that userId exists and is valid
@@ -34,7 +34,7 @@ export const authenticateJWT = async (req, res, next) => {
 
       // Always fetch the latest user information from the database to ensure role info is current
       // Handle cases where role_id might be null or role might not exist
-      console.log('Fetching user data from database for user ID:', req.user.userId);
+      // Removed verbose logging
       const userResult = await req.pool.query(
         `SELECT u.department, u.active, u.full_name, COALESCE(r.name, 'default') as role 
          FROM users u 
@@ -42,28 +42,28 @@ export const authenticateJWT = async (req, res, next) => {
          WHERE u.id = $1`,
         [req.user.userId]
       );
-      console.log('Database query result:', userResult);
+      // Removed verbose logging
       
       if (userResult.rows.length > 0) {
         // Check if user account is active
         if (userResult.rows[0].active === false) {
-          console.log(`User ${req.user.userId} account is deactivated`);
+          // Removed verbose logging
           return res.status(403).json({ error: "Account deactivated", message: "User account has been deactivated" });
         }
         
         req.user.department = userResult.rows[0].department;
         req.user.role = userResult.rows[0].role || 'default';
         req.user.full_name = userResult.rows[0].full_name; // Add full_name to the user object
-        console.log(`User ${req.user.userId} department/role updated from DB: department=${req.user.department}, role=${req.user.role}, full_name=${req.user.full_name}`);
+        // Removed verbose logging
       } else {
-        console.log(`User ${req.user.userId} not found in database`);
+        // Removed verbose logging
         return res.status(404).json({ error: "User not found" });
       }
       next();
     } catch (err) {
       console.error('Authentication error:', err);
       if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-        console.log('JWT verification error:', err);
+        // Removed verbose logging
         return res.status(403).json({ error: "Forbidden", message: err.message });
       } else {
         console.error('Database error in authenticateJWT:', err);
@@ -71,7 +71,7 @@ export const authenticateJWT = async (req, res, next) => {
       }
     }
   } else {
-    console.log('No auth header present');
+    // Removed verbose logging
     res.status(401).json({ error: "Unauthorized", message: "No authorization header" });
   }
 };

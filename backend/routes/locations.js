@@ -306,8 +306,8 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
   const { latitude, longitude } = req.body;
   const userId = req.user.userId;
 
-  console.log(`[CLOCK-IN] Starting clock-in attempt for user ${userId}`);
-  console.log(`[CLOCK-IN] Received coordinates: lat=${latitude}, lng=${longitude}`);
+  // Removed verbose logging
+  // Removed verbose logging
 
   try {
     // Validate input coordinates
@@ -322,20 +322,13 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
     }
 
     // Check if user is within any active geofence
-    console.log(`[CLOCK-IN] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    // Removed verbose logging
     const locationCheck = await checkUserInGeofence(req.pool, userId, parseFloat(latitude), parseFloat(longitude));
 
-    console.log(`[CLOCK-IN] Geofence check result:`, {
-      isInGeofence: locationCheck.isInGeofence,
-      locationName: locationCheck.locationName,
-      locationId: locationCheck.locationId,
-      distance: locationCheck.distance,
-      locationType: locationCheck.locationType,
-      nearestLocation: locationCheck.nearestLocation
-    });
+    // Removed verbose logging
 
     if (!locationCheck.isInGeofence) {
-      console.log(`[CLOCK-IN] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
+      // Removed verbose logging
       return res.status(403).json({
         error: "You must be within a configured location to clock in",
         nearest_location: locationCheck.nearestLocation,
@@ -347,7 +340,7 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
     }
 
     // Create a location event record for manual clock-in
-    console.log(`[CLOCK-IN] Creating location event for manual clock-in at location: ${locationCheck.locationName}`);
+    // Removed verbose logging
     const locationEventResult = await req.pool.query(
       'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [userId, locationCheck.locationId, 'entry', parseFloat(latitude), parseFloat(longitude), false]
@@ -355,13 +348,13 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
     const locationEventId = locationEventResult.rows[0].id;
 
     // Record manual clock-in
-    console.log(`[CLOCK-IN] Recording clock-in for user ${userId} at location: ${locationCheck.locationName}`);
+    // Removed verbose logging
     const result = await req.pool.query(
       'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
       [userId, locationEventId, 'clock_in', `Manual clock-in at ${locationCheck.locationName}`]
     );
 
-    console.log(`[CLOCK-IN] Successfully recorded clock-in for user ${userId}:`, result.rows[0]);
+    // Removed verbose logging
 
     // Emit real-time update for attendance
     req.app.get('io').emit('attendance_updated', { 
@@ -444,9 +437,7 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
   const { latitude, longitude } = req.body;
   const userId = req.user.userId;
 
-  console.log(`[CLOCK-OUT] Starting clock-out attempt for user ${userId}`);
-  console.log(`[CLOCK-OUT] Received coordinates: lat=${latitude}, lng=${longitude}`);
-
+  // Removed verbose logging
   try {
     // Validate input coordinates
     if (!latitude || !longitude) {
@@ -460,20 +451,9 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
     }
 
     // Check if user is within any active geofence
-    console.log(`[CLOCK-OUT] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
     const locationCheck = await checkUserInGeofence(req.pool, userId, parseFloat(latitude), parseFloat(longitude));
 
-    console.log(`[CLOCK-OUT] Geofence check result:`, {
-      isInGeofence: locationCheck.isInGeofence,
-      locationName: locationCheck.locationName,
-      locationId: locationCheck.locationId,
-      distance: locationCheck.distance,
-      locationType: locationCheck.locationType,
-      nearestLocation: locationCheck.nearestLocation
-    });
-
     if (!locationCheck.isInGeofence) {
-      console.log(`[CLOCK-OUT] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
       return res.status(403).json({
         error: "You must be within a configured location to clock out",
         nearest_location: locationCheck.nearestLocation,
@@ -485,7 +465,6 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
     }
 
     // Create a location event record for manual clock-out
-    console.log(`[CLOCK-OUT] Creating location event for manual clock-out at location: ${locationCheck.locationName}`);
     const locationEventResult = await req.pool.query(
       'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [userId, locationCheck.locationId, 'exit', parseFloat(latitude), parseFloat(longitude), false]
@@ -493,13 +472,10 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
     const locationEventId = locationEventResult.rows[0].id;
 
     // Record manual clock-out
-    console.log(`[CLOCK-OUT] Recording clock-out for user ${userId} at location: ${locationCheck.locationName}`);
     const result = await req.pool.query(
       'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
       [userId, locationEventId, 'clock_out', `Manual clock-out at ${locationCheck.locationName}`]
     );
-
-    console.log(`[CLOCK-OUT] Successfully recorded clock-out for user ${userId}:`, result.rows[0]);
 
     // Emit real-time update for attendance
     req.app.get('io').emit('attendance_updated', { 
@@ -582,8 +558,8 @@ router.post("/attendance/clock", authenticateJWT, async (req, res) => {
   const { type, latitude, longitude, accuracy } = req.body; // type: 'in' or 'out'
   const userId = req.user.userId;
 
-  console.log(`[CLOCK-LEGACY] Starting legacy clock attempt for user ${userId}, type: ${type}`);
-  console.log(`[CLOCK-LEGACY] Received coordinates: lat=${latitude}, lng=${longitude}, accuracy=${accuracy}`);
+  // Removed verbose logging
+  // Removed verbose logging
 
   if (!type || !['in', 'out'].includes(type)) {
     console.error(`[CLOCK-LEGACY] Invalid type: ${type}`);
@@ -603,20 +579,13 @@ router.post("/attendance/clock", authenticateJWT, async (req, res) => {
     }
 
     // Check if user is within any active geofence
-    console.log(`[CLOCK-LEGACY] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    // Removed verbose logging
     const locationCheck = await checkUserInGeofence(req.pool, userId, parseFloat(latitude), parseFloat(longitude));
 
-    console.log(`[CLOCK-LEGACY] Geofence check result:`, {
-      isInGeofence: locationCheck.isInGeofence,
-      locationName: locationCheck.locationName,
-      locationId: locationCheck.locationId,
-      distance: locationCheck.distance,
-      locationType: locationCheck.locationType,
-      nearestLocation: locationCheck.nearestLocation
-    });
+    // Removed verbose logging
 
     if (!locationCheck.isInGeofence) {
-      console.log(`[CLOCK-LEGACY] User ${userId} is not within any geofence. Nearest location:`, locationCheck.nearestLocation);
+      // Removed verbose logging
       return res.status(403).json({
         error: "You must be within a configured location to clock in/out",
         nearest_location: locationCheck.nearestLocation,
@@ -629,7 +598,7 @@ router.post("/attendance/clock", authenticateJWT, async (req, res) => {
 
     // Create a location event record for manual attendance
     const eventTypeLocation = type === 'in' ? 'entry' : 'exit';
-    console.log(`[CLOCK-LEGACY] Creating location event for manual ${type} at location: ${locationCheck.locationName}`);
+    // Removed verbose logging
     const locationEventResult = await req.pool.query(
       'INSERT INTO location_events (user_id, location_id, event_type, latitude, longitude, is_auto_generated) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [userId, locationCheck.locationId, eventTypeLocation, parseFloat(latitude), parseFloat(longitude), false]
@@ -638,13 +607,13 @@ router.post("/attendance/clock", authenticateJWT, async (req, res) => {
 
     // Record manual attendance
     const eventType = type === 'in' ? 'clock_in' : 'clock_out';
-    console.log(`[CLOCK-LEGACY] Recording ${eventType} for user ${userId} at location: ${locationCheck.locationName}`);
+    // Removed verbose logging
     const result = await req.pool.query(
       'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4) RETURNING *',
       [userId, locationEventId, eventType, `Manual ${type} at ${locationCheck.locationName}`]
     );
 
-    console.log(`[CLOCK-LEGACY] Successfully recorded ${eventType} for user ${userId}:`, result.rows[0]);
+    // Removed verbose logging
 
     res.status(201).json({
       message: `Successfully clocked ${type}`,
@@ -686,8 +655,8 @@ router.post("/location-status", authenticateJWT, async (req, res) => {
   const { latitude, longitude } = req.body;
   const userId = req.user.userId;
 
-  console.log(`[LOCATION-STATUS] Checking location status for user ${userId}`);
-  console.log(`[LOCATION-STATUS] Received coordinates: lat=${latitude}, lng=${longitude}`);
+  // Removed verbose logging
+  // Removed verbose logging
 
   if (!latitude || !longitude) {
     console.error(`[LOCATION-STATUS] Missing coordinates: lat=${latitude}, lng=${longitude}`);
@@ -700,17 +669,8 @@ router.post("/location-status", authenticateJWT, async (req, res) => {
   }
 
   try {
-    console.log(`[LOCATION-STATUS] Checking geofence for user ${userId} at (${latitude}, ${longitude})`);
+    // Removed verbose logging
     const locationCheck = await checkUserInGeofence(req.pool, userId, parseFloat(latitude), parseFloat(longitude));
-
-    console.log(`[LOCATION-STATUS] Geofence check result:`, {
-      isInGeofence: locationCheck.isInGeofence,
-      locationName: locationCheck.locationName,
-      locationId: locationCheck.locationId,
-      distance: locationCheck.distance,
-      locationType: locationCheck.locationType,
-      nearestLocation: locationCheck.nearestLocation
-    });
 
     if (locationCheck.isInGeofence) {
       res.json({
@@ -822,8 +782,6 @@ async function handleAutomaticAttendance(pool, userId, locationId, eventType, lo
         'INSERT INTO auto_attendance (user_id, location_event_id, event_type, notes) VALUES ($1, $2, $3, $4)',
         [userId, locationEventId, attendanceType, `Auto ${attendanceType} at ${locationName}`]
       );
-
-      console.log(`Auto ${attendanceType} recorded for user ${userId} at ${locationName}`);
     }
   } catch (err) {
     console.error('Error handling automatic attendance:', err);
@@ -832,21 +790,14 @@ async function handleAutomaticAttendance(pool, userId, locationId, eventType, lo
 
 // Helper function to check if user is within any geofence (global or user locations)
 async function checkUserInGeofence(pool, userId, userLat, userLng) {
-  console.log(`[GEOFENCE-CHECK] Starting geofence check for user ${userId} at (${userLat}, ${userLng})`);
-
   try {
     // Check global locations
-    console.log(`[GEOFENCE-CHECK] Querying global locations...`);
     const globalLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE is_active = true');
-    console.log(`[GEOFENCE-CHECK] Found ${globalLocations.rows.length} active global locations`);
 
     for (const location of globalLocations.rows) {
-      console.log(`[GEOFENCE-CHECK] Checking global location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
-      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
 
       if (distance <= location.radius_meters) {
-        console.log(`[GEOFENCE-CHECK] User is within global geofence: ${location.name}`);
         return {
           isInGeofence: true,
           locationId: location.id,
@@ -858,17 +809,12 @@ async function checkUserInGeofence(pool, userId, userLat, userLng) {
     }
 
     // Check user locations
-    console.log(`[GEOFENCE-CHECK] Querying user locations for user ${userId}...`);
     const userLocations = await pool.query('SELECT id, name, latitude, longitude, radius_meters FROM locations WHERE created_by = $1 AND is_active = true', [userId]);
-    console.log(`[GEOFENCE-CHECK] Found ${userLocations.rows.length} active user locations`);
 
     for (const location of userLocations.rows) {
-      console.log(`[GEOFENCE-CHECK] Checking user location: ${location.name} (${location.latitude}, ${location.longitude}, radius: ${location.radius_meters}m)`);
       const distance = calculateDistance(userLat, userLng, location.latitude, location.longitude);
-      console.log(`[GEOFENCE-CHECK] Distance to ${location.name}: ${distance.toFixed(2)}m`);
 
       if (distance <= location.radius_meters) {
-        console.log(`[GEOFENCE-CHECK] User is within user geofence: ${location.name}`);
         return {
           isInGeofence: true,
           locationId: location.id,
@@ -880,7 +826,6 @@ async function checkUserInGeofence(pool, userId, userLat, userLng) {
     }
 
     // Find nearest location (check both global and user locations)
-    console.log(`[GEOFENCE-CHECK] User not in any geofence, finding nearest location...`);
     let nearestLocation = null;
     let minDistance = Infinity;
 
@@ -911,8 +856,6 @@ async function checkUserInGeofence(pool, userId, userLat, userLng) {
         };
       }
     }
-
-    console.log(`[GEOFENCE-CHECK] Nearest location:`, nearestLocation);
 
     return {
       isInGeofence: false,

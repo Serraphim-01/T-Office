@@ -27,7 +27,7 @@ interface Product {
   id: number;
   name: string;
   part_number: string;
-  default_unit_price?: number;
+  default_unit_price: number;
 }
 
 interface Provider {
@@ -48,6 +48,7 @@ interface InboundTransaction {
   created_at: string;
   serial_numbers?: string[];
   batch_number?: string;
+  unit_price?: number;
 }
 
 interface ProductEntry {
@@ -56,7 +57,8 @@ interface ProductEntry {
   product_id: number | null;
   quantity: number;
   serial_numbers: string[];
-  default_unit_price?: number;
+  default_unit_price: number; // The original default price from the product
+  unit_price: number; // The editable price for this transaction
 }
 
 export default function InboundPage() {
@@ -92,7 +94,9 @@ function InboundContent() {
     provider_id: null, 
     product_id: null, 
     quantity: 1, 
-    serial_numbers: [''] 
+    serial_numbers: [''],
+    default_unit_price: 0,
+    unit_price: 0
   }]);
   
   const { toast } = useToast();
@@ -199,11 +203,11 @@ function InboundContent() {
     }
   };
 
-  // Fetch products for a specific provider
+  // Fetch products for a specific provider (all products, not just those with transactions)
   const fetchProductsByProvider = async (providerId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/products`, {
+      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/all-products`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -280,7 +284,7 @@ function InboundContent() {
       
       if (providerId && filteredProducts[providerId]) {
         const product = filteredProducts[providerId].find(p => p.id === transaction.product_id);
-        defaultUnitPrice = product?.default_unit_price || 0;
+        defaultUnitPrice = Number(product?.default_unit_price) || 0;
       }
       
       // Create a single product entry for editing
@@ -292,7 +296,8 @@ function InboundContent() {
         serial_numbers: data.serial_numbers && data.serial_numbers.length > 0 
           ? data.serial_numbers 
           : Array(transaction.quantity).fill(''),
-        default_unit_price: defaultUnitPrice
+        default_unit_price: defaultUnitPrice,
+        unit_price: defaultUnitPrice
       }]);
       
       setIsEditing(true);
@@ -397,7 +402,8 @@ function InboundContent() {
         return { 
           ...entry, 
           provider_id: providerId,
-          product_id: null
+          product_id: null,
+          serial_numbers: [''] // Reset serial numbers when changing provider
         };
       } else if (entry.id === entryId) {
         // When provider changes, reset product selection and fetch products for this provider
@@ -405,7 +411,8 @@ function InboundContent() {
         return { 
           ...entry, 
           provider_id: providerId,
-          product_id: null
+          product_id: null,
+          serial_numbers: [''] // Reset serial numbers when changing provider
         };
       }
       return entry;
@@ -417,15 +424,18 @@ function InboundContent() {
       if (entry.id === entryId) {
         // Find the product to get its default unit price
         const providerId = entry.provider_id;
+        let defaultUnitPrice = 0;
         if (providerId && filteredProducts[providerId]) {
           const product = filteredProducts[providerId].find(p => p.id === productId);
-          return { 
-            ...entry, 
-            product_id: productId,
-            default_unit_price: product?.default_unit_price || 0
-          };
+          defaultUnitPrice = Number(product?.default_unit_price) || 0;
         }
-        return { ...entry, product_id: productId };
+        return { 
+          ...entry, 
+          product_id: productId,
+          default_unit_price: defaultUnitPrice,
+          unit_price: defaultUnitPrice, // Initialize unit price with default price
+          serial_numbers: Array(entry.quantity).fill('') // Reset serial numbers when changing product
+        };
       }
       return entry;
     }));
@@ -439,7 +449,9 @@ function InboundContent() {
         provider_id: sameProviderMode && commonProviderId ? commonProviderId : null, 
         product_id: null, 
         quantity: 1, 
-        serial_numbers: [''] 
+        serial_numbers: [''],
+        default_unit_price: 0,
+        unit_price: 0
       }
     ]);
   };
@@ -525,7 +537,8 @@ function InboundContent() {
           product_id: entry.product_id,
           quantity: entry.quantity,
           serial_numbers: entry.serial_numbers,
-          provider_id: entry.provider_id
+          provider_id: entry.provider_id,
+          unit_price: entry.unit_price
         }));
         
         const requestData = {
@@ -566,7 +579,9 @@ function InboundContent() {
         provider_id: null, 
         product_id: null, 
         quantity: 1, 
-        serial_numbers: [''] 
+        serial_numbers: [''],
+        default_unit_price: 0,
+        unit_price: 0
       }]);
       setIsAdding(false);
       setIsEditing(false);
@@ -614,7 +629,9 @@ function InboundContent() {
       provider_id: null, 
       product_id: null, 
       quantity: 1, 
-      serial_numbers: [''] 
+      serial_numbers: [''],
+      default_unit_price: 0,
+      unit_price: 0
     }]);
   };
 
@@ -861,8 +878,7 @@ function InboundContent() {
                           />
                         </div>
                         
-                        {entry.default_unit_price !== undefined && (
-                          <div className="space-y-2">
+                        <div className="space-y-2">
                             <Label>Unit Price</Label>
                             <div className="flex items-center space-x-2">
                               <span className="text-sm text-muted-foreground">₦</span>
@@ -870,33 +886,50 @@ function InboundContent() {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={entry.default_unit_price}
+                                value={Number(entry.unit_price) || 0}
                                 onChange={(e) => {
                                   const newPrice = parseFloat(e.target.value) || 0;
                                   setProductEntries(prev => prev.map(item => 
                                     item.id === entry.id 
-                                      ? { ...item, default_unit_price: newPrice } 
+                                      ? { ...item, unit_price: newPrice } 
                                       : item
                                   ));
                                 }}
                                 className="w-32"
                               />
                               <span className="text-sm text-muted-foreground">
-                                (Default: ₦{(entry.default_unit_price || 0).toFixed(2)})
+                                (Default: ₦{(Number(entry.default_unit_price) || 0).toFixed(2)})
                               </span>
                             </div>
                           </div>
-                        )}
                       </div>
 
-                      {entry.quantity > 0 && entry.default_unit_price !== undefined && (
+                      {entry.quantity > 0 && (
                         <div className="bg-gray-50 p-3 rounded-md">
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Total Price:</span>
                             <span className="font-bold text-lg">
-                              ₦{(entry.quantity * (entry.default_unit_price || 0)).toFixed(2)}
+                              ₦{(entry.quantity * (Number(entry.unit_price) || 0)).toFixed(2)}
                             </span>
                           </div>
+                        </div>
+                      )}
+                      
+                      {/* Serial Number Inputs */}
+                      {entry.quantity > 0 && (
+                        <div className="space-y-2">
+                          <Label>Serial Numbers</Label>
+                          {[...Array(entry.quantity)].map((_, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <span className="text-sm text-muted-foreground w-20">SN {index + 1}:</span>
+                              <Input
+                                type="text"
+                                value={entry.serial_numbers[index] || ''}
+                                onChange={(e) => handleSerialNumberChange(entry.id, index, e.target.value)}
+                                placeholder={`Serial number ${index + 1}`}
+                              />
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

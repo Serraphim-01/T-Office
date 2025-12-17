@@ -24,9 +24,6 @@ router.get("/", authenticateJWT, async (req, res) => {
 
     const user = userResult.rows[0];
     
-    // Log user info for debugging
-    console.log(`Profile request for user ${userId}: department=${user.department}, role=${user.role}`);
-
     // Get user details
     const detailsResult = await pool.query(
       `SELECT certifications, cv, portfolio, job_description, contract, query_count, attendance, other_details
