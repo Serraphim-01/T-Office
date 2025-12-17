@@ -94,7 +94,7 @@ router.get('/providers/:providerId/all-products', authenticateJWT, async (req, r
     
     // Get all products for this provider
     const result = await req.pool.query(
-      `SELECT p.id, p.name, p.part_number, p.default_unit_price
+      `SELECT p.id, p.name, p.part_number, p.default_unit_price, p.default_markup_percentage
        FROM products p
        WHERE p.provider_id = $1
        ORDER BY p.name`,
@@ -113,7 +113,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
   
   try {
     const result = await req.pool.query(
-      `SELECT p.id, p.name, p.part_number, p.product_type, p.created_at, p.updated_at, p.default_unit_price,
+      `SELECT p.id, p.name, p.part_number, p.product_type, p.created_at, p.updated_at, p.default_unit_price, p.default_markup_percentage,
               pr.id as provider_id, pr.name as provider_name
        FROM products p
        LEFT JOIN providers pr ON p.provider_id = pr.id
@@ -134,7 +134,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
 
 // Add a new product
 router.post('/products', authenticateJWT, async (req, res) => {
-  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
+  const { name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type || !provider_id) {
@@ -153,8 +153,8 @@ router.post('/products', authenticateJWT, async (req, res) => {
     }
     
     const result = await req.pool.query(
-      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, part_number, product_type, default_unit_price',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00]
+      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -170,7 +170,7 @@ router.post('/products', authenticateJWT, async (req, res) => {
 // Update a product
 router.put('/products/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
+  const { name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type || !provider_id) {
@@ -189,8 +189,8 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
     }
     
     const result = await req.pool.query(
-      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, part_number, product_type, default_unit_price',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00, id]
+      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, default_markup_percentage = $6, updated_at = NOW() WHERE id = $7 RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00, id]
     );
     
     if (result.rowCount === 0) {
@@ -734,6 +734,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     const defProductType = row.product_type || row.productType || row['Product Type'] || row['product type'] || 'Electronics';
                     const defProviderName = row.provider || row.Provider || '';
                     const defDefaultPrice = parseFloat(row.default_unit_price || row['Default Unit Price'] || '0.00');
+                    const defMarkupPercentage = parseFloat(row.default_markup_percentage || row['Default Markup Percentage'] || '0.00');
                     
                     // Provider contact information (for new providers)
                     const defProviderEmail = row.provider_email || row['Provider Email'] || '';
@@ -788,8 +789,8 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     // Validate required fields - provider is now optional
                     if (defName && defPartNumber) {
                       await req.pool.query(
-                        'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4, default_unit_price = $5',
-                        [defName, defPartNumber, defProductType, defProviderId, defDefaultPrice]
+                        'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (part_number) DO UPDATE SET name = $1, product_type = $3, provider_id = $4, default_unit_price = $5, default_markup_percentage = $6',
+                        [defName, defPartNumber, defProductType, defProviderId, defDefaultPrice, defMarkupPercentage]
                       );
                       successCount.products++;
                     } else {
@@ -921,6 +922,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
             pr.organization_contact_email,
             pr.organization_contact_phone,
             p.default_unit_price,
+            p.default_markup_percentage,
             NULL as quantity,
             NULL as expected_arrival_start,
             NULL as expected_arrival_end,
@@ -985,6 +987,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               pr.organization_contact_email,
               pr.organization_contact_phone,
               p.default_unit_price,
+              p.default_markup_percentage,
               NULL as quantity,
               NULL as expected_arrival_start,
               NULL as expected_arrival_end,

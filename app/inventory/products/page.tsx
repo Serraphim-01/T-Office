@@ -93,6 +93,7 @@ function ProductsContent() {
   const [newProductType, setNewProductType] = useState('');
   const [newProductProviderId, setNewProductProviderId] = useState<number | null>(null);
   const [newProductDefaultPrice, setNewProductDefaultPrice] = useState<number>(0);
+  const [newProductDefaultMarkup, setNewProductDefaultMarkup] = useState<number>(0);
   const [batchProducts, setBatchProducts] = useState<{name: string, part_number: string, product_type: string}[]>([]);
   const [providerProducts, setProviderProducts] = useState<{name: string, part_number: string, product_type: string}[]>([]);
   const [currentStep, setCurrentStep] = useState<'provider' | 'products'>('provider');
@@ -341,7 +342,8 @@ function ProductsContent() {
           name: newProductName, 
           part_number: newProductPartNumber, 
           product_type: newProductType,
-          default_unit_price: newProductDefaultPrice
+          default_unit_price: newProductDefaultPrice,
+          default_markup_percentage: newProductDefaultMarkup
         }),
       });
 
@@ -400,7 +402,8 @@ function ProductsContent() {
           },
           body: JSON.stringify({
             ...product,
-            default_unit_price: newProductDefaultPrice
+            default_unit_price: newProductDefaultPrice,
+            default_markup_percentage: newProductDefaultMarkup
           }),
         });
         
@@ -573,7 +576,8 @@ const handleCreateProduct = async (e: React.FormEvent) => {
         part_number: newProductPartNumber, 
         product_type: newProductType,
         provider_id: newProductProviderId,
-        default_unit_price: newProductDefaultPrice
+        default_unit_price: newProductDefaultPrice,
+        default_markup_percentage: newProductDefaultMarkup
       }),
     });
 
@@ -1296,6 +1300,19 @@ useEffect(() => {
                             value={newProductDefaultPrice}
                             onChange={(e) => setNewProductDefaultPrice(parseFloat(e.target.value) || 0)}
                             placeholder="Enter default unit price"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newProductDefaultMarkup">Default Markup Percentage (%)</Label>
+                          <Input
+                            id="newProductDefaultMarkup"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={newProductDefaultMarkup}
+                            onChange={(e) => setNewProductDefaultMarkup(parseFloat(e.target.value) || 0)}
+                            placeholder="Enter default markup percentage"
                           />
                         </div>
                       </div>

@@ -373,6 +373,7 @@ CREATE TABLE IF NOT EXISTS products (
     product_type VARCHAR(100) NOT NULL,
     provider_id INTEGER REFERENCES providers(id) ON DELETE RESTRICT,
     default_unit_price DECIMAL(10, 2) DEFAULT 0.00,
+    default_markup_percentage DECIMAL(5, 2) DEFAULT 0.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

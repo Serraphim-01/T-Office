@@ -199,9 +199,9 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     // Start transaction
     await req.pool.query('BEGIN');
     
-    // Get product default price
+    // Get product default price and markup percentage
     const productResult = await req.pool.query(
-      'SELECT default_unit_price FROM products WHERE id = $1',
+      'SELECT default_unit_price, default_markup_percentage FROM products WHERE id = $1',
       [product_id]
     );
     
@@ -211,8 +211,10 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     }
     
     const defaultPrice = productResult.rows[0].default_unit_price || 0.00;
+    const markupPercentage = productResult.rows[0].default_markup_percentage || 0.00;
+    const calculatedOutboundPrice = defaultPrice * (1 + (markupPercentage / 100));
     const actualInboundPrice = inbound_price !== undefined ? parseFloat(inbound_price) : defaultPrice;
-    const actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : defaultPrice;
+    const actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : calculatedOutboundPrice;
     
     // Find one of the inbound transactions that contains these serial numbers to use as the link
     let inboundTransactionId = null;
