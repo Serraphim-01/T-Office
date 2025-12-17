@@ -138,9 +138,9 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
         name: data.name,
         part_number: data.part_number,
         product_type: data.product_type,
-        default_unit_price: data.default_unit_price || 0,
-        default_markup_percentage: data.default_markup_percentage || 0, // Added this field
-        provider_id: data.provider_id || 0
+        default_unit_price: data.default_unit_price ?? 0,
+        default_markup_percentage: data.default_markup_percentage ?? 0, // Added this field
+        provider_id: data.provider_id ?? 0
       });
     } catch (error) {
       toast({
@@ -420,7 +420,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       step="0.01"
                       min="0"
                       value={editedProduct.default_unit_price}
-                      onChange={(e) => setEditedProduct({...editedProduct, default_unit_price: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setEditedProduct({...editedProduct, default_unit_price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                       placeholder="Enter default unit price"
                     />
                   </div>
@@ -434,7 +434,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       min="0"
                       max="100"
                       value={editedProduct.default_markup_percentage}
-                      onChange={(e) => setEditedProduct({...editedProduct, default_markup_percentage: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setEditedProduct({...editedProduct, default_markup_percentage: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                       placeholder="Enter default markup percentage"
                     />
                   </div>
@@ -444,7 +444,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     <select
                       id="providerId"
                       value={editedProduct.provider_id}
-                      onChange={(e) => setEditedProduct({...editedProduct, provider_id: parseInt(e.target.value) || 0})}
+                      onChange={(e) => setEditedProduct({...editedProduct, provider_id: e.target.value === '' ? 0 : parseInt(e.target.value)})}
                       className="w-full p-2 border rounded"
                       required
                     >
@@ -506,7 +506,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                   )}
                   
                   {/* Added display for default markup percentage */}
-                  {product && product.default_unit_price >= 0 && (
+                  {product && product.default_markup_percentage !== undefined && (
                     <div className="flex items-center space-x-3">
                       <div>
                         <p className="text-sm text-muted-foreground">Default Markup Percentage</p>

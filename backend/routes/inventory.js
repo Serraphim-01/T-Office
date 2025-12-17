@@ -154,7 +154,7 @@ router.post('/products', authenticateJWT, async (req, res) => {
     
     const result = await req.pool.query(
       'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00]
+      [name, part_number, product_type, provider_id, default_unit_price ?? 0.00, default_markup_percentage ?? 0.00]
     );
     
     // Send notification to users with inventory/products or inventory/inbound access
@@ -217,7 +217,7 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
     
     const result = await req.pool.query(
       'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, default_markup_percentage = $6, updated_at = NOW() WHERE id = $7 RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00, id]
+      [name, part_number, product_type, provider_id, default_unit_price ?? 0.00, default_markup_percentage ?? 0.00, id]
     );
     
     if (result.rowCount === 0) {
@@ -272,10 +272,40 @@ router.delete('/products/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
   
   try {
+    // Get product name before deletion for notification
+    const productResult = await req.pool.query('SELECT name FROM products WHERE id = $1', [id]);
+    const productName = productResult.rowCount > 0 ? productResult.rows[0].name : 'Unknown Product';
+    
     const result = await req.pool.query('DELETE FROM products WHERE id = $1', [id]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    // Send notification to users with inventory/products or inventory/inbound access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify (both inventory/products and inventory/inbound users)
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who deleted the product
+        // Convert both IDs to strings for comparison
+        if (notifyUserId.toString() != req.user.userId.toString()) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_deleted',
+            title: 'Product Deleted',
+            message: `Product "${productName}" has been deleted from the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product deletion notifications:', notificationError);
     }
     
     res.status(204).send();
@@ -1572,7 +1602,7 @@ router.get('/providers/:id', authenticateJWT, async (req, res) => {
 // Add a product to a specific provider
 router.post('/providers/:providerId/products', authenticateJWT, async (req, res) => {
   const { providerId } = req.params;
-  const { name, part_number, product_type, default_unit_price } = req.body;
+  const { name, part_number, product_type, default_unit_price, default_markup_percentage } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type) {
@@ -1594,8 +1624,8 @@ router.post('/providers/:providerId/products', authenticateJWT, async (req, res)
     
     // Insert product with provider_id
     const productResult = await req.pool.query(
-      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, part_number, product_type, default_unit_price',
-      [name, part_number, product_type, providerId, default_unit_price || 0.00]
+      'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
+      [name, part_number, product_type, providerId, default_unit_price ?? 0.00, default_markup_percentage ?? 0.00]
     );
     
     const product = productResult.rows[0];
@@ -1769,7 +1799,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
   
   try {
     const result = await req.pool.query(
-      `SELECT id, name, part_number, product_type, default_unit_price, created_at, updated_at,
+      `SELECT id, name, part_number, product_type, default_unit_price, default_markup_percentage, created_at, updated_at,
               provider_id
        FROM products WHERE id = $1`,
       [id]
@@ -1813,7 +1843,7 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
     
     const result = await req.pool.query(
       'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, default_markup_percentage = $6, updated_at = NOW() WHERE id = $7 RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00, id]
+      [name, part_number, product_type, provider_id, default_unit_price ?? 0.00, default_markup_percentage ?? 0.00, id]
     );
     
     if (result.rowCount === 0) {

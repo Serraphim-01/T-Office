@@ -418,6 +418,7 @@ function ProductsContent() {
       // Clear batch and form
       setBatchProducts([]);
       setNewProductDefaultPrice(0);
+      setNewProductDefaultMarkup(0);
       
       toast({ 
         title: 'Success', 
@@ -1311,7 +1312,7 @@ useEffect(() => {
                             min="0"
                             max="100"
                             value={newProductDefaultMarkup}
-                            onChange={(e) => setNewProductDefaultMarkup(parseFloat(e.target.value) || 0)}
+                            onChange={(e) => setNewProductDefaultMarkup(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                             placeholder="Enter default markup percentage"
                           />
                         </div>
@@ -1346,6 +1347,7 @@ useEffect(() => {
                               <TableHead>Part Number</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Default Price</TableHead>
+                              <TableHead>Markup %</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1356,6 +1358,7 @@ useEffect(() => {
                                 <TableCell>{product.part_number}</TableCell>
                                 <TableCell>{product.product_type}</TableCell>
                                 <TableCell>{formatCurrency(newProductDefaultPrice)}</TableCell>
+                                <TableCell>{newProductDefaultMarkup.toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">
                                   <Button 
                                     size="sm" 
@@ -1466,6 +1469,19 @@ useEffect(() => {
                       value={newProductDefaultPrice}
                       onChange={(e) => setNewProductDefaultPrice(parseFloat(e.target.value) || 0)}
                       placeholder="Enter default unit price"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newProductDefaultMarkup">Default Markup Percentage (%)</Label>
+                    <Input
+                      id="newProductDefaultMarkup"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={newProductDefaultMarkup}
+                      onChange={(e) => setNewProductDefaultMarkup(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter default markup percentage"
                     />
                   </div>
                   <div className="space-y-2">
