@@ -22,6 +22,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         o.status,
         o.created_at,
         pr.name as provider_name,
+        i.batch_number,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
@@ -29,7 +30,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
       WHERE o.quantity > 0
-      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name, i.batch_number
       ORDER BY o.created_at DESC
     `);
     res.json(result.rows);
@@ -62,6 +63,7 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
+        i.batch_number,
         ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
@@ -69,7 +71,7 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
       WHERE i.product_id = $1 AND o.quantity > 0
-      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name, i.batch_number
       ORDER BY o.created_at DESC
     `, [productId]);
     

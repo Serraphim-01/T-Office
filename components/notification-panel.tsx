@@ -271,7 +271,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
                   </div>
                 )}
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
                 {displayNotifications.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
                     No notifications

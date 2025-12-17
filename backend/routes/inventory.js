@@ -156,6 +156,33 @@ router.post('/products', authenticateJWT, async (req, res) => {
       'INSERT INTO products (name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
       [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00]
     );
+    
+    // Send notification to users with inventory/products or inventory/inbound access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify (both inventory/products and inventory/inbound users)
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the product
+        // Convert both IDs to strings for comparison
+        if (notifyUserId.toString() != req.user.userId.toString()) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_product_created',
+            title: 'New Product Created',
+            message: `A new product "${name}" has been created in the inventory system.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending product creation notifications:', notificationError);
+    }
+    
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error adding product:', error);
@@ -1734,7 +1761,7 @@ router.get('/products/:id', authenticateJWT, async (req, res) => {
 // Update a product
 router.put('/products/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
-  const { name, part_number, product_type, provider_id, default_unit_price } = req.body;
+  const { name, part_number, product_type, provider_id, default_unit_price, default_markup_percentage } = req.body;
   
   // Validate input
   if (!name || !part_number || !product_type || !provider_id) {
@@ -1753,27 +1780,28 @@ router.put('/products/:id', authenticateJWT, async (req, res) => {
     }
     
     const result = await req.pool.query(
-      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, updated_at = NOW() WHERE id = $6 RETURNING id, name, part_number, product_type, default_unit_price',
-      [name, part_number, product_type, provider_id, default_unit_price || 0.00, id]
+      'UPDATE products SET name = $1, part_number = $2, product_type = $3, provider_id = $4, default_unit_price = $5, default_markup_percentage = $6, updated_at = NOW() WHERE id = $7 RETURNING id, name, part_number, product_type, default_unit_price, default_markup_percentage',
+      [name, part_number, product_type, provider_id, default_unit_price || 0.00, default_markup_percentage || 0.00, id]
     );
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Product not found' });
     }
     
-    // Send notification to users with inventory/products access
+    // Send notification to users with inventory/products or inventory/inbound access
     try {
       // Import the sendNotification function and helper functions
       const { sendNotification } = await import('../index.js');
-      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
       
-      // Get users to notify
-      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      // Get users to notify (both inventory/products and inventory/inbound users)
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
       
       // Send notification to each user
       for (const notifyUserId of usersToNotify) {
         // Don't notify the user who updated the product
-        if (notifyUserId != req.user.userId) {
+        // Convert both IDs to strings for comparison
+        if (notifyUserId.toString() != req.user.userId.toString()) {
           await sendNotification(notifyUserId, {
             type: 'inventory_product_updated',
             title: 'Product Updated',
@@ -1812,19 +1840,20 @@ router.delete('/products/:id', authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
     
-    // Send notification to users with inventory/products access
+    // Send notification to users with inventory/products or inventory/inbound access
     try {
       // Import the sendNotification function and helper functions
       const { sendNotification } = await import('../index.js');
-      const { getUsersToNotifyOnInventoryProducts } = await import('../utils/helpers.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
       
-      // Get users to notify
-      const usersToNotify = await getUsersToNotifyOnInventoryProducts(req.pool);
+      // Get users to notify (both inventory/products and inventory/inbound users)
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
       
       // Send notification to each user
       for (const notifyUserId of usersToNotify) {
         // Don't notify the user who deleted the product
-        if (notifyUserId != req.user.userId) {
+        // Convert both IDs to strings for comparison
+        if (notifyUserId.toString() != req.user.userId.toString()) {
           await sendNotification(notifyUserId, {
             type: 'inventory_product_deleted',
             title: 'Product Deleted',

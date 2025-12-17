@@ -23,7 +23,17 @@ interface Product {
   created_at: string;
   updated_at: string;
   default_unit_price: number;
+  default_markup_percentage?: number;
   provider_id?: number;
+}
+
+interface ProductFormData {
+  name: string;
+  part_number: string;
+  product_type: string;
+  default_unit_price: number;
+  default_markup_percentage: number;
+  provider_id: number;
 }
 
 interface Transaction {
@@ -63,6 +73,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     part_number: '',
     product_type: '',
     default_unit_price: 0,
+    default_markup_percentage: 0, // Added this field
     provider_id: 0
   });
   const [canEditProduct, setCanEditProduct] = useState(false);
@@ -128,6 +139,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
         part_number: data.part_number,
         product_type: data.product_type,
         default_unit_price: data.default_unit_price || 0,
+        default_markup_percentage: data.default_markup_percentage || 0, // Added this field
         provider_id: data.provider_id || 0
       });
     } catch (error) {
@@ -412,6 +424,20 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       placeholder="Enter default unit price"
                     />
                   </div>
+                  {/* Added default markup percentage field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultMarkupPercentage">Default Markup Percentage (%)</Label>
+                    <Input
+                      id="defaultMarkupPercentage"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={editedProduct.default_markup_percentage}
+                      onChange={(e) => setEditedProduct({...editedProduct, default_markup_percentage: parseFloat(e.target.value) || 0})}
+                      placeholder="Enter default markup percentage"
+                    />
+                  </div>
                   {/* Added provider selection for editing */}
                   <div className="space-y-2">
                     <Label htmlFor="providerId">Provider *</Label>
@@ -475,6 +501,16 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       <div>
                         <p className="text-sm text-muted-foreground">Default Unit Price</p>
                         <p className="font-medium text-green-600">{formatCurrency(product.default_unit_price)}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Added display for default markup percentage */}
+                  {product && product.default_unit_price >= 0 && (
+                    <div className="flex items-center space-x-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Default Markup Percentage</p>
+                        <p className="font-medium">{parseFloat(product.default_markup_percentage?.toString() || '0').toFixed(2)}%</p>
                       </div>
                     </div>
                   )}

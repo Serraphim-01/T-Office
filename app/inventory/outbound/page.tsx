@@ -42,6 +42,7 @@ interface OutboundTransaction {
   provider_name: string; // Added provider information
   inbound_price?: number;
   outbound_price?: number;
+  batch_number?: string; // Added batch number
 }
 
 interface StoredTransaction {
@@ -447,10 +448,10 @@ function OutboundContent() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
-                    <TableHead>Provider</TableHead>
+                    <TableHead>Batch Number</TableHead>
                     <TableHead>Dispatch Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Prices (₦)</TableHead> {/* Added Prices column */}
+                    <TableHead>Prices (₦)</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -479,7 +480,7 @@ function OutboundContent() {
                         <div className="text-sm text-muted-foreground">{transaction.product_part_number}</div>
                       </TableCell>
                       <TableCell>{transaction.quantity}</TableCell>
-                      <TableCell>{transaction.provider_name || 'N/A'}</TableCell>
+                      <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
