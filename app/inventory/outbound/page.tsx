@@ -61,6 +61,8 @@ interface ProductSerialNumbers {
   transaction_id: number;
   provider: string;
   serial_numbers: string[] | null;
+  batch_number?: string;
+  unit_price?: number;
 }
 
 export default function OutboundPage() {
@@ -682,7 +684,9 @@ function OutboundContent() {
                 <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
                   {getAllAvailableSerialNumbers().map((transaction, transactionIndex) => (
                     <div key={transactionIndex} className="mb-3">
-                      <h4 className="font-medium text-sm mb-2">From {transaction.provider}:</h4>
+                      <h4 className="font-medium text-sm mb-2">
+                        Batch No: {transaction.batch_number || 'N/A'} (₦{typeof transaction.unit_price === 'number' && transaction.unit_price !== null ? transaction.unit_price.toFixed(2) : '0.00'})
+                      </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
                           transaction.serial_numbers.map((serial, serialIndex) => (

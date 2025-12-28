@@ -23,6 +23,7 @@ interface InboundTransaction {
   created_at: string;
   serial_numbers: string[] | null;
   batch_number?: string;
+  unit_price?: number;
 }
 
 export default function InboundTransactionDetailsPage() {
@@ -212,6 +213,18 @@ export default function InboundTransactionDetailsPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Batch Number</p>
                     <p className="font-medium">{transaction.batch_number}</p>
+                  </div>
+                )}
+                {transaction.unit_price !== undefined && transaction.unit_price !== null && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Unit Price</p>
+                    <p className="font-medium">₦{transaction.unit_price}</p>
+                  </div>
+                )}
+                {transaction.unit_price !== undefined && transaction.unit_price !== null && typeof transaction.quantity !== 'undefined' && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Price</p>
+                    <p className="font-medium">₦{transaction.unit_price * transaction.quantity}</p>
                   </div>
                 )}
               </CardContent>

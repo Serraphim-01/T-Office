@@ -240,12 +240,12 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     if (!inboundTransactionId) {
       const inboundResult = await req.pool.query(`
         INSERT INTO inbound_transactions 
-        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status) 
-        SELECT $1, $2, provider_id, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, 'Outbound'
+        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, unit_price) 
+        SELECT $1, $2, provider_id, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, 'Outbound', $3
         FROM products 
         WHERE id = $1
         RETURNING id`,
-        [product_id, quantity]
+        [product_id, quantity, actualInboundPrice]
       );
       
       inboundTransactionId = inboundResult.rows[0].id;

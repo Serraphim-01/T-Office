@@ -588,6 +588,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalStart = row.expected_arrival_start || row['Expected Arrival Start'] || '';
                   const expectedArrivalEnd = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const inboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const inboundUnitPrice = parseFloat(row.unit_price || row['Unit Price'] || '0.00');
 
                   // Validate required fields
                   if (!inboundPartNumber || !inboundQuantity || !providerName || !expectedArrivalStart || !expectedArrivalEnd) {
@@ -639,10 +640,10 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Insert inbound transaction with auto-generated batch number
                   const inboundResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
-                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7) 
+                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, status, batch_number, unit_price) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
                     RETURNING id`,
-                    [inboundProductId, inboundQuantity, providerId, expectedArrivalStart, expectedArrivalEnd, 'Incoming', autoBatchNumber]
+                    [inboundProductId, inboundQuantity, providerId, expectedArrivalStart, expectedArrivalEnd, 'Incoming', autoBatchNumber, inboundUnitPrice]
                   );
 
                   const inboundId = inboundResult.rows[0].id;
@@ -672,6 +673,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const expectedArrivalEndStored = row.expected_arrival_end || row['Expected Arrival End'] || '';
                   const arrivalDate = row.arrival_date || row['Arrival Date'] || '';
                   const storedSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const storedUnitPrice = parseFloat(row.unit_price || row['Unit Price'] || '0.00');
 
                   // Validate required fields
                   if (!storedPartNumber || !storedQuantity || !storedProviderName || !expectedArrivalStartStored || !expectedArrivalEndStored || !arrivalDate) {
@@ -723,10 +725,10 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   // Insert stored transaction with auto-generated batch number
                   const storedResult = await req.pool.query(
                     `INSERT INTO inbound_transactions 
-                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, batch_number) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+                    (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, batch_number, unit_price) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
                     RETURNING id`,
-                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored', autoBatchNumberStored]
+                    [storedProductId, storedQuantity, storedProviderId, expectedArrivalStartStored, expectedArrivalEndStored, arrivalDate, 'Stored', autoBatchNumberStored, storedUnitPrice]
                   );
 
                   const storedId = storedResult.rows[0].id;
@@ -757,6 +759,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   const dispatchDatetime = row.dispatch_datetime || row['Dispatch Datetime'] || '';
                   const deliveryDatetime = row.delivery_datetime || row['Delivery Datetime'] || '';
                   const outboundSerialNumbers = row.serial_numbers || row['Serial Numbers'] || '';
+                  const inboundPrice = parseFloat(row.inbound_price || row['Inbound Price'] || row.unit_price || row['Unit Price'] || '0.00');
                   const outboundPrice = parseFloat(row.outbound_price || row['Outbound Price'] || '0.00');
 
                   // Validate required fields
@@ -768,7 +771,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
 
                   // Get the inbound transaction ID by product part number
                   const outboundInboundResult = await req.pool.query(
-                    `SELECT i.id, p.default_unit_price FROM inbound_transactions i
+                    `SELECT i.id, COALESCE(i.unit_price, p.default_unit_price) as unit_price FROM inbound_transactions i
                     JOIN products p ON i.product_id = p.id
                     WHERE p.part_number = $1 AND i.status = 'Stored'
                     LIMIT 1`,
@@ -782,7 +785,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                   }
 
                   const outboundInboundId = outboundInboundResult.rows[0].id;
-                  const inboundPrice = outboundInboundResult.rows[0].default_unit_price || 0.00;
+                  const finalInboundPrice = inboundPrice;
 
                   // Insert outbound transaction
                   const outboundResult = await req.pool.query(
@@ -790,7 +793,7 @@ router.post('/comprehensive-import', authenticateJWT, upload.single('file'), asy
                     (inbound_transaction_id, quantity, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, status, inbound_price, outbound_price) 
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
                     RETURNING id`,
-                    [outboundInboundId, outboundQuantity, receiverAddress, receiverEmail, receiverPhone, dispatchDatetime, deliveryDatetime, 'Outgoing', inboundPrice, outboundPrice]
+                    [outboundInboundId, outboundQuantity, receiverAddress, receiverEmail, receiverPhone, dispatchDatetime, deliveryDatetime, 'Outgoing', finalInboundPrice, outboundPrice]
                   );
 
                   const outboundId = outboundResult.rows[0].id;

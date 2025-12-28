@@ -26,7 +26,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.status = $1 AND i.quantity > 0
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.batch_number, i.unit_price
       ORDER BY i.created_at DESC
     `, ['Incoming']);
     res.json(result.rows);
@@ -57,7 +57,7 @@ router.get('/store', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.status = $1 AND i.quantity > 0
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.batch_number, i.unit_price
       ORDER BY i.arrival_date DESC
     `, ['Stored']);
     
@@ -271,7 +271,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.id = $1
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.batch_number, i.unit_price
     `, [id]);
     
     if (result.rowCount === 0) {
@@ -540,16 +540,23 @@ router.post('/:id/store', authenticateJWT, async (req, res) => {
     const arrivalDate = transactionResult.rows[0].expected_arrival_end;
     
     // Update the transaction status to Stored and set arrival date
+    // Preserve all existing transaction details including unit_price
     const result = await req.pool.query(
       `UPDATE inbound_transactions 
        SET status = $1, arrival_date = $2::DATE, updated_at = NOW() 
        WHERE id = $3 AND status = $4
-       RETURNING id`,
+       RETURNING id, product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, 
+                 arrival_date, status, batch_number, unit_price, created_at`,
       ['Stored', arrivalDate, id, 'Incoming']
     );
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Transaction not found or already stored' });
+    }
+    
+    // Log the stored transaction details for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Stored transaction details:', result.rows[0]);
     }
     
     // Send notification to users with inventory/inbound or inventory/products access
@@ -577,7 +584,7 @@ router.post('/:id/store', authenticateJWT, async (req, res) => {
       console.error('Error sending inbound transaction stored notifications:', notificationError);
     }
     
-    res.json({ message: 'Transaction marked as stored' });
+    res.json({ message: 'Transaction marked as stored', transaction: result.rows[0] });
   } catch (error) {
     console.error('Error updating transaction status:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -601,13 +608,14 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
         i.expected_arrival_end,
         i.status,
         i.created_at,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.unit_price
       ORDER BY i.created_at DESC
     `, [productId, 'Incoming']);
     
@@ -635,13 +643,14 @@ router.get('/store/product/:productId', authenticateJWT, async (req, res) => {
         i.status,
         i.created_at,
         i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.batch_number, i.unit_price
       ORDER BY i.arrival_date DESC
     `, [productId, 'Stored']);
     
@@ -669,13 +678,14 @@ router.get('/store/:id', authenticateJWT, async (req, res) => {
         i.status,
         i.created_at,
         i.batch_number,
+        i.unit_price,
         ARRAY_AGG(isn.serial_number) FILTER (WHERE isn.serial_number IS NOT NULL) as serial_numbers
       FROM inbound_transactions i
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.id = $1 AND i.status = $2 AND i.quantity > 0
-      GROUP BY i.id, p.name, p.part_number, pr.name
+      GROUP BY i.id, p.name, p.part_number, pr.name, i.product_id, i.quantity, i.status, i.created_at, i.batch_number, i.unit_price
     `, [id, 'Stored']);
     
     if (result.rowCount === 0) {
@@ -706,7 +716,7 @@ router.get('/store/product/:productId/serials', authenticateJWT, async (req, res
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
       WHERE i.product_id = $1 AND i.status = $2 AND i.quantity > 0
-      GROUP BY i.id, pr.name, i.batch_number, i.unit_price
+      GROUP BY i.id, pr.name, i.batch_number, i.unit_price, i.product_id, i.provider_id
       ORDER BY pr.name
     `, [productId, 'Stored']);
     

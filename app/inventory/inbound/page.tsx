@@ -297,7 +297,7 @@ function InboundContent() {
           ? data.serial_numbers 
           : Array(transaction.quantity).fill(''),
         default_unit_price: defaultUnitPrice,
-        unit_price: defaultUnitPrice
+        unit_price: transaction.unit_price !== undefined && transaction.unit_price !== null ? transaction.unit_price : defaultUnitPrice
       }]);
       
       setIsEditing(true);
@@ -510,7 +510,8 @@ function InboundContent() {
           serial_numbers: entry.serial_numbers,
           provider_id: entry.provider_id,
           expected_arrival_start: expectedArrivalStart,
-          expected_arrival_end: expectedArrivalEnd
+          expected_arrival_end: expectedArrivalEnd,
+          unit_price: entry.unit_price  // Add unit_price to the update request
         };
         
         const response = await fetch(`http://localhost:4000/api/inventory/inbound/${editingTransactionId}`, {
@@ -964,6 +965,8 @@ function InboundContent() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
+                    <TableHead>Unit Price</TableHead>
+                    <TableHead>Total Price</TableHead>
                     <TableHead>Provider</TableHead>
                     <TableHead>Expected Arrival</TableHead>
                     <TableHead>Batch Number</TableHead>
@@ -1015,6 +1018,12 @@ function InboundContent() {
                             </DropdownMenu>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        ₦{(transaction.unit_price != null ? transaction.unit_price : '0.00')}
+                      </TableCell>
+                      <TableCell>
+                        ₦{(transaction.unit_price != null ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00')}
                       </TableCell>
                       <TableCell>{transaction.provider_name}</TableCell>
                       <TableCell>
