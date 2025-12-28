@@ -369,8 +369,8 @@ function StoreContent() {
                         }}
                       >{transaction.product_name}<div className="text-sm text-muted-foreground">{transaction.product_part_number}</div></TableCell>
                       <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="flex items-center space-x-2"><span>{transaction.quantity}</span><Hash className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start">{transaction.serial_numbers && transaction.serial_numbers.length > 0 ? transaction.serial_numbers.map((serial, index) => <DropdownMenuItem key={index}>{serial}</DropdownMenuItem>) : <DropdownMenuItem>No serial numbers</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></TableCell>
-                      <TableCell>₦{typeof transaction.unit_price === 'number' && transaction.unit_price !== null ? transaction.unit_price.toFixed(2) : '0.00'}</TableCell>
-                      <TableCell>₦{typeof transaction.unit_price === 'number' && transaction.unit_price !== null && typeof transaction.quantity === 'number' ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00'}</TableCell>
+                      <TableCell>₦{(transaction.unit_price != null ? transaction.unit_price : '0.00')}</TableCell>
+                      <TableCell>₦{(transaction.unit_price != null ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00')}</TableCell>
                       <TableCell>{transaction.provider_name || transaction.provider || 'N/A'}</TableCell>
                       <TableCell><div className="flex items-center space-x-1"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{transaction.arrival_date ? format(parseISO(transaction.arrival_date), 'MMM d, yyyy') : 'N/A'}</span></div></TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>

@@ -147,13 +147,13 @@ export default function StoredTransactionDetailsPage() {
                 {transaction.unit_price !== undefined && transaction.unit_price !== null && (
                   <div>
                     <p className="text-sm text-muted-foreground">Unit Price</p>
-                    <p className="font-medium">₦{typeof transaction.unit_price === 'number' ? transaction.unit_price.toFixed(2) : '0.00'}</p>
+                    <p className="font-medium">₦{transaction.unit_price}</p>
                   </div>
                 )}
                 {transaction.unit_price !== undefined && transaction.unit_price !== null && typeof transaction.quantity !== 'undefined' && (
                   <div>
                     <p className="text-sm text-muted-foreground">Total Price</p>
-                    <p className="font-medium">₦{typeof transaction.unit_price === 'number' && typeof transaction.quantity === 'number' ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00'}</p>
+                    <p className="font-medium">₦{transaction.unit_price * transaction.quantity}</p>
                   </div>
                 )}
               </CardContent>
