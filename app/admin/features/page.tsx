@@ -581,8 +581,12 @@ function FeaturesContent() {
       category = 'resources';
     } else if (page.name.startsWith('inventory/')) {
       category = 'inventory';
+    } else if (page.name.includes('/')) {
+      // For other pages with slashes, take the first part as category
+      category = page.name.split('/')[0];
     } else {
-      category = page.name.split('/')[0] || 'general';
+      // For pages without slashes, put them in a 'general' category
+      category = 'general';
     }
     
     if (!acc[category]) {
@@ -688,9 +692,51 @@ function FeaturesContent() {
                 <div className="space-y-6">
                   {Object.entries(groupedPages).map(([category, categoryPages]) => (
                     <div key={category} className="space-y-3">
-                      <h3 className="text-lg font-medium capitalize">
-                        {category === 'chat' ? 'Chat Features' : category === 'hr' ? 'HR Pages' : category === 'inventory' ? 'Inventory Pages' : `${category} Pages`}
-                      </h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium capitalize">
+                          {category === 'chat' ? 'Chat Features' : category === 'hr' ? 'HR Pages' : category === 'inventory' ? 'Inventory Pages' : `${category} Pages`}
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-muted-foreground">
+                            {selectedPages.filter(page => 
+                              category === 'general' 
+                                ? !page.includes('/') 
+                                : page.startsWith(`${category}/`)
+                            ).length} / {categoryPages.length}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const categoryPageNames = categoryPages.map(page => page.name);
+                              const selectedCategoryPages = selectedPages.filter(page => 
+                                categoryPageNames.includes(page)
+                              );
+                              
+                              if (selectedCategoryPages.length === categoryPageNames.length) {
+                                // Deselect all
+                                setSelectedPages(prev => prev.filter(page => !categoryPageNames.includes(page)));
+                              } else {
+                                // Select all
+                                const newSelectedPages = [...selectedPages];
+                                categoryPageNames.forEach(pageName => {
+                                  if (!newSelectedPages.includes(pageName)) {
+                                    newSelectedPages.push(pageName);
+                                  }
+                                });
+                                setSelectedPages(newSelectedPages);
+                              }
+                            }}
+                          >
+                            {selectedPages.filter(page => 
+                              category === 'general' 
+                                ? !page.includes('/') 
+                                : page.startsWith(`${category}/`)
+                            ).length === categoryPages.length ? 'Deselect All' : 'Select All'}
+                          </Button>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {categoryPages.map((page) => (
                           <div key={page.name} className="flex items-center space-x-2 p-3 border rounded-lg">

@@ -260,14 +260,40 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     
     // If we couldn't find a transaction, create a dummy one
     if (!inboundTransactionId) {
-      const inboundResult = await req.pool.query(`
-        INSERT INTO inbound_transactions 
-        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, unit_price) 
-        SELECT $1, $2, provider_id, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, 'Outbound', $3
-        FROM products 
-        WHERE id = $1
+      // Generate a proper batch number for the new inbound transaction
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+      const year = String(now.getFullYear()).slice(-2);
+      const datePart = `${day}${month}${year}`;
+      
+      // Get the transaction number for the day by counting transactions created today
+      const countResult = await req.pool.query(
+        `SELECT COUNT(*) as count FROM inbound_transactions 
+         WHERE DATE(created_at) = DATE($1) AND product_id = $2`,
+        [now, product_id]
+      );
+      
+      const transactionNumber = parseInt(countResult.rows[0].count) + 1;
+      const batch_number = `B-${datePart}-${transactionNumber}`;
+      
+      // Get provider ID from product or use a default
+      const productInfo = await req.pool.query(
+        `SELECT p.default_provider_id, pr.id as provider_id
+         FROM products p
+         LEFT JOIN providers pr ON p.default_provider_id = pr.id
+         WHERE p.id = $1`,
+        [product_id]
+      );
+      
+      const providerId = productInfo.rows[0]?.provider_id || 1; // Use default provider if not found
+      
+      const inboundResult = await req.pool.query(
+        `INSERT INTO inbound_transactions 
+        (product_id, quantity, provider_id, expected_arrival_start, expected_arrival_end, arrival_date, status, unit_price, batch_number) 
+        VALUES ($1, $2, $3, CURRENT_DATE, CURRENT_DATE, CURRENT_DATE, 'Outbound', $4, $5)
         RETURNING id`,
-        [product_id, quantity, actualInboundPrice]
+        [product_id, quantity, providerId, actualInboundPrice, batch_number]
       );
       
       inboundTransactionId = inboundResult.rows[0].id;
@@ -439,7 +465,7 @@ router.post('/:id/delivered', authenticateJWT, async (req, res) => {
   }
 });
 
-// Delete an outbound transaction
+// Revert an outbound transaction back to stored status
 router.delete('/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
   
@@ -447,23 +473,87 @@ router.delete('/:id', authenticateJWT, async (req, res) => {
     // Start transaction
     await req.pool.query('BEGIN');
     
-    // Get the inbound transaction ID
-    const inboundResult = await req.pool.query(
-      'SELECT inbound_transaction_id FROM outbound_transactions WHERE id = $1',
+    // Get the outbound transaction details
+    const outboundResult = await req.pool.query(
+      `SELECT o.id, o.inbound_transaction_id, o.quantity, 
+       ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
+       FROM outbound_transactions o
+       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
+       WHERE o.id = $1
+       GROUP BY o.id, o.inbound_transaction_id`,
       [id]
     );
     
-    if (inboundResult.rowCount === 0) {
+    if (outboundResult.rowCount === 0) {
       await req.pool.query('ROLLBACK');
       return res.status(404).json({ error: 'Outbound transaction not found' });
     }
     
-    const inboundTransactionId = inboundResult.rows[0].inbound_transaction_id;
+    const { inbound_transaction_id, quantity, serial_numbers } = outboundResult.rows[0];
     
-    // Delete serial numbers first (due to foreign key constraint)
+    // Find the original inbound transaction to update
+    const inboundTransactionResult = await req.pool.query(
+      'SELECT status FROM inbound_transactions WHERE id = $1',
+      [inbound_transaction_id]
+    );
+    
+    if (inboundTransactionResult.rowCount === 0) {
+      await req.pool.query('ROLLBACK');
+      return res.status(404).json({ error: 'Original inbound transaction not found' });
+    }
+    
+    // Update the inbound transaction status back to Stored if it was Outbound
+    if (inboundTransactionResult.rows[0].status === 'Outbound') {
+      await req.pool.query(
+        'UPDATE inbound_transactions SET status = $1, updated_at = NOW() WHERE id = $2',
+        ['Stored', inbound_transaction_id]
+      );
+    }
+    
+    // Move serial numbers back to their original inbound transactions
+    if (serial_numbers && serial_numbers.length > 0) {
+      for (const serial of serial_numbers) {
+        if (serial) {
+          // Find the original inbound transaction that contained this serial number before it was moved to outbound
+          const originalTransactionResult = await req.pool.query(
+            `SELECT i.id
+             FROM inbound_transactions i
+             JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+             WHERE isn.serial_number = $1 AND i.status = 'Stored'
+             UNION
+             SELECT i.id
+             FROM inbound_transactions i
+             WHERE i.id = $2 AND i.status = 'Outbound' -- If the original transaction was already marked as outbound, use the main inbound_transaction_id
+             LIMIT 1`,
+            [serial, inbound_transaction_id]
+          );
+          
+          let targetTransactionId = inbound_transaction_id;
+          if (originalTransactionResult.rowCount > 0) {
+            targetTransactionId = originalTransactionResult.rows[0].id;
+          }
+          
+          // Check if the serial number already exists in the inbound table
+          const existingSerial = await req.pool.query(
+            'SELECT 1 FROM inbound_serial_numbers WHERE transaction_id = $1 AND serial_number = $2',
+            [targetTransactionId, serial]
+          );
+          
+          if (existingSerial.rowCount === 0) {
+            // Only insert if it doesn't already exist
+            await req.pool.query(
+              'INSERT INTO inbound_serial_numbers (transaction_id, serial_number) VALUES ($1, $2)',
+              [targetTransactionId, serial]
+            );
+          }
+        }
+      }
+    }
+    
+    // Delete serial numbers from outbound_serial_numbers table
     await req.pool.query('DELETE FROM outbound_serial_numbers WHERE outbound_transaction_id = $1', [id]);
     
-    // Delete the transaction
+    // Delete the outbound transaction
     const result = await req.pool.query('DELETE FROM outbound_transactions WHERE id = $1', [id]);
     
     if (result.rowCount === 0) {
@@ -471,20 +561,14 @@ router.delete('/:id', authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: 'Outbound transaction not found' });
     }
     
-    // Update the inbound transaction status back to Stored
-    await req.pool.query(
-      'UPDATE inbound_transactions SET status = $1, updated_at = NOW() WHERE id = $2',
-      ['Stored', inboundTransactionId]
-    );
-    
     // Commit transaction
     await req.pool.query('COMMIT');
     
-    res.json({ message: 'Transaction deleted successfully' });
+    res.json({ message: 'Outbound transaction reverted to stored successfully' });
   } catch (error) {
     // Rollback transaction on error
     await req.pool.query('ROLLBACK');
-    console.error('Error deleting transaction:', error);
+    console.error('Error reverting outbound transaction:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -512,6 +596,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
+        i.batch_number,
         ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
@@ -519,7 +604,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
       LEFT JOIN providers pr ON i.provider_id = pr.id
       LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
       WHERE o.id = $1 AND o.quantity > 0
-      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name
+      GROUP BY o.id, i.product_id, p.name, p.part_number, pr.name, i.batch_number
     `, [id]);
     
     if (result.rowCount === 0) {

@@ -237,27 +237,15 @@ export default function OutboundTransactionDetailsPage() {
                   <p className="text-sm text-muted-foreground">Inbound Transaction ID</p>
                   <p className="font-medium">#{transaction.inbound_transaction_id}</p>
                 </div>
-                {(transaction.inbound_price !== undefined && transaction.inbound_price !== null) && ( // Added inbound price display
+                {(transaction.outbound_price !== undefined && transaction.outbound_price !== null) && ( // Changed to show total price
                   <div>
-                    <p className="text-sm text-muted-foreground">Inbound Price (₦)</p>
+                    <p className="text-sm text-muted-foreground">Total Outbound Price (₦)</p>
                     <p className="font-medium text-green-600">
                       {new Intl.NumberFormat('en-NG', {
                         style: 'currency',
                         currency: 'NGN',
                         minimumFractionDigits: 2
-                      }).format(typeof transaction.inbound_price === 'number' ? transaction.inbound_price : parseFloat(transaction.inbound_price))}
-                    </p>
-                  </div>
-                )}
-                {(transaction.outbound_price !== undefined && transaction.outbound_price !== null) && ( // Added outbound price display
-                  <div>
-                    <p className="text-sm text-muted-foreground">Outbound Price (₦)</p>
-                    <p className="font-medium text-green-600">
-                      {new Intl.NumberFormat('en-NG', {
-                        style: 'currency',
-                        currency: 'NGN',
-                        minimumFractionDigits: 2
-                      }).format(typeof transaction.outbound_price === 'number' ? transaction.outbound_price : parseFloat(transaction.outbound_price))}
+                      }).format(typeof transaction.outbound_price === 'number' ? transaction.outbound_price * transaction.quantity : parseFloat(transaction.outbound_price) * transaction.quantity)}
                     </p>
                   </div>
                 )}

@@ -92,9 +92,27 @@ router.post('/', authenticateJWT, async (req, res) => {
       return res.status(400).json({ error: 'Invalid provider ID' });
     }
     
-    // Generate automatic batch number: BATCH-{product_id}-{timestamp}
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const batch_number = `BATCH-${product_id}-${timestamp}`;
+    // Generate automatic batch number: B-ddmmyy-transaction_number
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = String(now.getFullYear()).slice(-2);
+    const datePart = `${day}${month}${year}`;
+    
+    // Get the transaction number for the day by counting transactions created today
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const countResult = await req.pool.query(
+      `SELECT COUNT(*) as count FROM inbound_transactions 
+       WHERE DATE(created_at) = DATE($1) AND product_id = $2`,
+      [now, product_id]
+    );
+    
+    const transactionNumber = parseInt(countResult.rows[0].count) + 1;
+    const batch_number = `B-${datePart}-${transactionNumber}`;
     
     // Insert inbound transaction with auto-generated batch number
     const result = await req.pool.query(`
@@ -169,10 +187,27 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
       }
     }
     
-    // Generate automatic batch number using the first product ID: BATCH-{product_id}-{timestamp}
-    const firstProductId = transactions[0].product_id;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const batch_number = `BATCH-${firstProductId}-${timestamp}`;
+    // Generate automatic batch number: B-ddmmyy-transaction_number
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = String(now.getFullYear()).slice(-2);
+    const datePart = `${day}${month}${year}`;
+    
+    // Get the transaction number for the day by counting transactions created today
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const countResult = await req.pool.query(
+      `SELECT COUNT(*) as count FROM inbound_transactions 
+       WHERE DATE(created_at) = DATE($1) AND product_id = $2`,
+      [now, transactions[0].product_id]
+    );
+    
+    const transactionNumber = parseInt(countResult.rows[0].count) + 1;
+    const batch_number = `B-${datePart}-${transactionNumber}`;
     
     // Insert all transactions with the same batch number
     const results = [];
