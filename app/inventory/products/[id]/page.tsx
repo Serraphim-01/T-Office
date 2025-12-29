@@ -51,6 +51,7 @@ interface Transaction {
   status: string;
   created_at: string;
   serial_numbers: string[] | null;
+  serial_numbers_with_prices?: Array<{serial_number: string, inbound_price: number}> | null;
   batch_number?: string;
   inbound_price?: number;
   outbound_price?: number;
@@ -189,7 +190,14 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
         const outboundData = await outboundResponse.json();
         // Filter out outbound transactions with quantity 0
         const filteredOutboundData = outboundData.filter((t: any) => t.quantity > 0);
-        allTransactions = [...allTransactions, ...filteredOutboundData.map((t: any) => ({ ...t, type: 'outbound' as const }))];
+        allTransactions = [...allTransactions, ...filteredOutboundData.map((t: any) => ({ 
+          ...t, 
+          type: 'outbound' as const,
+          // Transform serial_numbers_with_prices to serial_numbers array if available
+          serial_numbers: t.serial_numbers_with_prices 
+            ? t.serial_numbers_with_prices.map((item: any) => item.serial_number)
+            : t.serial_numbers || null
+        }))];
       }
 
       // Sort by creation date (newest first)
@@ -576,7 +584,6 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Batch Number</TableHead>
-                    <TableHead>Prices</TableHead>
                     <TableHead>Serial Numbers</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -622,14 +629,6 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                         </div>
                       </TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
-                      <TableCell>
-                        {transaction.type === 'outbound' && (
-                          <div className="text-xs">
-                            <div>In: {transaction.inbound_price !== undefined ? formatCurrency(transaction.inbound_price) : 'N/A'}</div>
-                            <div>Out: {transaction.outbound_price !== undefined ? formatCurrency(transaction.outbound_price) : 'N/A'}</div>
-                          </div>
-                        )}
-                      </TableCell>
                       <TableCell>
                         {formatSerialNumbersDisplay(transaction.serial_numbers)}
                       </TableCell>
