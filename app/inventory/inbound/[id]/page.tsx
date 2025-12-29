@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Package, Calendar, Truck, CheckCircle, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
 
 interface InboundTransaction {
   id: number;
@@ -187,24 +188,32 @@ export default function InboundTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge 
-                    variant={transaction.status === 'Stored' ? 'default' : 
-                           transaction.status === 'Outgoing' ? 'secondary' : 'outline'}
-                  >
-                    {transaction.status === 'Incoming' && <Truck className="h-3 w-3 mr-1" />}
-                    {transaction.status === 'Stored' && <CheckCircle className="h-3 w-3 mr-1" />}
-                    {transaction.status === 'Outgoing' && <Truck className="h-3 w-3 mr-1" />}
-                    {transaction.status}
-                  </Badge>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Badge 
+                            variant="outline"
+                            className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm font-medium"
+                          >
+                            {transaction.status === 'Incoming' && <Truck className="h-4 w-4" />}
+                            {transaction.status === 'Stored' && <CheckCircle className="h-4 w-4" />}
+                            {transaction.status === 'Outgoing' && <Truck className="h-4 w-4" />}
+                            {transaction.status}
+                          </Badge>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{transaction.status}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Provider</p>
                   <p className="font-medium">{transaction.provider_name}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Created At</p>
-                  <p className="font-medium">{format(parseISO(transaction.created_at), 'MMM d, yyyy h:mm a')}</p>
-                </div>
+
                 {transaction.batch_number && (
                   <div>
                     <p className="text-sm text-muted-foreground">Batch Number</p>

@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
 
 interface Product {
   id: number;
@@ -1036,19 +1037,28 @@ function InboundContent() {
                       </TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
                       <TableCell className="status-cell">
-                        <div className="flex items-center">
-                          <Badge 
-                            variant={transaction.status === 'Stored' ? 'default' : 'secondary'}
-                            title={transaction.status}
-                          >
-                            {transaction.status === 'Stored' ? (
-                              <CheckCircle className="h-5 w-5" />
-                            ) : (
-                              <Truck className="h-5 w-5" />
-                            )}
-                            <span className="sr-only">{transaction.status}</span>
-                          </Badge>
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center">
+                                <Badge 
+                                  variant="outline"
+                                  className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm font-medium"
+                                >
+                                  {transaction.status === 'Stored' ? (
+                                    <CheckCircle className="h-4 w-4" />
+                                  ) : (
+                                    <Truck className="h-4 w-4" />
+                                  )}
+                                  {transaction.status}
+                                </Badge>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{transaction.status}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell className="actions-cell">
                         <div className="flex space-x-2">

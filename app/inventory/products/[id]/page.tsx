@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
 
 interface Product {
   id: number;
@@ -593,16 +594,28 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                           : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center">
-                          <Badge variant={getStatusBadgeVariant(transaction.status)} title={transaction.status}>
-                            {transaction.status.toLowerCase() === 'incoming' && <Truck className="h-5 w-5" />}
-                            {transaction.status.toLowerCase() === 'stored' && <Package className="h-5 w-5" />}
-                            {transaction.status.toLowerCase() === 'outgoing' && <Truck className="h-5 w-5" />}
-                            {transaction.status.toLowerCase() === 'dispatched' && <Send className="h-5 w-5" />}
-                            {transaction.status.toLowerCase() === 'delivered' && <CheckCircle className="h-5 w-5" />}
-                            <span className="sr-only">{transaction.status}</span>
-                          </Badge>
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center">
+                                <Badge 
+                                  variant="outline"
+                                  className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm font-medium"
+                                >
+                                  {transaction.status.toLowerCase() === 'incoming' && <Truck className="h-4 w-4" />}
+                                  {transaction.status.toLowerCase() === 'stored' && <Package className="h-4 w-4" />}
+                                  {transaction.status.toLowerCase() === 'outgoing' && <Truck className="h-4 w-4" />}
+                                  {transaction.status.toLowerCase() === 'dispatched' && <Send className="h-4 w-4" />}
+                                  {transaction.status.toLowerCase() === 'delivered' && <CheckCircle className="h-4 w-4" />}
+                                  {transaction.status}
+                                </Badge>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{transaction.status}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
                       <TableCell>

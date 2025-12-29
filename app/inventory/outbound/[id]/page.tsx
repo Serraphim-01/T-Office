@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Package, MapPin, Calendar, Truck, Send, CheckCircle, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
 
 interface OutboundTransaction {
   id: number;
@@ -212,18 +213,26 @@ export default function OutboundTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <div className="flex items-center">
-                    <Badge 
-                      variant={transaction.status === 'Delivered' ? 'default' : 
-                             transaction.status === 'Dispatched' ? 'secondary' : 'outline'}
-                      title={transaction.status}
-                    >
-                      {transaction.status === 'Outgoing' && <Truck className="h-5 w-5" />}
-                      {transaction.status === 'Dispatched' && <Send className="h-5 w-5" />}
-                      {transaction.status === 'Delivered' && <CheckCircle className="h-5 w-5" />}
-                      <span className="sr-only">{transaction.status}</span>
-                    </Badge>
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center">
+                          <Badge 
+                            variant="outline"
+                            className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm font-medium"
+                          >
+                            {transaction.status === 'Outgoing' && <Truck className="h-4 w-4" />}
+                            {transaction.status === 'Dispatched' && <Send className="h-4 w-4" />}
+                            {transaction.status === 'Delivered' && <CheckCircle className="h-4 w-4" />}
+                            {transaction.status}
+                          </Badge>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{transaction.status}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created At</p>

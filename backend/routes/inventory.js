@@ -33,13 +33,40 @@ router.get('/products', authenticateJWT, async (req, res) => {
 // Get all providers
 router.get('/providers', authenticateJWT, async (req, res) => {
   try {
-    const result = await req.pool.query(
+    // First get all providers
+    const providersResult = await req.pool.query(
       `SELECT id, name, email, phone, address,
               official_contact_name, official_contact_email, official_contact_phone,
               organization_contact_name, organization_contact_email, organization_contact_phone
        FROM providers ORDER BY name`
     );
-    res.json(result.rows);
+    
+    const providers = providersResult.rows;
+    
+    // For each provider, get assigned users
+    const providersWithAssignments = [];
+    
+    for (const provider of providers) {
+      const assignedUsersResult = await req.pool.query(
+        `SELECT u.full_name
+         FROM provider_user_assignments pua
+         JOIN users u ON pua.user_id = u.id
+         WHERE pua.provider_id = $1 AND pua.assignment_type = 'attached_staff'
+         ORDER BY u.full_name` ,
+        [provider.id]
+      );
+      
+      // Add assigned user names to the provider object
+      const assignedUserNames = assignedUsersResult.rows.map(user => user.full_name);
+      
+      providersWithAssignments.push({
+        ...provider,
+        assigned_user_names: assignedUserNames,
+        attached_staff_name: assignedUserNames.length > 0 ? assignedUserNames.join(', ') : null
+      });
+    }
+    
+    res.json(providersWithAssignments);
   } catch (error) {
     console.error('Error fetching providers:', error);
     res.status(500).json({ error: 'Internal server error' });

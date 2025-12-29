@@ -44,6 +44,7 @@ interface Provider {
   organization_contact_name?: string;
   organization_contact_email?: string;
   organization_contact_phone?: string;
+  attached_staff_name?: string;
 }
 
 interface User {
@@ -883,55 +884,65 @@ useEffect(() => {
                         className="flex items-center justify-between p-4 cursor-pointer bg-muted hover:bg-muted/80"
                         onClick={() => toggleProvider(provider.id)}
                       >
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-                            {expandedProviders.has(provider.id) ? 
-                              <ChevronDown className="h-4 w-4" /> : 
-                              <ChevronRight className="h-4 w-4" />
-                            }
-                          </Button>
-                          <h3 
-                            className="font-semibold hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProvider(provider);
-                            }}
-                          >
-                            {provider.name}
-                          </h3>
-                          <span className="text-sm text-muted-foreground">
-                            ({providerProducts.length} products)
-                          </span>
-                        </div>
-                        <div className="flex space-x-2">
-                          {canAddProduct && (
-                            <Button 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Set up the provider for adding products
-                                setCreatedProviderId(provider.id);
-                                setProviderName(provider.name);
-                                setCurrentStep('products');
-                                setIsProviderDialogOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
+                              {expandedProviders.has(provider.id) ? 
+                                <ChevronDown className="h-4 w-4" /> : 
+                                <ChevronRight className="h-4 w-4" />
+                              }
                             </Button>
-                          )}
-                          
-                          {canDeleteProvider && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteProvider(provider.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                            <div className="flex flex-col min-w-0">
+                              <h3 
+                                className="font-semibold hover:underline cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewProvider(provider);
+                                }}
+                              >
+                                {provider.name}
+                              </h3>
+                              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-1">
+                                <span>Official Contact: <span className="font-medium text-foreground">{provider.official_contact_name || "N/A"}</span></span>
+                                <span>Attached Staff: <span className="font-medium text-foreground">{provider.attached_staff_name || "N/A"}</span></span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <span className="text-sm text-muted-foreground">
+                              ({providerProducts.length} products)
+                            </span>
+                            <div className="flex items-center space-x-2">
+                              {canAddProduct && (
+                                <Button 
+                                  size="sm" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Set up the provider for adding products
+                                    setCreatedProviderId(provider.id);
+                                    setProviderName(provider.name);
+                                    setCurrentStep('products');
+                                    setIsProviderDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              )}
+                              
+                              {canDeleteProvider && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteProvider(provider.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
@@ -942,6 +953,7 @@ useEffect(() => {
                               <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Part Number</TableHead>
+                                <TableHead>Product Type</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -960,6 +972,7 @@ useEffect(() => {
                                       {product.name}
                                     </TableCell>
                                     <TableCell>{product.part_number}</TableCell>
+                                    <TableCell>{product.product_type}</TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex justify-end space-x-1">
                                         {canDeleteProduct && (
@@ -980,7 +993,7 @@ useEffect(() => {
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                                     No products found for this provider
                                   </TableCell>
                                 </TableRow>
@@ -1000,17 +1013,60 @@ useEffect(() => {
                       className="flex items-center justify-between p-4 cursor-pointer bg-muted hover:bg-muted/80"
                       onClick={() => toggleProvider(0)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-                          {expandedProviders.has(0) ? 
-                            <ChevronDown className="h-4 w-4" /> : 
-                            <ChevronRight className="h-4 w-4" />
-                          }
-                        </Button>
-                        <h3 className="font-semibold">Unknown Provider</h3>
-                        <span className="text-sm text-muted-foreground">
-                          ({products.filter(product => !product.provider_id || !providers.some(p => p.id === product.provider_id)).length} products)
-                        </span>
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center space-x-2">
+                          <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
+                            {expandedProviders.has(0) ? 
+                              <ChevronDown className="h-4 w-4" /> : 
+                              <ChevronRight className="h-4 w-4" />
+                            }
+                          </Button>
+                          <div className="flex flex-col min-w-0">
+                            <h3 
+                              className="font-semibold hover:underline cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // For unknown provider, we can't navigate to a specific provider page
+                                // So we'll just expand/collapse the section
+                                setExpandedProviders(prev => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(0)) {
+                                    newSet.delete(0);
+                                  } else {
+                                    newSet.add(0);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                            >
+                              Unknown Provider
+                            </h3>
+                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-1">
+                              <span>Official Contact: <span className="font-medium text-foreground">N/A</span></span>
+                              <span>Attached Staff: <span className="font-medium text-foreground">N/A</span></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-muted-foreground">
+                            ({products.filter(product => !product.provider_id || !providers.some(p => p.id === product.provider_id)).length} products)
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            {canAddProduct && (
+                              <Button 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // For unknown provider, we can't add products in the same way
+                                  // We might need to create a new provider first
+                                  setIsGeneralProductDialogOpen(true);
+                                }}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -1021,6 +1077,7 @@ useEffect(() => {
                             <TableRow>
                               <TableHead>Name</TableHead>
                               <TableHead>Part Number</TableHead>
+                              <TableHead>Product Type</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1040,6 +1097,7 @@ useEffect(() => {
                                     {product.name}
                                   </TableCell>
                                   <TableCell>{product.part_number}</TableCell>
+                                  <TableCell>{product.product_type}</TableCell>
                                   <TableCell className="text-right">
                                     <div className="flex justify-end space-x-1">
                                       {canDeleteProduct && (
@@ -1059,6 +1117,13 @@ useEffect(() => {
                                 </TableRow>
                               ))
                             }
+                            {products.filter(product => !product.provider_id || !providers.some(p => p.id === product.provider_id)).length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                  No products found
+                                </TableCell>
+                              </TableRow>
+                            )}
                           </TableBody>
                         </Table>
                       </div>

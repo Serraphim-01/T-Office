@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Package, Calendar, CheckCircle, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useRouter, useParams } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
 
 interface StoredTransaction {
   id: number;
@@ -121,10 +122,24 @@ export default function StoredTransactionDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant="default">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    {transaction.status}
-                  </Badge>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Badge 
+                            variant="outline"
+                            className="cursor-pointer flex items-center gap-1 px-2 py-1 text-sm font-medium"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Stored
+                          </Badge>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{transaction.status}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Provider</p>
