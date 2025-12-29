@@ -25,6 +25,7 @@ interface OutboundTransaction {
   status: 'Outgoing' | 'Dispatched' | 'Delivered';
   created_at: string;
   serial_numbers: string[] | null;
+  serial_numbers_with_prices: Array<{serial_number: string, inbound_price: number}> | null;
   provider_name: string; // Added provider information
   inbound_price?: number; // Added inbound_price property
   outbound_price?: number; // Added outbound_price property
@@ -54,7 +55,15 @@ export default function OutboundTransactionDetailsPage() {
       });
       if (!response.ok) throw new Error('Failed to fetch transaction details');
       const data = await response.json();
-      setTransaction(data);
+      // Transform the response to handle both old and new formats
+      const transformedData = {
+        ...data,
+        // If we have serial_numbers_with_prices, use it; otherwise use serial_numbers
+        serial_numbers: data.serial_numbers_with_prices 
+          ? data.serial_numbers_with_prices.map((item: any) => item.serial_number)
+          : data.serial_numbers
+      };
+      setTransaction(transformedData);
     } catch (error) {
       toast({
         title: 'Error',
@@ -228,7 +237,7 @@ export default function OutboundTransactionDetailsPage() {
                   <p className="text-sm text-muted-foreground">Inbound Transaction ID</p>
                   <p className="font-medium">#{transaction.inbound_transaction_id}</p>
                 </div>
-                {transaction.inbound_price !== undefined && ( // Added inbound price display
+                {(transaction.inbound_price !== undefined && transaction.inbound_price !== null) && ( // Added inbound price display
                   <div>
                     <p className="text-sm text-muted-foreground">Inbound Price (₦)</p>
                     <p className="font-medium text-green-600">
@@ -236,11 +245,11 @@ export default function OutboundTransactionDetailsPage() {
                         style: 'currency',
                         currency: 'NGN',
                         minimumFractionDigits: 2
-                      }).format(transaction.inbound_price)}
+                      }).format(typeof transaction.inbound_price === 'number' ? transaction.inbound_price : parseFloat(transaction.inbound_price))}
                     </p>
                   </div>
                 )}
-                {transaction.outbound_price !== undefined && ( // Added outbound price display
+                {(transaction.outbound_price !== undefined && transaction.outbound_price !== null) && ( // Added outbound price display
                   <div>
                     <p className="text-sm text-muted-foreground">Outbound Price (₦)</p>
                     <p className="font-medium text-green-600">
@@ -248,7 +257,7 @@ export default function OutboundTransactionDetailsPage() {
                         style: 'currency',
                         currency: 'NGN',
                         minimumFractionDigits: 2
-                      }).format(transaction.outbound_price)}
+                      }).format(typeof transaction.outbound_price === 'number' ? transaction.outbound_price : parseFloat(transaction.outbound_price))}
                     </p>
                   </div>
                 )}
@@ -309,7 +318,21 @@ export default function OutboundTransactionDetailsPage() {
                 <CardTitle>Serial Numbers</CardTitle>
               </CardHeader>
               <CardContent>
-                {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
+                {transaction.serial_numbers_with_prices && transaction.serial_numbers_with_prices.length > 0 ? (
+                  <div className="space-y-2">
+                    {transaction.serial_numbers_with_prices.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                        <div className="flex items-center space-x-2">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-mono">{item.serial_number}</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">₦{item.inbound_price != null ? (typeof item.inbound_price === 'number' ? item.inbound_price.toFixed(2) : parseFloat(item.inbound_price).toFixed(2)) : '0.00'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
                   <div className="space-y-2">
                     {transaction.serial_numbers.map((serial, index) => (
                       <div key={index} className="flex items-center space-x-2 p-2 bg-muted rounded">

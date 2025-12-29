@@ -21,9 +21,11 @@ router.get('/', authenticateJWT, async (req, res) => {
         o.delivery_datetime,
         o.status,
         o.created_at,
+        o.inbound_price,
+        o.outbound_price,
         pr.name as provider_name,
         i.batch_number,
-        ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
+        ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
       JOIN products p ON i.product_id = p.id
@@ -64,7 +66,7 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
         o.outbound_price,
         pr.name as provider_name,
         i.batch_number,
-        ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
+        ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
       JOIN products p ON i.product_id = p.id
@@ -182,7 +184,8 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     dispatch_datetime, 
     delivery_datetime,
     inbound_price,
-    outbound_price
+    outbound_price,
+    serial_number_prices // Optional array of prices for each serial number
   } = req.body;
   
   // Validate input
@@ -195,6 +198,13 @@ router.post('/multi', authenticateJWT, async (req, res) => {
   // Validate that the number of serial numbers matches the quantity
   if (serial_numbers.length !== quantity) {
     return res.status(400).json({ error: 'Number of serial numbers must match quantity' });
+  }
+  
+  // Validate serial_number_prices if provided
+  if (serial_number_prices && Array.isArray(serial_number_prices)) {
+    if (serial_number_prices.length !== serial_numbers.length) {
+      return res.status(400).json({ error: 'Number of serial number prices must match number of serial numbers' });
+    }
   }
   
   try {
@@ -215,8 +225,20 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     const defaultPrice = productResult.rows[0].default_unit_price || 0.00;
     const markupPercentage = productResult.rows[0].default_markup_percentage || 0.00;
     const calculatedOutboundPrice = defaultPrice * (1 + (markupPercentage / 100));
-    const actualInboundPrice = inbound_price !== undefined ? parseFloat(inbound_price) : defaultPrice;
-    const actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : calculatedOutboundPrice;
+    
+    // Determine inbound and outbound prices
+    // If serial_number_prices is provided, use the average or the first value
+    let actualInboundPrice = inbound_price !== undefined ? parseFloat(inbound_price) : defaultPrice;
+    let actualOutboundPrice = outbound_price !== undefined ? parseFloat(outbound_price) : calculatedOutboundPrice;
+    
+    // If we have individual serial number prices, we'll handle them separately in the outbound_serial_numbers table
+    if (serial_number_prices && Array.isArray(serial_number_prices) && serial_number_prices.length > 0) {
+      // Calculate average for the overall transaction if not specified
+      if (inbound_price === undefined) {
+        const avgInboundPrice = serial_number_prices.reduce((sum, price) => sum + price, 0) / serial_number_prices.length;
+        actualInboundPrice = avgInboundPrice;
+      }
+    }
     
     // Find one of the inbound transactions that contains these serial numbers to use as the link
     let inboundTransactionId = null;
@@ -262,12 +284,35 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     
     const outboundTransactionId = result.rows[0].id;
     
-    // Insert serial numbers
-    for (const serial of serial_numbers) {
+    // Insert serial numbers with their individual prices if available
+    for (let i = 0; i < serial_numbers.length; i++) {
+      const serial = serial_numbers[i];
       if (serial && serial.trim() !== '') {
+        // Get the inbound price for this specific serial number from its original transaction
+        let serialInboundPrice = actualInboundPrice;
+        
+        // Query the original inbound transaction that contains this serial number to get its unit price
+        const originalTransactionResult = await req.pool.query(
+          `SELECT i.unit_price
+           FROM inbound_transactions i
+           JOIN inbound_serial_numbers isn ON i.id = isn.transaction_id
+           WHERE isn.serial_number = $1 AND i.status = 'Stored'`,
+          [serial.trim()]
+        );
+        
+        if (originalTransactionResult.rowCount > 0) {
+          // Use the original transaction's unit price
+          serialInboundPrice = originalTransactionResult.rows[0].unit_price;
+        }
+        
+        // If user provided a specific price for this serial number, use that instead
+        if (serial_number_prices && serial_number_prices[i] !== undefined) {
+          serialInboundPrice = parseFloat(serial_number_prices[i]);
+        }
+        
         await req.pool.query(
-          'INSERT INTO outbound_serial_numbers (outbound_transaction_id, serial_number) VALUES ($1, $2)',
-          [outboundTransactionId, serial.trim()]
+          'INSERT INTO outbound_serial_numbers (outbound_transaction_id, serial_number, inbound_price) VALUES ($1, $2, $3)',
+          [outboundTransactionId, serial.trim(), serialInboundPrice]
         );
       }
     }
@@ -467,7 +512,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
-        ARRAY_AGG(osn.serial_number) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers
+        ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
       JOIN products p ON i.product_id = p.id

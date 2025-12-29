@@ -84,6 +84,17 @@ function StoreContent() {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState<string[]>([]);
   
+  // State for per-serial number prices
+  const [outboundPrice, setOutboundPrice] = useState<number>(0);
+  const [useDifferentPrices, setUseDifferentPrices] = useState<boolean>(false);
+  const [serialNumberPrices, setSerialNumberPrices] = useState<{[key: string]: number}>({});
+  
+  // Calculate total outbound price
+  const totalOutboundPrice = selectedSerialNumbers.length * outboundPrice;
+  
+  // State for product markup percentage
+  const [productMarkup, setProductMarkup] = useState<number>(0);
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -146,14 +157,29 @@ function StoreContent() {
   const fetchProductSerialNumbers = async (productId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch product serial numbers');
-      const data = await response.json();
-      setProductSerialNumbers(data);
+      
+      // Fetch both product serial numbers and product details
+      const [serialsResponse, productResponse] = await Promise.all([
+        fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch(`http://localhost:4000/api/inventory/products/${productId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      ]);
+      
+      if (!serialsResponse.ok) throw new Error('Failed to fetch product serial numbers');
+      if (!productResponse.ok) throw new Error('Failed to fetch product details');
+      
+      const serialsData = await serialsResponse.json();
+      const productData = await productResponse.json();
+      
+      setProductSerialNumbers(serialsData);
+      setProductMarkup(productData.default_markup_percentage || 0);
     } catch (error) {
       toast({
         title: 'Error',
@@ -239,6 +265,12 @@ function StoreContent() {
     
     try {
       const token = localStorage.getItem('token');
+      // Prepare serial number prices array if using different prices
+      let serialPricesArray: number[] = [];
+      if (useDifferentPrices) {
+        serialPricesArray = selectedSerialNumbers.map(sn => serialNumberPrices[sn] || 0);
+      }
+      
       const response = await fetch('http://localhost:4000/api/inventory/outbound/multi', {
         method: 'POST',
         headers: {
@@ -253,7 +285,9 @@ function StoreContent() {
           receiver_email: receiverEmail,
           receiver_phone: receiverPhone,
           dispatch_datetime: `${dispatchDate}T${dispatchTime}`,
-          delivery_datetime: `${deliveryDate}T${deliveryTime}`
+          delivery_datetime: `${deliveryDate}T${deliveryTime}`,
+          outbound_price: outboundPrice,
+          serial_number_prices: useDifferentPrices ? serialPricesArray : undefined
         }),
       });
 
@@ -369,8 +403,8 @@ function StoreContent() {
                         }}
                       >{transaction.product_name}<div className="text-sm text-muted-foreground">{transaction.product_part_number}</div></TableCell>
                       <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="flex items-center space-x-2"><span>{transaction.quantity}</span><Hash className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="start">{transaction.serial_numbers && transaction.serial_numbers.length > 0 ? transaction.serial_numbers.map((serial, index) => <DropdownMenuItem key={index}>{serial}</DropdownMenuItem>) : <DropdownMenuItem>No serial numbers</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></TableCell>
-                      <TableCell>₦{(transaction.unit_price != null ? transaction.unit_price : '0.00')}</TableCell>
-                      <TableCell>₦{(transaction.unit_price != null ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00')}</TableCell>
+                      <TableCell>₦{(transaction.unit_price != null ? parseFloat(transaction.unit_price).toFixed(2) : '0.00')}</TableCell>
+                      <TableCell>₦{(transaction.unit_price != null ? (parseFloat(transaction.unit_price) * transaction.quantity).toFixed(2) : '0.00')}</TableCell>
                       <TableCell>{transaction.provider_name || transaction.provider || 'N/A'}</TableCell>
                       <TableCell><div className="flex items-center space-x-1"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{transaction.arrival_date ? format(parseISO(transaction.arrival_date), 'MMM d, yyyy') : 'N/A'}</span></div></TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
@@ -489,6 +523,45 @@ function StoreContent() {
                     required
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="outboundPrice">Outbound Price</Label>
+                  <Input
+                    id="outboundPrice"
+                    type="number"
+                    step="0.01"
+                    value={outboundPrice}
+                    onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
+                    placeholder="Enter outbound price"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Total Outbound Price</Label>
+                  <div className="p-2 bg-muted rounded text-sm font-medium">
+                    ₦{totalOutboundPrice.toFixed(2)} ({selectedSerialNumbers.length} items × ₦{outboundPrice.toFixed(2)})
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Product Markup</Label>
+                  <div className="p-2 bg-muted rounded text-sm font-medium">
+                    {productMarkup}%
+                  </div>
+                </div>
+                
+                <div className="space-y-2 col-span-full">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="useDifferentPrices"
+                      checked={useDifferentPrices}
+                      onCheckedChange={(checked) => setUseDifferentPrices(checked as boolean)}
+                    />
+                    <Label htmlFor="useDifferentPrices" className="text-sm font-medium">
+                      Use different prices for selected serial numbers
+                    </Label>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -497,7 +570,7 @@ function StoreContent() {
                   {getAllAvailableSerialNumbers().map((transaction, transactionIndex) => (
                     <div key={transaction.transaction_id} className="mb-3">
                       <h4 className="font-medium text-sm mb-2">
-                        Batch No: {transaction.batch_number || 'N/A'} (₦{transaction.unit_price})
+                        Batch No: {transaction.batch_number || 'N/A'} (₦{transaction.unit_price != null ? parseFloat(transaction.unit_price.toString()).toFixed(2) : '0.00'})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
@@ -511,6 +584,22 @@ function StoreContent() {
                               <Label htmlFor={`serial-${transaction.transaction_id}-${serialIndex}`} className="text-sm">
                                 {serial}
                               </Label>
+                              {useDifferentPrices && selectedSerialNumbers.includes(serial) && (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Price"
+                                  className="w-24 h-8 text-xs"
+                                  value={serialNumberPrices[serial] || ''}
+                                  onChange={(e) => {
+                                    const newPrice = parseFloat(e.target.value) || 0;
+                                    setSerialNumberPrices(prev => ({
+                                      ...prev,
+                                      [serial]: newPrice
+                                    }));
+                                  }}
+                                />
+                              )}
                             </div>
                           ))
                         ) : (

@@ -39,6 +39,7 @@ interface OutboundTransaction {
   status: 'Outgoing' | 'Dispatched' | 'Delivered';
   created_at: string;
   serial_numbers: string[] | null;
+  serial_numbers_with_prices: Array<{serial_number: string, inbound_price: number}> | null;
   provider_name: string; // Added provider information
   inbound_price?: number;
   outbound_price?: number;
@@ -100,6 +101,12 @@ function OutboundContent() {
   const [inboundPrice, setInboundPrice] = useState<number>(0);
   const [outboundPrice, setOutboundPrice] = useState<number>(0);
   
+  // Calculate total outbound price
+  const totalOutboundPrice = selectedSerialNumbers.length * outboundPrice;
+  
+  // State for product markup percentage
+  const [productMarkup, setProductMarkup] = useState<number>(0);
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -152,7 +159,15 @@ function OutboundContent() {
       });
       if (!response.ok) throw new Error('Failed to fetch outbound transactions');
       const data = await response.json();
-      setOutboundTransactions(data);
+      // Transform the response to handle both old and new formats
+      const transformedData = data.map((transaction: any) => ({
+        ...transaction,
+        // If we have serial_numbers_with_prices, use it; otherwise use serial_numbers
+        serial_numbers: transaction.serial_numbers_with_prices 
+          ? transaction.serial_numbers_with_prices.map((item: any) => item.serial_number)
+          : transaction.serial_numbers
+      }));
+      setOutboundTransactions(transformedData);
     } catch (error) {
       toast({
         title: 'Error',
@@ -187,14 +202,29 @@ function OutboundContent() {
   const fetchProductSerialNumbers = async (productId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch product serial numbers');
-      const data = await response.json();
-      setProductSerialNumbers(data);
+      
+      // Fetch both product serial numbers and product details
+      const [serialsResponse, productResponse] = await Promise.all([
+        fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch(`http://localhost:4000/api/inventory/products/${productId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      ]);
+      
+      if (!serialsResponse.ok) throw new Error('Failed to fetch product serial numbers');
+      if (!productResponse.ok) throw new Error('Failed to fetch product details');
+      
+      const serialsData = await serialsResponse.json();
+      const productData = await productResponse.json();
+      
+      setProductSerialNumbers(serialsData);
+      setProductMarkup(productData.default_markup_percentage || 0);
     } catch (error) {
       toast({
         title: 'Error',
@@ -511,12 +541,29 @@ function OutboundContent() {
                             style: 'currency',
                             currency: 'NGN',
                             minimumFractionDigits: 2
-                          }).format(transaction.inbound_price) : 'N/A'}</div>
+                          }).format(typeof transaction.inbound_price === 'number' ? transaction.inbound_price : parseFloat(transaction.inbound_price)) : 'N/A'}</div>
                           <div>Out: {transaction.outbound_price !== undefined ? new Intl.NumberFormat('en-NG', {
                             style: 'currency',
                             currency: 'NGN',
                             minimumFractionDigits: 2
-                          }).format(transaction.outbound_price) : 'N/A'}</div>
+                          }).format(typeof transaction.outbound_price === 'number' ? transaction.outbound_price : parseFloat(transaction.outbound_price)) : 'N/A'}</div>
+                          {transaction.serial_numbers_with_prices && transaction.serial_numbers_with_prices.length > 0 && (
+                            <div className="mt-1">
+                              <details className="text-xs">
+                                <summary className="cursor-pointer text-muted-foreground">
+                                  Per serial prices
+                                </summary>
+                                <div className="mt-1 space-y-1">
+                                  {transaction.serial_numbers_with_prices.map((item, index) => (
+                                    <div key={index} className="flex justify-between">
+                                      <span className="text-muted-foreground">{item.serial_number}:</span>
+                                      <span>₦{item.inbound_price != null ? Number(item.inbound_price).toFixed(2) : '0.00'}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="actions-cell">
@@ -677,6 +724,20 @@ function OutboundContent() {
                     placeholder="Enter outbound price"
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label>Total Outbound Price</Label>
+                  <div className="p-2 bg-muted rounded text-sm font-medium">
+                    ₦{totalOutboundPrice.toFixed(2)} ({selectedSerialNumbers.length} items × ₦{outboundPrice.toFixed(2)})
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Product Markup</Label>
+                  <div className="p-2 bg-muted rounded text-sm font-medium">
+                    {productMarkup}%
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -685,7 +746,7 @@ function OutboundContent() {
                   {getAllAvailableSerialNumbers().map((transaction, transactionIndex) => (
                     <div key={transactionIndex} className="mb-3">
                       <h4 className="font-medium text-sm mb-2">
-                        Batch No: {transaction.batch_number || 'N/A'} (₦{typeof transaction.unit_price === 'number' && transaction.unit_price !== null ? transaction.unit_price.toFixed(2) : '0.00'})
+                        Batch No: {transaction.batch_number || 'N/A'} (₦{transaction.unit_price != null ? parseFloat(transaction.unit_price.toString()).toFixed(2) : '0.00'})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
