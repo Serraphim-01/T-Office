@@ -363,7 +363,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout customTitle={product?.name || 'Product Details'}>
       <div className="container mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
           <Button onClick={handleBack} variant="outline">

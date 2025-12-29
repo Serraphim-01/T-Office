@@ -267,9 +267,6 @@ export default function ChatPage() {
                   <MessageCircle className="mr-3 h-6 w-6 text-primary" />
                   Anonymous Chat
                 </h1>
-                <p className="text-muted-foreground mt-1">
-                  Open communication space for honest feedback and discussions
-                </p>
               </div>
             </div>
           </div>
@@ -523,31 +520,28 @@ export default function ChatPage() {
                   </Badge>
                 )}
               </h1>
-              <p className="text-muted-foreground mt-1">
-                Open communication space for honest feedback and discussions
-              </p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="flex items-center text-sm text-muted-foreground mt-1">
-                  <Shield className="mr-1 h-4 w-4" />
-                  Anonymous & Secure
-                </div>
-              </div>
 
               {/* Summarize Button - Available based on feature access */}
               {canUseSummarizer && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSummarize(true)}
-                    disabled={isSummarizing}
-                    className="flex items-center"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Summarize
-                  </Button>
+                  <div className="relative group">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSummarize(true)}
+                      disabled={isSummarizing}
+                      className="p-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span className="sr-only">Summarize</span>
+                    </Button>
+                    <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                      Summarize
+                      <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                    </div>
+                  </div>
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -611,34 +605,55 @@ export default function ChatPage() {
 
               {/* Pause/Resume Chat Button - Available based on feature access */}
               {canPauseChat && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleChatPause}
-                  className={cn(
-                    "flex items-center",
-                    (isChatPaused || isChatGloballyPaused) ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
-                  )}
-                >
-                  {(isChatPaused || isChatGloballyPaused) ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                  {(isChatPaused || isChatGloballyPaused) ? 'Resume Chat' : 'Pause Chat'}
-                </Button>
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleChatPause}
+                    className={cn(
+                      "p-2",
+                      (isChatPaused || isChatGloballyPaused) ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : ""
+                    )}
+                  >
+                    {(isChatPaused || isChatGloballyPaused) ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                    <span className="sr-only">{(isChatPaused || isChatGloballyPaused) ? 'Resume Chat' : 'Pause Chat'}</span>
+                  </Button>
+                  <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                    {(isChatPaused || isChatGloballyPaused) ? 'Resume Chat' : 'Pause Chat'}
+                    <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                  </div>
+                </div>
               )}
 
               {/* Clear Chat Button - Available based on feature access */}
               {canClearChat && (
-                <Button variant="outline" size="sm" onClick={clearChat}>
-                  Clear Chat
-                </Button>
+                <div className="relative group">
+                  <Button variant="outline" size="sm" onClick={clearChat} className="p-2">
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear Chat</span>
+                  </Button>
+                  <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                    Clear Chat
+                    <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                  </div>
+                </div>
               )}
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowGuidelines(true)}
-              >
-                Chat Guidelines
-              </Button>
+              <div className="relative group">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowGuidelines(true)}
+                  className="p-2"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="sr-only">Chat Guidelines</span>
+                </Button>
+                <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                  Chat Guidelines
+                  <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -750,7 +765,7 @@ export default function ChatPage() {
                 <div className="flex space-x-2">
                   {/* Moderator Mode Toggle - Available based on feature access */}
                   {canUseModerator && (
-                    <div className="flex items-center space-x-2 pr-4 border-r border-border">
+                    <div className="flex items-center space-x-2 pr-4 border-r border-border relative group">
                       <input
                         type="checkbox"
                         id="moderatorMode"
@@ -758,9 +773,14 @@ export default function ChatPage() {
                         onChange={(e) => setIsModeratorMode(e.target.checked)}
                         className="rounded"
                       />
-                      <Label htmlFor="moderatorMode" className="text-sm font-medium">
-                        Moderator Mode
+                      <Label htmlFor="moderatorMode" className="text-sm font-medium relative">
+                        <Shield className="h-4 w-4 inline mr-1" />
+                        <span className="sr-only">Moderator Mode</span>
                       </Label>
+                      <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                        Moderator Mode
+                        <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                      </div>
                     </div>
                   )}
 
@@ -806,9 +826,6 @@ export default function ChatPage() {
             <DialogHeader>
               <div className="flex justify-between items-center">
                 <DialogTitle>Chat Guidelines</DialogTitle>
-                <Button variant="ghost" size="sm" onClick={() => setShowGuidelines(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             </DialogHeader>
             <div className="mt-4 space-y-6">

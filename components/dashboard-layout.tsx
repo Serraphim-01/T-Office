@@ -10,7 +10,7 @@ import { Bell, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNotification } from '@/lib/notification-context';
 import { RefreshCountdown } from './refresh-countdown';
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({ children, customTitle }: { children: React.ReactNode, customTitle?: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
@@ -109,7 +109,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Menu className="h-6 w-6" />
             </Button>
             <h1 className="text-lg font-semibold capitalize">
-              {pathname === '/' ? 'Dashboard' : pathname.split('/').pop()?.replace(/-/g, ' ') || ''}
+              {customTitle || (pathname === '/' ? 'Dashboard' : pathname.split('/').pop()?.replace(/-/g, ' ') || '')}
             </h1>
           </div>
           
@@ -136,9 +136,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <div className="text-sm font-medium">{user?.full_name}</div>
                 <div className="text-xs text-muted-foreground">{user?.department}</div>
               </div>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                Logout
-              </Button>
+              <div className="relative group">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={logout}
+                  className="relative group"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" x2="9" y1="12" y2="12" />
+                  </svg>
+                  <span className="sr-only">Logout</span>
+                  <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                    Logout
+                    <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                  </div>
+                </Button>
+              </div>
             </div>
           </div>
         </header>

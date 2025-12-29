@@ -624,7 +624,16 @@ export default function ProfilePage() {
                 </div>
                 <Dialog open={isAddCertModalOpen} onOpenChange={setIsAddCertModalOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm">Add</Button>
+                    <div className="relative group">
+                      <Button size="sm" className="p-2">
+                        <Plus className="h-4 w-4" />
+                        <span className="sr-only">Add</span>
+                      </Button>
+                      <div className="absolute top-1/2 -translate-y-1/2 right-full mr-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                        Add
+                        <div className="absolute top-1/2 -translate-y-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+                      </div>
+                    </div>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>

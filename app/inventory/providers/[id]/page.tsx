@@ -374,12 +374,12 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout customTitle={provider?.name || 'Provider Details'}>
       <div className="container mx-auto py-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-2xl font-bold">
-              {isEditing ? 'Edit Provider' : 'Provider Details'}
+              {isEditing ? 'Edit Provider' : provider?.name || 'Provider Details'}
             </CardTitle>
             <div className="flex space-x-2">
               <Button variant="outline" onClick={() => router.back()}>
@@ -669,29 +669,6 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
                     ) : (
                       <p className="text-muted-foreground text-sm">No users assigned to this provider</p>
                     )}
-                  </div>
-                </div>
-
-                {/* Metadata */}
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-4">Metadata</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground">Created At</Label>
-                      <p className="font-medium">
-                        {provider.created_at 
-                          ? new Date(provider.created_at).toLocaleString() 
-                          : 'N/A'}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground">Last Updated</Label>
-                      <p className="font-medium">
-                        {provider.updated_at 
-                          ? new Date(provider.updated_at).toLocaleString() 
-                          : 'N/A'}
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
