@@ -477,7 +477,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <Package className="h-5 w-5 text-muted-foreground" />
@@ -533,30 +533,6 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Created At</p>
-                      <p className="font-medium">
-                        {new Date(product.created_at).toLocaleDateString()}{' '}
-                        {new Date(product.created_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Last Updated</p>
-                      <p className="font-medium">
-                        {new Date(product.updated_at).toLocaleDateString()}{' '}
-                        {new Date(product.updated_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}

@@ -24,7 +24,10 @@ router.get('/', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
-        i.batch_number,
+        CASE 
+          WHEN i.batch_number LIKE 'B-%' THEN CONCAT('BO', SUBSTRING(i.batch_number, 2))
+          ELSE i.batch_number
+        END as batch_number,
         ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
@@ -65,7 +68,10 @@ router.get('/product/:productId', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
-        i.batch_number,
+        CASE 
+          WHEN i.batch_number LIKE 'B-%' THEN CONCAT('BO', SUBSTRING(i.batch_number, 2))
+          ELSE i.batch_number
+        END as batch_number,
         ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
@@ -739,7 +745,10 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         o.inbound_price,
         o.outbound_price,
         pr.name as provider_name,
-        i.batch_number,
+        CASE 
+          WHEN i.batch_number LIKE 'B-%' THEN CONCAT('BO', SUBSTRING(i.batch_number, 2))
+          ELSE i.batch_number
+        END as batch_number,
         ARRAY_AGG(json_build_object('serial_number', osn.serial_number, 'inbound_price', osn.inbound_price)) FILTER (WHERE osn.serial_number IS NOT NULL) as serial_numbers_with_prices
       FROM outbound_transactions o
       JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
