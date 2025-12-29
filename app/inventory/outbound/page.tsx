@@ -481,9 +481,8 @@ function OutboundContent() {
                     <TableHead>Product</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Batch Number</TableHead>
-                    <TableHead>Dispatch Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Prices (₦)</TableHead>
+                    <TableHead>Price (₦)</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -513,14 +512,6 @@ function OutboundContent() {
                       </TableCell>
                       <TableCell>{transaction.quantity}</TableCell>
                       <TableCell>{transaction.batch_number || 'N/A'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>
-                            {transaction.dispatch_date ? format(parseISO(transaction.dispatch_date), 'MMM d, yyyy') : 'N/A'}
-                          </span>
-                        </div>
-                      </TableCell>
                       <TableCell className="status-cell">
                         <div className="flex items-center">
                           <Badge 
@@ -535,13 +526,8 @@ function OutboundContent() {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell> {/* Added Prices cell */}
+                      <TableCell> {/* Updated Prices cell to show only outbound price */}
                         <div className="text-xs">
-                          <div>In: {transaction.inbound_price !== undefined ? new Intl.NumberFormat('en-NG', {
-                            style: 'currency',
-                            currency: 'NGN',
-                            minimumFractionDigits: 2
-                          }).format(typeof transaction.inbound_price === 'number' ? transaction.inbound_price : parseFloat(transaction.inbound_price)) : 'N/A'}</div>
                           <div>Out: {transaction.outbound_price !== undefined ? new Intl.NumberFormat('en-NG', {
                             style: 'currency',
                             currency: 'NGN',

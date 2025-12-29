@@ -177,10 +177,6 @@ export default function InboundTransactionDetailsPage() {
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Transaction ID</p>
-                  <p className="font-medium">#{transaction.id}</p>
-                </div>
-                <div>
                   <p className="text-sm text-muted-foreground">Product</p>
                   <p className="font-medium">{transaction.product_name}</p>
                   <p className="text-sm text-muted-foreground">{transaction.product_part_number}</p>
