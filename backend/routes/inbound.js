@@ -100,19 +100,37 @@ router.post('/', authenticateJWT, async (req, res) => {
     const datePart = `${day}${month}${year}`;
     
     // Get the transaction number for the day by counting transactions created today
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
+    let transactionNumber = 1;
     
-    const countResult = await req.pool.query(
-      `SELECT COUNT(*) as count FROM inbound_transactions 
-       WHERE DATE(created_at) = DATE($1) AND product_id = $2`,
-      [now, product_id]
-    );
-    
-    const transactionNumber = parseInt(countResult.rows[0].count) + 1;
-    const batch_number = `B-${datePart}-${transactionNumber}`;
+    // Loop to find a unique batch number
+    let batch_number;
+    let batchExists = true;
+    let attempt = 0;
+    while (batchExists && attempt < 10) { // Prevent infinite loop
+      // Get the transaction number for the day by counting transactions created today
+      const countResult = await req.pool.query(
+        `SELECT COUNT(*) as count FROM inbound_transactions 
+         WHERE DATE(created_at) = DATE($1) AND product_id = $2`,
+        [now, product_id]
+      );
+      
+      // Calculate the tentative transaction number
+      const tentativeTransactionNumber = parseInt(countResult.rows[0].count) + 1 + attempt;
+      batch_number = `B-${datePart}-${tentativeTransactionNumber}`;
+      
+      // Check if this batch number already exists
+      const checkResult = await req.pool.query(
+        'SELECT 1 FROM inbound_transactions WHERE batch_number = $1',
+        [batch_number]
+      );
+      
+      if (checkResult.rowCount === 0) {
+        batchExists = false; // Batch number is unique
+      } else {
+        // Increment the attempt counter and try again
+        attempt++;
+      }
+    }
     
     // Insert inbound transaction with auto-generated batch number
     const result = await req.pool.query(`
@@ -206,13 +224,43 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
       [now, transactions[0].product_id]
     );
     
-    const transactionNumber = parseInt(countResult.rows[0].count) + 1;
-    const batch_number = `B-${datePart}-${transactionNumber}`;
+    const baseTransactionNumber = parseInt(countResult.rows[0].count) + 1;
     
-    // Insert all transactions with the same batch number
+    // For bulk creation, each transaction in the batch gets a unique number
+    // Generate unique batch numbers for each transaction
+    const batch_numbers = [];
+    for (let i = 0; i < transactions.length; i++) {
+      let batch_number = `B-${datePart}-${baseTransactionNumber + i}`;
+      
+      // Ensure uniqueness by checking if this batch number already exists
+      let batchExists = true;
+      let attempt = 0;
+      while (batchExists && attempt < 10) { // Prevent infinite loop
+        const checkResult = await req.pool.query(
+          'SELECT 1 FROM inbound_transactions WHERE batch_number = $1',
+          [batch_number]
+        );
+        
+        if (checkResult.rowCount === 0) {
+          batchExists = false; // Batch number is unique
+        } else {
+          // Increment the transaction number and try again
+          attempt++;
+          batch_number = `B-${datePart}-${baseTransactionNumber + i + attempt}`;
+        }
+      }
+      
+      batch_numbers.push(batch_number);
+    }
+    
+    // Insert all transactions with their own unique batch numbers
     const results = [];
-    for (const transaction of transactions) {
+    for (let i = 0; i < transactions.length; i++) {
+      const transaction = transactions[i];
       const { product_id, quantity, serial_numbers, provider_id, unit_price } = transaction;
+      
+      // Use the unique batch number for this transaction
+      const batch_number = batch_numbers[i];
       
       // Insert inbound transaction with auto-generated batch number
       const result = await req.pool.query(`
@@ -259,7 +307,7 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
           await sendNotification(notifyUserId, {
             type: 'inventory_inbound_created',
             title: 'New Inbound Transactions Created',
-            message: `${transactions.length} new inbound transactions have been created with batch number ${batch_number}.`,
+            message: `${transactions.length} new inbound transactions have been created with batch numbers ${batch_numbers.join(', ')}.`,
             timestamp: new Date().toISOString()
           });
         }
@@ -270,7 +318,7 @@ router.post('/bulk', authenticateJWT, async (req, res) => {
     
     res.status(201).json({ 
       transactions: results, 
-      batch_number, 
+      batch_numbers, 
       message: 'Inbound transactions created successfully' 
     });
   } catch (error) {

@@ -163,6 +163,31 @@ router.post('/', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_outbound_created',
+            title: 'New Outbound Transaction Created',
+            message: `A new outbound transaction has been created.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending outbound transaction creation notifications:', notificationError);
+    }
+    
     res.status(201).json({ id: outboundTransactionId, message: 'Outbound transaction created successfully' });
   } catch (error) {
     // Rollback transaction on error
@@ -274,8 +299,26 @@ router.post('/multi', authenticateJWT, async (req, res) => {
         [now, product_id]
       );
       
-      const transactionNumber = parseInt(countResult.rows[0].count) + 1;
-      const batch_number = `B-${datePart}-${transactionNumber}`;
+      let transactionNumber = parseInt(countResult.rows[0].count) + 1;
+      let batch_number = `B-${datePart}-${transactionNumber}`;
+      
+      // Ensure uniqueness by checking if this batch number already exists
+      let batchExists = true;
+      let attempt = 0;
+      while (batchExists && attempt < 10) { // Prevent infinite loop
+        const checkResult = await req.pool.query(
+          'SELECT 1 FROM inbound_transactions WHERE batch_number = $1',
+          [batch_number]
+        );
+        
+        if (checkResult.rowCount === 0) {
+          batchExists = false; // Batch number is unique
+        } else {
+          // Increment the transaction number and try again
+          attempt++;
+          batch_number = `B-${datePart}-${transactionNumber + attempt}`;
+        }
+      }
       
       // Get provider ID from product or use a default
       const productInfo = await req.pool.query(
@@ -408,6 +451,31 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     // Commit transaction
     await req.pool.query('COMMIT');
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who created the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_outbound_created',
+            title: 'New Outbound Transaction Created',
+            message: `A new outbound transaction has been created from multiple stored transactions.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending outbound transaction creation notifications:', notificationError);
+    }
+    
     res.status(201).json({ id: outboundTransactionId, message: 'Outbound transaction created successfully' });
   } catch (error) {
     // Rollback transaction on error
@@ -434,6 +502,31 @@ router.post('/:id/dispatched', authenticateJWT, async (req, res) => {
       return res.status(404).json({ error: 'Outbound transaction not found or already dispatched' });
     }
     
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the status
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_outbound_dispatched',
+            title: 'Outbound Transaction Dispatched',
+            message: `An outbound transaction has been marked as dispatched.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending outbound transaction dispatched notifications:', notificationError);
+    }
+    
     res.json({ message: 'Transaction marked as dispatched' });
   } catch (error) {
     console.error('Error updating transaction status:', error);
@@ -456,6 +549,31 @@ router.post('/:id/delivered', authenticateJWT, async (req, res) => {
     
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Outbound transaction not found or not yet dispatched' });
+    }
+    
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who updated the status
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_outbound_delivered',
+            title: 'Outbound Transaction Delivered',
+            message: `An outbound transaction has been marked as delivered.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending outbound transaction delivered notifications:', notificationError);
     }
     
     res.json({ message: 'Transaction marked as delivered' });
@@ -563,6 +681,31 @@ router.delete('/:id', authenticateJWT, async (req, res) => {
     
     // Commit transaction
     await req.pool.query('COMMIT');
+    
+    // Send notification to users with inventory/inbound or inventory/products access
+    try {
+      // Import the sendNotification function and helper functions
+      const { sendNotification } = await import('../index.js');
+      const { getUsersToNotifyOnInventoryInbound } = await import('../utils/helpers.js');
+      
+      // Get users to notify
+      const usersToNotify = await getUsersToNotifyOnInventoryInbound(req.pool);
+      
+      // Send notification to each user
+      for (const notifyUserId of usersToNotify) {
+        // Don't notify the user who reverted the transaction
+        if (notifyUserId != req.user.userId) {
+          await sendNotification(notifyUserId, {
+            type: 'inventory_outbound_deleted',
+            title: 'Outbound Transaction Reverted',
+            message: `An outbound transaction has been reverted back to stored status.`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error sending outbound transaction revert notifications:', notificationError);
+    }
     
     res.json({ message: 'Outbound transaction reverted to stored successfully' });
   } catch (error) {
