@@ -1107,7 +1107,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               pr.organization_contact_phone,
               p.default_unit_price,
               p.default_markup_percentage,
-              NULL as quantity,
+              NULL::INTEGER as quantity,
               NULL as expected_arrival_start,
               NULL as expected_arrival_end,
               NULL as arrival_date,
@@ -1117,7 +1117,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as receiver_phone,
               NULL as dispatch_datetime,
               NULL as delivery_datetime,
-              NULL as outbound_price
+              NULL::NUMERIC as outbound_price
             FROM products p
             LEFT JOIN providers pr ON p.provider_id = pr.id
           ),
@@ -1137,7 +1137,8 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as organization_contact_name,
               NULL as organization_contact_email,
               NULL as organization_contact_phone,
-              NULL as default_unit_price,
+              NULL::NUMERIC as default_unit_price,
+              NULL::NUMERIC as default_markup_percentage,
               i.quantity,
               TO_CHAR(i.expected_arrival_start, 'YYYY-MM-DD') as expected_arrival_start,
               TO_CHAR(i.expected_arrival_end, 'YYYY-MM-DD') as expected_arrival_end,
@@ -1148,7 +1149,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as receiver_phone,
               NULL as dispatch_datetime,
               NULL as delivery_datetime,
-              NULL as outbound_price
+              NULL::NUMERIC as outbound_price
             FROM inbound_transactions i
             JOIN products p ON i.product_id = p.id
             JOIN providers pr ON i.provider_id = pr.id
@@ -1172,7 +1173,8 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as organization_contact_name,
               NULL as organization_contact_email,
               NULL as organization_contact_phone,
-              NULL as default_unit_price,
+              NULL::NUMERIC as default_unit_price,
+              NULL::NUMERIC as default_markup_percentage,
               i.quantity,
               TO_CHAR(i.expected_arrival_start, 'YYYY-MM-DD') as expected_arrival_start,
               TO_CHAR(i.expected_arrival_end, 'YYYY-MM-DD') as expected_arrival_end,
@@ -1183,7 +1185,7 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as receiver_phone,
               NULL as dispatch_datetime,
               NULL as delivery_datetime,
-              NULL as outbound_price
+              NULL::NUMERIC as outbound_price
             FROM inbound_transactions i
             JOIN products p ON i.product_id = p.id
             JOIN providers pr ON i.provider_id = pr.id
@@ -1207,7 +1209,8 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               NULL as organization_contact_name,
               NULL as organization_contact_email,
               NULL as organization_contact_phone,
-              NULL as default_unit_price,
+              NULL::NUMERIC as default_unit_price,
+              NULL::NUMERIC as default_markup_percentage,
               o.quantity,
               NULL as expected_arrival_start,
               NULL as expected_arrival_end,
@@ -1218,20 +1221,20 @@ router.get('/export/:type', authenticateJWT, async (req, res) => {
               o.receiver_phone,
               TO_CHAR(o.dispatch_datetime, 'YYYY-MM-DD"T"HH24:MI:SS') as dispatch_datetime,
               TO_CHAR(o.delivery_datetime, 'YYYY-MM-DD"T"HH24:MI:SS') as delivery_datetime,
-              NULL as outbound_price
+              o.outbound_price
             FROM outbound_transactions o
             JOIN inbound_transactions i ON o.inbound_transaction_id = i.id
             JOIN products p ON i.product_id = p.id
             LEFT JOIN outbound_serial_numbers osn ON o.id = osn.outbound_transaction_id
-            GROUP BY o.id, p.part_number, o.quantity, o.receiver_address, o.receiver_email, o.receiver_phone, o.dispatch_datetime, o.delivery_datetime
+            GROUP BY o.id, p.part_number, o.quantity, o.receiver_address, o.receiver_email, o.receiver_phone, o.dispatch_datetime, o.delivery_datetime, o.outbound_price
           )
-          SELECT * FROM product_data
+          SELECT type, name, part_number, product_type, provider, provider_email, provider_phone, provider_address, official_contact_name, official_contact_email, official_contact_phone, organization_contact_name, organization_contact_email, organization_contact_phone, default_unit_price, default_markup_percentage, quantity, expected_arrival_start, expected_arrival_end, arrival_date, serial_numbers, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, outbound_price FROM product_data
           UNION ALL
-          SELECT * FROM inbound_data
+          SELECT type, name, part_number, product_type, provider, provider_email, provider_phone, provider_address, official_contact_name, official_contact_email, official_contact_phone, organization_contact_name, organization_contact_email, organization_contact_phone, default_unit_price, default_markup_percentage, quantity, expected_arrival_start, expected_arrival_end, arrival_date, serial_numbers, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, outbound_price FROM inbound_data
           UNION ALL
-          SELECT * FROM stored_data
+          SELECT type, name, part_number, product_type, provider, provider_email, provider_phone, provider_address, official_contact_name, official_contact_email, official_contact_phone, organization_contact_name, organization_contact_email, organization_contact_phone, default_unit_price, default_markup_percentage, quantity, expected_arrival_start, expected_arrival_end, arrival_date, serial_numbers, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, outbound_price FROM stored_data
           UNION ALL
-          SELECT * FROM outbound_data
+          SELECT type, name, part_number, product_type, provider, provider_email, provider_phone, provider_address, official_contact_name, official_contact_email, official_contact_phone, organization_contact_name, organization_contact_email, organization_contact_phone, default_unit_price, default_markup_percentage, quantity, expected_arrival_start, expected_arrival_end, arrival_date, serial_numbers, receiver_address, receiver_email, receiver_phone, dispatch_datetime, delivery_datetime, outbound_price FROM outbound_data
           ORDER BY type, provider, name, part_number
         `);
         data = comprehensiveResult.rows;
