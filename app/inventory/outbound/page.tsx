@@ -741,7 +741,7 @@ function OutboundContent() {
                   {getAllAvailableSerialNumbers().map((transaction, transactionIndex) => (
                     <div key={transactionIndex} className="mb-3">
                       <h4 className="font-medium text-sm mb-2">
-                        Batch No: {transaction.batch_number || 'N/A'} (₦{transaction.unit_price != null ? parseFloat(transaction.unit_price.toString()).toFixed(2) : '0.00'})
+                        Batch No: {transaction.batch_number || 'N/A'} (₦{transaction.unit_price != null ? Number(transaction.unit_price).toFixed(2) : '0.00'})
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (

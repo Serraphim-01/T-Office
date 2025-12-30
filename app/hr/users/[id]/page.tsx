@@ -544,7 +544,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                               {record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}
                             </TableCell>
                             <TableCell>
-                              {record.total_hours ? record.total_hours.toFixed(2) : '-'}
+                              {record.total_hours != null ? Number(record.total_hours).toFixed(2) : '-'}
                             </TableCell>
                             <TableCell>
                               <Badge variant={record.status === 'present' ? 'default' : 'secondary'}>

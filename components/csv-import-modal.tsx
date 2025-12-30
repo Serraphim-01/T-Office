@@ -221,7 +221,7 @@ Product Name 3,PART003,Software,Provider C`;
                   <div className="text-left">
                     <p className="text-sm font-medium">{selectedFile.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {(selectedFile.size / 1024).toFixed(2)} KB
+                      {Number(selectedFile.size / 1024).toFixed(2)} KB
                     </p>
                   </div>
                 </div>

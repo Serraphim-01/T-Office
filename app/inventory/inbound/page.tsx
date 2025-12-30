@@ -911,7 +911,7 @@ function InboundContent() {
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Total Price:</span>
                             <span className="font-bold text-lg">
-                              ₦{(entry.quantity * (Number(entry.unit_price) || 0)).toFixed(2)}
+                              ₦{Number(entry.quantity * (Number(entry.unit_price) || 0)).toFixed(2)}
                             </span>
                           </div>
                         </div>
@@ -1024,7 +1024,7 @@ function InboundContent() {
                         ₦{(transaction.unit_price != null ? transaction.unit_price : '0.00')}
                       </TableCell>
                       <TableCell>
-                        ₦{(transaction.unit_price != null ? (transaction.unit_price * transaction.quantity).toFixed(2) : '0.00')}
+                        ₦{(transaction.unit_price != null ? Number(transaction.unit_price * transaction.quantity).toFixed(2) : '0.00')}
                       </TableCell>
                       <TableCell>{transaction.provider_name}</TableCell>
                       <TableCell>

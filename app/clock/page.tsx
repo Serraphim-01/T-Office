@@ -775,7 +775,7 @@ export default function ClockPage() {
                 </div>
                 {currentLocation && (
                   <div className="text-sm text-muted-foreground">
-                    Current location: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                    Current location: {Number(currentLocation.lat).toFixed(6)}, {Number(currentLocation.lng).toFixed(6)}
                   </div>
                 )}
               </div>
@@ -892,7 +892,7 @@ export default function ClockPage() {
                         <div>
                           <div className="font-medium">{location.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {parseFloat(location.latitude.toString()).toFixed(6)}, {parseFloat(location.longitude.toString()).toFixed(6)}
+                            {Number(location.latitude).toFixed(6)}, {Number(location.longitude).toFixed(6)}
                             {location.address && ` • ${location.address}`}
                           </div>
                         </div>

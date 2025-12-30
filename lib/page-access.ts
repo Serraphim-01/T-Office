@@ -11,10 +11,10 @@ export function clearPageAccessCache() {
 }
 
 // Check if a user has access to a specific page
-export async function hasPageAccess(userId: string, pagePath: string): Promise<boolean> {
+export async function hasPageAccess(userId: string | number, pagePath: string): Promise<boolean> {
   try {
     // Validate inputs
-    if (!userId || !pagePath) {
+    if ((userId === null || userId === undefined) || !pagePath) {
       console.warn('Invalid userId or pagePath provided to hasPageAccess');
       return false;
     }
@@ -24,6 +24,9 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
       return false;
     }
     
+    // Convert userId to string for consistency
+    const userIdStr = typeof userId === 'number' ? userId.toString() : userId;
+    
     // Get user info including department and role
     const token = localStorage.getItem('token');
     if (!token) {
@@ -31,7 +34,7 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
     }
 
     // Create cache key
-    const cacheKey = `user-${userId}`;
+    const cacheKey = `user-${userIdStr}`;
     
     // Check cache first with timestamp
     const cachedEntry = pageAccessCache.get(cacheKey);
@@ -188,7 +191,7 @@ export async function hasPageAccess(userId: string, pagePath: string): Promise<b
 }
 
 // Check if a user has access to a specific feature within a page
-export async function hasFeatureAccess(userId: string, featurePath: string): Promise<boolean> {
+export async function hasFeatureAccess(userId: string | number, featurePath: string): Promise<boolean> {
   // For now, we'll use the same logic as page access
   // In the future, we might want to differentiate between pages and features
   return hasPageAccess(userId, featurePath);

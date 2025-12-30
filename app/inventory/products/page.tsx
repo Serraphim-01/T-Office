@@ -1423,7 +1423,7 @@ useEffect(() => {
                                 <TableCell>{product.part_number}</TableCell>
                                 <TableCell>{product.product_type}</TableCell>
                                 <TableCell>{formatCurrency(newProductDefaultPrice)}</TableCell>
-                                <TableCell>{newProductDefaultMarkup.toFixed(2)}%</TableCell>
+                                <TableCell>{Number(newProductDefaultMarkup).toFixed(2)}%</TableCell>
                                 <TableCell className="text-right">
                                   <Button 
                                     size="sm" 

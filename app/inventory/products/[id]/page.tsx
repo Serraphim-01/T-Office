@@ -519,7 +519,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
                     <div className="flex items-center space-x-3">
                       <div>
                         <p className="text-sm text-muted-foreground">Default Markup Percentage</p>
-                        <p className="font-medium">{parseFloat(product.default_markup_percentage?.toString() || '0').toFixed(2)}%</p>
+                        <p className="font-medium">{Number(product.default_markup_percentage || 0).toFixed(2)}%</p>
                       </div>
                     </div>
                   )}
