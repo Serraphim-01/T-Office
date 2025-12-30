@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 export interface Profile {
-  id: string;
+  id: number; // Changed from string to number to match database
   updated_at: string;
   full_name: string;
   avatar_url: string;
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: userData.id,
               updated_at: userData.created_at,
               full_name: userData.full_name,
-              avatar_url: '',
+              avatar_url: userData.profile_picture_url || '',
               department: userData.department,
             });
           } else {

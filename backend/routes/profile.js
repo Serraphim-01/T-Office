@@ -26,7 +26,7 @@ router.get("/", authenticateJWT, async (req, res) => {
     
     // Get user details
     const detailsResult = await pool.query(
-      `SELECT certifications, cv, portfolio, job_description, contract, query_count, attendance, other_details
+      `SELECT certifications, cv, portfolio, job_description, contract, query_count, attendance, other_details, profile_picture_url
        FROM user_details
        WHERE user_id = $1`,
       [userId]
@@ -77,6 +77,7 @@ router.get("/", authenticateJWT, async (req, res) => {
       department: user.department,
       role: user.role,
       created_at: user.created_at,
+      profile_picture_url: userDetails.profile_picture_url || null,
       certifications: userDetails.certifications || [],
       cv: userDetails.cv || null,
       portfolio: userDetails.portfolio || null,
@@ -339,6 +340,74 @@ router.delete("/certifications/:certId", authenticateJWT, async (req, res) => {
   } catch (err) {
     console.error('Error deleting certification:', err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update user profile picture
+router.post('/picture', authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
+  const { picture_data, file_type } = req.body;
+
+  try {
+    // Validate input
+    if (!picture_data || !file_type) {
+      return res.status(400).json({ error: 'Picture data and file type are required' });
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file_type)) {
+      return res.status(400).json({ error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.' });
+    }
+
+    // Check file size - picture_data is base64 encoded, so we need to estimate the original size
+    // Base64 encoding increases size by approximately 33%, so original size is roughly 0.75 * encoded size
+    const estimatedOriginalSize = Math.round(picture_data.length * 0.75);
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (estimatedOriginalSize > maxSize) {
+      return res.status(400).json({ error: `File size too large. Maximum allowed size is 5MB. Current size is approximately ${(estimatedOriginalSize / (1024 * 1024)).toFixed(2)}MB.` });
+    }
+
+    // Create a data URL for the profile picture
+    const profilePictureUrl = `data:${file_type};base64,${picture_data}`;
+
+    // Update or create user details record with profile picture
+    const result = await pool.query(
+      `INSERT INTO user_details (user_id, profile_picture_url)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id)
+       DO UPDATE SET profile_picture_url = $2, updated_at = NOW()
+       RETURNING profile_picture_url`,
+      [userId, profilePictureUrl]
+    );
+
+    res.json({ profile_picture_url: result.rows[0].profile_picture_url });
+  } catch (err) {
+    console.error('Error updating profile picture:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete user profile picture
+router.delete('/picture', authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const userId = req.user.userId;
+
+  try {
+    // Remove profile picture from user details
+    const result = await pool.query(
+      `UPDATE user_details
+       SET profile_picture_url = NULL, updated_at = NOW()
+       WHERE user_id = $1
+       RETURNING profile_picture_url`,
+      [userId]
+    );
+
+    res.json({ profile_picture_url: null });
+  } catch (err) {
+    console.error('Error deleting profile picture:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

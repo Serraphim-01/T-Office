@@ -132,16 +132,62 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
             </Button>
             
             <div className="flex items-center space-x-2">
-              <div className="hidden md:block">
-                <div className="text-sm font-medium">{user?.full_name}</div>
-                <div className="text-xs text-muted-foreground">{user?.department}</div>
+              {/* Profile Avatar */}
+              <div className="relative">
+                {user?.avatar_url ? (
+                  <img 
+                    src={user.avatar_url} 
+                    alt={user.full_name || 'User'} 
+                    className="w-8 h-8 rounded-full object-cover border border-border"
+                    onError={(e) => {
+                      // If image fails to load, fallback to initials
+                      e.currentTarget.style.display = 'none';
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '';
+                        const initialsDiv = document.createElement('div');
+                        initialsDiv.className = 'w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground border border-border';
+                        
+                        // Generate initials from user's name
+                        const names = (user.full_name || '').split(' ');
+                        let initials = '';
+                        if (names.length >= 2) {
+                          initials = (names[0][0] + names[1][0]).toUpperCase();
+                        } else if (names.length === 1) {
+                          initials = names[0][0].toUpperCase();
+                        } else {
+                          initials = '?';
+                        }
+                        
+                        initialsDiv.textContent = initials;
+                        parent.appendChild(initialsDiv);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground border border-border">
+                    {user ? (() => {
+                      const names = user.full_name?.split(' ') || [];
+                      let initials = '';
+                      if (names.length >= 2) {
+                        initials = (names[0][0] + names[1][0]).toUpperCase();
+                      } else if (names.length === 1) {
+                        initials = names[0][0].toUpperCase();
+                      } else {
+                        initials = '?';
+                      }
+                      return initials;
+                    })() : '?'}
+                  </div>
+                )}
               </div>
+              
               <div className="relative group">
                 <Button 
                   variant="ghost" 
-                  size="sm" 
+                  size="icon" 
                   onClick={logout}
-                  className="relative group"
+                  className="relative group p-0 w-8 h-8"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

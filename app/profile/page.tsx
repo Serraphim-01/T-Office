@@ -126,6 +126,8 @@ export default function ProfilePage() {
   const [selectedQuery, setSelectedQuery] = useState<UserQuery | null>(null);
   const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch profile data
   useEffect(() => {
@@ -228,6 +230,9 @@ export default function ProfilePage() {
           max_queries_before_action: queriesData.max_queries_before_action,
           supportStaff: supportStaffData // Add support staff to the profile data
         });
+        
+        // Set profile picture from profile data
+        setProfilePicture(profileData.profile_picture_url);
       }
     } catch (error) {
       // Removed console statement for production
@@ -468,6 +473,119 @@ export default function ProfilePage() {
     }
   };
 
+  const handleProfilePictureUpload = (file: File) => {
+    setIsUploading(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const dataUrl = e.target?.result as string;
+        // Extract base64 data and MIME type from data URL
+        const [mimePart, base64Data] = dataUrl.split(',');
+        const mimeType = mimePart.split(':')[1].split(';')[0];
+        
+        const response = await fetch('http://localhost:4000/api/profile/picture', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            picture_data: base64Data,
+            file_type: mimeType
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setProfilePicture(result.profile_picture_url);
+          
+          // Update the user context with the new avatar
+          if (user) {
+            const updatedUser = {
+              ...user,
+              avatar_url: result.profile_picture_url || '',
+            };
+            // Use the setUser function from auth context to update the user data
+            const auth = useAuth();
+            auth.setUser(updatedUser);
+          }
+          
+          toast({
+            title: "Success",
+            description: "Profile picture updated successfully!",
+          });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "Error",
+            description: error.error || "Failed to update profile picture.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    
+    reader.readAsDataURL(file);
+  };
+  
+  const handleProfilePictureDelete = async () => {
+    try {
+      const response = await fetch('http://localhost:4000/api/profile/picture', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        setProfilePicture(null);
+        
+        // Update the user context with empty avatar
+        if (user) {
+          const updatedUser = {
+            ...user,
+            avatar_url: '',
+          };
+          const auth = useAuth();
+          auth.setUser(updatedUser);
+        }
+        
+        toast({
+          title: "Success",
+          description: "Profile picture removed successfully!",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to remove profile picture.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleProfilePictureFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleProfilePictureUpload(e.target.files[0]);
+    }
+  };
+  
   if (loading || !user) {
     return (
       <DashboardLayout>
@@ -504,6 +622,67 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Profile Picture */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Picture</CardTitle>
+                <CardDescription>Add or update your profile picture</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="relative">
+                    {profilePicture ? (
+                      <img 
+                        src={profilePicture} 
+                        alt="Profile" 
+                        className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground">
+                        <User className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col items-center space-y-2 w-full max-w-xs">
+                    <div className="flex space-x-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePictureFileInput}
+                        className="hidden"
+                        id="profile-picture-upload"
+                      />
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        disabled={isUploading}
+                        onClick={() => document.getElementById('profile-picture-upload')?.click()}
+                      >
+                        {isUploading ? 'Uploading...' : profilePicture ? 'Change Picture' : 'Upload Picture'}
+                      </Button>
+                      
+                      {profilePicture && (
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleProfilePictureDelete}
+                          disabled={isUploading}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Supported formats: JPG, PNG, GIF, WebP. Max size: 5MB.
+                    </p>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Recommended size: 400x400 pixels for best quality.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
             {/* Profile Overview */}
             <Card>
               <CardHeader>
@@ -549,9 +728,20 @@ export default function ProfilePage() {
                       {profile.supportStaff.map((staff) => (
                         <div key={staff.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarFallback>{staff.full_name.charAt(0)}</AvatarFallback>
-                            </Avatar>
+                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground">
+                              {(() => {
+                                const names = staff.full_name.split(' ');
+                                let initials = '';
+                                if (names.length >= 2) {
+                                  initials = (names[0][0] + names[1][0]).toUpperCase();
+                                } else if (names.length === 1) {
+                                  initials = names[0][0].toUpperCase();
+                                } else {
+                                  initials = '?';
+                                }
+                                return initials;
+                              })()}
+                            </div>
                             <div>
                               <p className="text-sm font-medium">{staff.full_name}</p>
                               <p className="text-xs text-muted-foreground">{staff.email}</p>
