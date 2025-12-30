@@ -5,8 +5,10 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlledNav } from './access-controlled-nav';
 import { NotificationPanel } from './notification-panel';
+import { AnalyticsSidebar } from './analytics-sidebar';
+import { ChatbotSidebar } from './chatbot-sidebar';
 import { Button } from './ui/button';
-import { Bell, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Menu, X, ChevronLeft, ChevronRight, PieChart, Bot } from 'lucide-react';
 import { useNotification } from '@/lib/notification-context';
 import { RefreshCountdown } from './refresh-countdown';
 
@@ -14,9 +16,38 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [analyticsSidebarOpen, setAnalyticsSidebarOpen] = useState(false);
+  const [chatbotSidebarOpen, setChatbotSidebarOpen] = useState(false);
   const { unreadCount } = useNotification();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  
+  // Extract page name from pathname for analytics
+  const getPageName = () => {
+    if (pathname === '/') return 'dashboard';
+    
+    // Handle nested routes by taking the first part after /
+    const pathParts = pathname.split('/').filter(part => part !== '');
+    
+    if (pathParts.length === 0) return 'dashboard';
+    
+    // Handle specific routes that have sub-routes
+    if (pathParts[0] === 'hr' && pathParts.length > 1) {
+      return `hr/${pathParts[1]}`;
+    }
+    
+    if (pathParts[0] === 'inventory' && pathParts.length > 1) {
+      return pathParts[1]; // Return the sub-page (inbound, outbound, products, etc.)
+    }
+    
+    if (pathParts[0] === 'resources' && pathParts.length > 1) {
+      return pathParts[1]; // Return wiki
+    }
+    
+    return pathParts[0];
+  };
+  
+  const currentPage = getPageName();
 
   // Function to handle refresh
   const handleRefresh = () => {
@@ -131,6 +162,24 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
               )}
             </Button>
             
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setAnalyticsSidebarOpen(true)}
+              className="relative"
+            >
+              <PieChart className="h-5 w-5" />
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setChatbotSidebarOpen(true)}
+              className="relative"
+            >
+              <Bot className="h-5 w-5" />
+            </Button>
+            
             <div className="flex items-center space-x-2">
               {/* Profile Avatar */}
               <div className="relative">
@@ -215,6 +264,19 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
       <NotificationPanel 
         isOpen={notificationPanelOpen} 
         onClose={() => setNotificationPanelOpen(false)} 
+      />
+      
+      {/* Analytics Sidebar */}
+      <AnalyticsSidebar 
+        isOpen={analyticsSidebarOpen} 
+        onClose={() => setAnalyticsSidebarOpen(false)} 
+        currentPage={currentPage}
+      />
+      
+      {/* Chatbot Sidebar */}
+      <ChatbotSidebar 
+        isOpen={chatbotSidebarOpen} 
+        onClose={() => setChatbotSidebarOpen(false)} 
       />
     </div>
   );
