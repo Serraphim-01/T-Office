@@ -33,4 +33,4 @@ export default function RefreshCountdownTestPage() {
       </div>
     </DashboardLayout>
   );
-}'use client';
+}

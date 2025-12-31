@@ -50,7 +50,7 @@ export default function CreateWikiPage() {
     if (!user) return;
     
     // Check access to main wiki page first
-    const wikiAccess = await hasPageAccess(user, 'resources/wiki');
+    const wikiAccess = await hasPageAccess(user?.id, 'resources/wiki');
     
     if (!wikiAccess) {
       // If no access to main wiki page, deny access to create page
@@ -59,7 +59,7 @@ export default function CreateWikiPage() {
     }
     
     // Check access to create wiki page
-    const createWikiAccess = await hasPageAccess(user, 'resources/wiki/create');
+    const createWikiAccess = await hasPageAccess(user?.id, 'resources/wiki/create');
     
     if (!createWikiAccess) {
       // If no access to create wiki page, deny access
@@ -68,7 +68,7 @@ export default function CreateWikiPage() {
     }
     
     // Check access to create topic feature
-    const createTopicAccess = await hasPageAccess(user, 'resources/wiki/create-topic');
+    const createTopicAccess = await hasPageAccess(user?.id, 'resources/wiki/create-topic');
     
     // User can create topics if they have access to the create wiki page and the specific create topic feature
     setCanCreateTopic(createWikiAccess && createTopicAccess);

@@ -32,7 +32,7 @@ export function ZoomProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Apply zoom using CSS zoom property (works well with most browsers)
-      document.body.style.zoom = `${zoomLevel}%`;
+      (document.body.style as any).zoom = `${zoomLevel}%`;
       
       // Save to localStorage
       localStorage.setItem('zoomLevel', zoomLevel.toString());
