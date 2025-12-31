@@ -14,9 +14,11 @@ const ZoomContext = createContext<ZoomContextType | undefined>(undefined);
 
 export function ZoomProvider({ children }: { children: ReactNode }) {
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [isClient, setIsClient] = useState(false);
 
-  // Load zoom level from localStorage on mount
+  // Set isClient to true on mount to ensure we're on the client side
   useEffect(() => {
+    setIsClient(true);
     if (typeof window !== 'undefined') {
       const savedZoomLevel = localStorage.getItem('zoomLevel');
       if (savedZoomLevel) {
@@ -30,14 +32,14 @@ export function ZoomProvider({ children }: { children: ReactNode }) {
 
   // Apply zoom level to the document
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isClient) {
       // Apply zoom using CSS zoom property (works well with most browsers)
       (document.body.style as any).zoom = `${zoomLevel}%`;
       
       // Save to localStorage
       localStorage.setItem('zoomLevel', zoomLevel.toString());
     }
-  }, [zoomLevel]);
+  }, [zoomLevel, isClient]);
 
   const increaseZoom = () => {
     setZoomLevel(prev => Math.min(prev + 10, 200));
@@ -50,6 +52,21 @@ export function ZoomProvider({ children }: { children: ReactNode }) {
   const resetZoom = () => {
     setZoomLevel(100);
   };
+
+  // Only render children on the client side to avoid document access during SSR
+  if (typeof window === 'undefined' || !isClient) {
+    return (
+      <ZoomContext.Provider value={{ 
+        zoomLevel: 100, // Default zoom level during SSR
+        setZoomLevel, 
+        increaseZoom, 
+        decreaseZoom, 
+        resetZoom 
+      }}>
+        {children}
+      </ZoomContext.Provider>
+    );
+  }
 
   return (
     <ZoomContext.Provider value={{ 
