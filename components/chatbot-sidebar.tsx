@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { X, Bot } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -27,25 +27,21 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
     }
   };
 
-  // Add event listeners when panel is open
-  if (isOpen) {
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-  } else {
-    document.removeEventListener('mousedown', handleClickOutside);
-    document.removeEventListener('keydown', handleEscape);
-  }
-
-  // Clean up event listeners when component unmounts
-  const cleanupEventListeners = () => {
-    document.removeEventListener('mousedown', handleClickOutside);
-    document.removeEventListener('keydown', handleEscape);
-  };
-
-  // Clean up on unmount
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupEventListeners);
-  };
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    }
+    
+    // Clean up on unmount or when component closes
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   return (
     <>

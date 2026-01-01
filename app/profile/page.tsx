@@ -1,6 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/dashboard-layout';
+
+export const dynamic = 'force-dynamic';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';

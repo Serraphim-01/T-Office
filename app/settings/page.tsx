@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+export const dynamic = 'force-dynamic';
 import { useUI } from '@/lib/ui-context';
 import { useZoom } from '@/components/zoom-context';
 import { Button } from '@/components/ui/button';

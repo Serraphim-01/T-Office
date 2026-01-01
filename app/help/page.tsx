@@ -1,4 +1,8 @@
+'use client';
+
 import { Navbar } from '@/components/navbar';
+
+export const dynamic = 'force-dynamic';
 import { Footer } from '@/components/footer';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

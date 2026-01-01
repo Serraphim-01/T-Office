@@ -1,6 +1,8 @@
 'use client';
 
 import { DashboardLayout } from '@/components/dashboard-layout';
+
+export const dynamic = 'force-dynamic';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccessDenied } from '@/components/access-denied';

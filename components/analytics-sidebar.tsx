@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { X, PieChart, BarChart3, Users, MessageCircle, User, Package, Clock, FileText, Settings, Building } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -29,25 +29,22 @@ export function AnalyticsSidebar({ isOpen, onClose, currentPage = '' }: Analytic
     }
   };
 
-  // Add event listeners when panel is open
-  if (isOpen) {
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-  } else {
-    document.removeEventListener('mousedown', handleClickOutside);
-    document.removeEventListener('keydown', handleEscape);
-  }
-
-  // Clean up event listeners when component unmounts
-  const cleanupEventListeners = () => {
-    document.removeEventListener('mousedown', handleClickOutside);
-    document.removeEventListener('keydown', handleEscape);
-  };
-
-  // Clean up on unmount
-  if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupEventListeners);
-  };
+  // Add/remove event listeners when panel opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    }
+    
+    // Clean up on unmount or when component closes
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
 
   // Get analytics content based on current page
   const getPageAnalytics = () => {
