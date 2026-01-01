@@ -8,6 +8,8 @@
     "dev:backend": "cd backend && npm run dev",
     "build": "next build",
     "start": "next start",
+    "migrate": "cd backend && npm run migrate",
+    "create-migration": "cd backend && npm run create-migration",
     "lint": "next lint",
     "changelog": "cat CHANGELOG.md"
   },

@@ -63,12 +63,29 @@ This will run:
 
 ## Database Migration
 
-Database migrations have been consolidated for simplicity. See [DB_MIGRATION_CONSOLIDATION.md](DB_MIGRATION_CONSOLIDATION.md) for details.
+T-Office now uses a proper database migration system that supports versioned, tracked schema changes. The system allows for safe, automated migrations during deployment.
 
-To run the database migration:
+### Running Migrations
+
+Apply pending migrations:
 ```bash
-./db/run_migration.sh
+npm run migrate
 ```
+
+Create a new migration:
+```bash
+npm run create-migration <migration-name>
+```
+
+### Migration System Features
+
+- ✅ Versioned migration files stored in `db/migrations/`
+- ✅ Automatic tracking of applied migrations
+- ✅ Non-interactive operation for production deployments
+- ✅ No runtime migration logic in the application
+- ✅ Respects `DATABASE_URL` from environment variables
+
+For more details, see [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) and [DB_MIGRATION_CONSOLIDATION.md](DB_MIGRATION_CONSOLIDATION.md).
 
 ## User Offboarding
 
