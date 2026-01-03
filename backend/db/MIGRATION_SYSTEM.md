@@ -69,7 +69,7 @@ Applied migrations are tracked in the `migration_history` table in the database.
 ## Directory Structure
 
 ```
-db/
+backend/db/
 ├── migrate.js          # Main migration runner
 ├── migrate-cli.js      # Command line interface
 ├── migrations/         # Migration files directory

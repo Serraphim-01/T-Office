@@ -75,7 +75,7 @@ Each migration file should contain:
 ## Directory Structure
 
 ```
-db/
+backend/db/
 ├── migrate.js              # Main migration runner
 ├── migrate-cli.js          # Command line interface
 ├── MIGRATION_SYSTEM.md     # Detailed system documentation
@@ -83,7 +83,7 @@ db/
 │   ├── 001_initial_schema.sql
 │   ├── 002_add_active_to_users.sql
 │   └── ...
-└── run_migration.sh        # Legacy migration script (still available)
+└── run_migration.sh        # Migration script
 ```
 
 ## Environment Configuration

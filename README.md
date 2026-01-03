@@ -141,7 +141,7 @@ For a detailed history of changes to the project, see [CHANGELOG.md](CHANGELOG.m
 ├── app/                 # Next.js App Router pages and layouts
 ├── backend/             # Express server with API routes and DB logic
 ├── components/          # Reusable UI components
-├── db/                  # Database migration files
+├── backend/db/          # Database migration files
 ├── hooks/               # Custom React hooks
 ├── lib/                 # Shared logic
 ├── public/              # Static assets including PWA files

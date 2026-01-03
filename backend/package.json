@@ -7,10 +7,9 @@
     "build": "echo 'No build step required for backend'",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "migrate": "node ../db/migrate-cli.js up",
-    "create-migration": "node ../db/migrate-cli.js create",
-    "db:init": "node db-init.js",
-    "db:migrate:additions": "node ../db/run_additional_migrations.js"
+    "migrate": "node db/migrate-cli.js up",
+    "create-migration": "node db/migrate-cli.js create",
+    "db:init": "node db-init.js"
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",
