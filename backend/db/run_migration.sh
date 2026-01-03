@@ -5,6 +5,15 @@
 
 echo "Starting database migration..."
 
+# Load environment variables from .env.local if it exists
+ENV_FILE="../.env.local"
+if [ -f "$ENV_FILE" ]; then
+  echo "Loading environment variables from $ENV_FILE"
+  export $(cat $ENV_FILE | xargs)
+else
+  echo "Warning: $ENV_FILE not found. Make sure to set DATABASE_URL before running migrations."
+fi
+
 # Check if we're in the right directory by looking for key files
 if [ ! -f "./migrate-cli.js" ] || [ ! -f "./migrate.js" ] || [ ! -d "./migrations" ]; then
   echo "Error: Required migration files not found!"

@@ -546,16 +546,7 @@ CREATE TRIGGER update_provider_user_assignments_updated_at BEFORE UPDATE ON prov
 INSERT INTO departments (name, description) VALUES
 ('Admin', 'Administrative department with full system access'),
 ('HR', 'Human Resources department'),
-('Engineering', 'Engineering and technical department'),
-('Sales', 'Sales and business development'),
-('Compliance', 'Compliance and regulatory affairs'),
-('Finance', 'Financial operations and accounting'),
-('Marketing', 'Marketing and communications'),
-('IT', 'Information Technology support'),
-('Legal', 'Legal and corporate affairs'),
-('Security', 'Security and safety operations'),
-('Facilities', 'Facilities and maintenance'),
-('Operations', 'Operations and logistics')
+('Sales', 'Sales and business development')
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert sample products
@@ -568,27 +559,18 @@ TRUNCATE TABLE inbound_serial_numbers, inbound_transactions, outbound_serial_num
 INSERT INTO wiki_topics (department, topic, content, video_url) VALUES
 ('HR', 'Company Policies', 'This section covers all company policies including code of conduct, dress code, and workplace guidelines.', NULL),
 ('HR', 'Benefits Overview', 'Information about health insurance, retirement plans, paid time off, and other employee benefits.', NULL),
-('IT', 'Password Security', 'Guidelines for creating and maintaining secure passwords, including password requirements and best practices.', NULL),
-('IT', 'Remote Access Setup', 'Step-by-step instructions for setting up remote access to company systems and VPN configuration.', NULL),
-('Compliance', 'Data Protection', 'GDPR compliance requirements, data handling procedures, and privacy policies.', NULL),
-('Finance', 'Expense Reporting', 'How to submit expense reports, reimbursement policies, and approval processes.', NULL),
-('Engineering', 'Code Review Process', 'Guidelines for code reviews, pull request procedures, and quality standards.', NULL),
 ('Sales', 'CRM Usage', 'Training materials for using the company CRM system effectively.', NULL)
 ON CONFLICT (department, topic) DO NOTHING;
 
 -- Insert sample wiki questions
 INSERT INTO wiki_questions (topic_id, question, options, correct_answer) VALUES
 (1, 'What is the company''s dress code policy?', '["Business casual", "Casual", "Formal business attire", "No specific dress code"]', 0),
-(1, 'How many days of paid vacation do employees get per year?', '["10 days", "15 days", "20 days", "25 days"]', 1),
-(3, 'What is the minimum password length required?', '["6 characters", "8 characters", "10 characters", "12 characters"]', 1),
-(3, 'How often should passwords be changed?', '["Every 30 days", "Every 60 days", "Every 90 days", "Never"]', 2)
+(1, 'How many days of paid vacation do employees get per year?', '["10 days", "15 days", "20 days", "25 days"]', 1)
 ON CONFLICT DO NOTHING;
 
 -- Insert sample locations for geofencing
 INSERT INTO locations (name, latitude, longitude, radius_meters, address, is_active) VALUES
-('Main Office Building', 40.7128, -74.0060, 100, '123 Main St, New York, NY 10001', true),
-('Warehouse Facility', 40.7589, -73.9851, 150, '456 Industrial Ave, New York, NY 10002', true),
-('Branch Office', 40.7505, -73.9934, 80, '789 Business Blvd, New York, NY 10003', true)
+('Main Office Building', 40.7128, -74.0060, 100, '123 Main St, New York, NY 10001', true)
 ON CONFLICT DO NOTHING;
 
 -- ===========================================
@@ -990,6 +972,37 @@ INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'hr/queries/send-query'
 FROM departments
 WHERE name = 'HR'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+-- Insert default access for Sales department to relevant pages
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'dashboard'
+FROM departments
+WHERE name = 'Sales'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'profile'
+FROM departments
+WHERE name = 'Sales'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'chat'
+FROM departments
+WHERE name = 'Sales'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'resources/wiki'
+FROM departments
+WHERE name = 'Sales'
+ON CONFLICT (department_id, page_name) DO NOTHING;
+
+INSERT INTO department_page_access (department_id, page_name)
+SELECT id, 'settings'
+FROM departments
+WHERE name = 'Sales'
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
