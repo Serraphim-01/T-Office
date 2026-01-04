@@ -27,6 +27,9 @@ const refreshAuthToken = async (): Promise<string | null> => {
     return null;
   }
 
+  // Get API URL from environment variable, fallback to localhost for development
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
   try {
     const token = localStorage.getItem('token');
     if (!token || token === 'null' || token === 'undefined') {
@@ -34,7 +37,7 @@ const refreshAuthToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const response = await fetch('http://localhost:4000/api/refresh-token', {
+    const response = await fetch(`${apiUrl}/api/refresh-token`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -84,8 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Get the updated token (either refreshed or original)
           const currentToken = newToken || token;
           
+          // Get API URL from environment variable, fallback to localhost for development
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          
           // Verify token with backend
-          const response = await fetch('http://localhost:4000/api/profile', {
+          const response = await fetch(`${apiUrl}/api/profile`, {
             headers: {
               'Authorization': `Bearer ${currentToken}`,
             },

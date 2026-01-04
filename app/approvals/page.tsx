@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
 import { Input } from '@/components/ui/input';
+import { apiGet, apiPut } from '@/lib/api';
 
 interface CertificationApproval {
   id: string;
@@ -50,11 +51,7 @@ function ApprovalsContent() {
   const fetchApprovals = async () => {
     try {
       // Fetch pending certifications
-      const certResponse = await fetch('http://localhost:4000/api/admin/approvals/certifications', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const certResponse = await apiGet('/api/admin/approvals/certifications', localStorage.getItem('token') || '');
 
       if (certResponse.ok) {
         const certData = await certResponse.json();
@@ -108,14 +105,7 @@ function ApprovalsContent() {
         requestBody.rejection_reason = rejectionReasons[certId];
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/approvals/certifications/${certId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await apiPut(`/api/admin/approvals/certifications/${certId}`, requestBody, localStorage.getItem('token') || '');
 
       if (!response.ok) {
         // Revert optimistic update on failure

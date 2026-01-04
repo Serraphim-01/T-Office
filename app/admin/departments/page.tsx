@@ -14,6 +14,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
 
 interface Department {
   id: number;
@@ -74,11 +75,7 @@ function DepartmentsContent() {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/admin/departments', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet('/api/admin/departments', token);
       
       // Removed console statement for production
       
@@ -88,11 +85,7 @@ function DepartmentsContent() {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch('http://localhost:4000/api/admin/departments', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
+          const retryResponse = await apiGet('/api/admin/departments', localStorage.getItem('token') || '');
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             // Removed console statement for production
@@ -140,11 +133,7 @@ function DepartmentsContent() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/roles`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/admin/departments/${departmentId}/roles`, token);
 
       if (response.ok) {
         const data = await response.json();
@@ -175,14 +164,7 @@ function DepartmentsContent() {
 
     try {
       setIsSaving(true); // Set saving state to true
-      const response = await fetch('http://localhost:4000/api/admin/departments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ name: newDepartmentName.trim() }),
-      });
+      const response = await apiPost('/api/admin/departments', { name: newDepartmentName.trim() }, localStorage.getItem('token') || '');
 
       if (response.ok) {
         const newDepartment = await response.json();
@@ -227,14 +209,7 @@ function DepartmentsContent() {
 
     try {
       setIsSaving(true); // Set saving state to true
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${editingDepartment.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ name: editName.trim() }),
-      });
+      const response = await apiPut(`/api/admin/departments/${editingDepartment.id}`, { name: editName.trim() }, localStorage.getItem('token') || '');
 
       if (response.ok) {
         const updatedDepartment = await response.json();
@@ -292,14 +267,7 @@ function DepartmentsContent() {
 
     try {
       setIsSaving(true);
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/roles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ name: newRoleName.trim() }),
-      });
+      const response = await apiPost(`/api/admin/departments/${selectedDepartmentId}/roles`, { name: newRoleName.trim() }, localStorage.getItem('token') || '');
 
       if (response.ok) {
         const newRole = await response.json();
@@ -341,14 +309,7 @@ function DepartmentsContent() {
 
     try {
       setIsSaving(true);
-      const response = await fetch(`http://localhost:4000/api/admin/roles/${editingRole.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ name: editingRole.name.trim() }),
-      });
+      const response = await apiPut(`/api/admin/roles/${editingRole.id}`, { name: editingRole.name.trim() }, localStorage.getItem('token') || '');
 
       if (response.ok) {
         const updatedRole = await response.json();

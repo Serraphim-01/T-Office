@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { useNotification } from '@/lib/notification-context';
 import { hasPageAccess } from '@/lib/page-access';
+import { apiGet, apiPost, apiPut } from '@/lib/api';
 
 interface Message {
   id: number;
@@ -285,11 +286,7 @@ export default function ChatPage() {
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/chat/messages/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/chat/messages/${user.id}`, token || '');
       if (response.ok) {
         const data = await response.json();
         setMessages(data.map((msg: any) => ({
@@ -307,11 +304,7 @@ export default function ChatPage() {
   const fetchChatSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/chat/settings/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/chat/settings/${user.id}`, token || '');
       if (response.ok) {
         const data = await response.json();
         setIsChatPaused(data.is_paused || false);
@@ -325,11 +318,7 @@ export default function ChatPage() {
   const fetchGlobalPauseStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/chat/global-pause`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet('/api/chat/global-pause', token || '');
       if (response.ok) {
         const data: GlobalPauseStatus = await response.json();
         setIsChatGloballyPaused(data.is_chat_paused || false);
@@ -355,18 +344,11 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/chat/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id: user.id,
-          text,
-          is_moderator: (user?.department === 'Admin' || user?.department === 'HR') && isModeratorMode
-        }),
-      });
+      const response = await apiPost('/api/chat/messages', {
+        user_id: user.id,
+        text,
+        is_moderator: (user?.department === 'Admin' || user?.department === 'HR') && isModeratorMode
+      }, token || '');
 
       if (response.ok) {
         const newMsg = await response.json();
@@ -423,12 +405,7 @@ export default function ChatPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/chat/cleanup', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiPost('/api/chat/cleanup', undefined, token || '');
 
       if (response.ok) {
         setMessages([]);
@@ -451,16 +428,9 @@ export default function ChatPage() {
     try {
       const token = localStorage.getItem('token');
       // Use global pause endpoint
-      const response = await fetch(`http://localhost:4000/api/chat/global-pause`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          is_chat_paused: newPauseState
-        }),
-      });
+      const response = await apiPut('/api/chat/global-pause', { 
+        is_chat_paused: newPauseState
+      }, token || '');
 
       if (response.ok) {
         // Refresh global pause status for all users
@@ -480,16 +450,9 @@ export default function ChatPage() {
     setIsSummarizing(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/chat/summaries/${user.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messageCount: useDefaultSettings ? 50 : parseInt(timeRange) || 50,
-        }),
-      });
+      const response = await apiPost(`/api/chat/summaries/${user.id}`, {
+        messageCount: useDefaultSettings ? 50 : parseInt(timeRange) || 50,
+      }, token || '');
 
       if (response.ok) {
         const data = await response.json();

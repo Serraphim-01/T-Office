@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context';
 import { clearPageAccessCache } from '@/lib/page-access';
 import { refreshNavigation } from '@/components/access-controlled-nav';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface Page {
   name: string;
@@ -79,11 +80,7 @@ function FeaturesContent() {
       }
 
       // Get role details
-      const response = await fetch('http://localhost:4000/api/admin/departments', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet('/api/admin/departments', token);
 
       if (response.ok) {
         const departmentsData = await response.json();
@@ -124,11 +121,7 @@ function FeaturesContent() {
       }
 
       // Use the standard departments endpoint which now includes page counts
-      const response = await fetch('http://localhost:4000/api/admin/departments', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet('/api/admin/departments', token);
       
       // Removed console statement for production
       
@@ -138,11 +131,7 @@ function FeaturesContent() {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch('http://localhost:4000/api/admin/departments', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
+          const retryResponse = await apiGet('/api/admin/departments', localStorage.getItem('token') || '');
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             // Removed console statement for production
@@ -195,11 +184,7 @@ function FeaturesContent() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/roles`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/admin/departments/${departmentId}/roles`, token);
 
       if (response.ok) {
         const data = await response.json();
@@ -230,22 +215,14 @@ function FeaturesContent() {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/admin/pages', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet('/api/admin/pages', token);
       
       // Handle token expiration
       if (response.status === 403) {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch('http://localhost:4000/api/admin/pages', {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
+          const retryResponse = await apiGet('/api/admin/pages', localStorage.getItem('token') || '');
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             setPages(data);
@@ -284,22 +261,14 @@ function FeaturesContent() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/admin/departments/${departmentId}/pages`, token);
       
       // Handle token expiration
       if (response.status === 403) {
         const refreshed = await authRefreshToken();
         if (refreshed) {
           // Retry the request
-          const retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentId}/pages`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
+          const retryResponse = await apiGet(`/api/admin/departments/${departmentId}/pages`, localStorage.getItem('token') || '');
           if (retryResponse.ok) {
             const data = await retryResponse.json();
             setDepartmentPages(data);
@@ -343,11 +312,7 @@ function FeaturesContent() {
         return;
       }
 
-      const response = await fetch(`http://localhost:4000/api/admin/roles/${roleId}/pages`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await apiGet(`/api/admin/roles/${roleId}/pages`, token);
       
       if (response.ok) {
         const data = await response.json();
@@ -453,24 +418,10 @@ function FeaturesContent() {
       let response;
       if (selectedRoleId) {
         // Save role-specific feature access
-        response = await fetch(`http://localhost:4000/api/admin/roles/${selectedRoleId}/pages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ pages: selectedPages }),
-        });
+        response = await apiPost(`/api/admin/roles/${selectedRoleId}/pages`, { pages: selectedPages }, token);
       } else if (selectedDepartmentId) {
         // Save department-level feature access (backward compatibility)
-        response = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ pages: selectedPages }),
-        });
+        response = await apiPost(`/api/admin/departments/${selectedDepartmentId}/pages`, { pages: selectedPages }, token);
       }
       
       // Handle token expiration
@@ -480,23 +431,9 @@ function FeaturesContent() {
           // Retry the request
           let retryResponse;
           if (selectedRoleId) {
-            retryResponse = await fetch(`http://localhost:4000/api/admin/roles/${selectedRoleId}/pages`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              },
-              body: JSON.stringify({ pages: selectedPages }),
-            });
+            retryResponse = await apiPost(`/api/admin/roles/${selectedRoleId}/pages`, { pages: selectedPages }, localStorage.getItem('token') || '');
           } else if (selectedDepartmentId) {
-            retryResponse = await fetch(`http://localhost:4000/api/admin/departments/${selectedDepartmentId}/pages`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              },
-              body: JSON.stringify({ pages: selectedPages }),
-            });
+            retryResponse = await apiPost(`/api/admin/departments/${selectedDepartmentId}/pages`, { pages: selectedPages }, localStorage.getItem('token') || '');
           }
           
           if (retryResponse && retryResponse.ok) {
