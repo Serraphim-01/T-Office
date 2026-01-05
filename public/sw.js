@@ -26,6 +26,20 @@ self.addEventListener('install', (event) => {
 
 // Fetch event - serve cached content when available
 self.addEventListener('fetch', (event) => {
+  // Skip caching/intercepting for manifest.json, service worker, and other critical static assets
+  const url = new URL(event.request.url);
+  const pathname = url.pathname;
+  
+  if (pathname === '/manifest.json' || 
+      pathname === '/sw.js' || 
+      pathname === '/favicon.ico' || 
+      pathname.startsWith('/_next/') ||
+      pathname.endsWith('.json')) {
+    // Don't cache or intercept these files, let them be fetched directly
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
