@@ -99,9 +99,17 @@ function HRQueriesContent() {
     }
   }, [user]);
 
+  // Define the type for newQuery state
+  interface NewQueryState {
+    user_id: number;
+    subject: string;
+    description: string;
+    query_type: string;
+  }
+
   // Form states
   const [newQuery, setNewQuery] = useState({ 
-    user_id: '', 
+    user_id: '',  // Keep as string to match Select component expectation
     subject: '', 
     description: '', 
     query_type: ''
@@ -122,7 +130,8 @@ function HRQueriesContent() {
   // Added function to fetch query types
   const fetchQueryTypes = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/profile/query-types', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/profile/query-types`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -159,7 +168,8 @@ function HRQueriesContent() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -178,13 +188,27 @@ function HRQueriesContent() {
   const sendQuery = async () => {
     setLoading(true);
     try {
+      // Check if selectedUser is null and if user_id is valid
+      if (!newQuery.user_id) {
+        toast({
+          title: "Error",
+          description: "Please select a user first",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Prepare the request body with is_locked field
-      const requestBody = { 
-        ...newQuery,
+      const requestBody = {
+        user_id: parseInt(newQuery.user_id), // Convert string to number when sending
+        subject: newQuery.subject,
+        description: newQuery.description,
+        query_type: newQuery.query_type,
         is_locked: isLockedQuery // Use the checkbox state
       };
       
-      const response = await fetch('http://localhost:4000/api/hr/queries', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/queries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,9 +229,8 @@ function HRQueriesContent() {
           query_type: ''
         }); // Reset form
         setIsLockedQuery(false); // Reset locked state
-        if (selectedUser) {
-          fetchUserQueries(selectedUser.id);
-        }
+        const selectedUserId = parseInt(newQuery.user_id);
+        fetchUserQueries(selectedUserId);
       } else {
         toast({
           title: "Error",
@@ -228,7 +251,8 @@ function HRQueriesContent() {
 
   const fetchUserQueries = async (userId: number) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/queries/${userId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/queries/${userId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -245,7 +269,8 @@ function HRQueriesContent() {
   // Fetch all query replies (for the new Query Replies tab)
   const fetchQueryReplies = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/hr/queries-replies', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/queries-replies`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -268,7 +293,8 @@ function HRQueriesContent() {
         is_locked: true
       };
       
-      const response = await fetch(`http://localhost:4000/api/hr/queries/${queryId}/reply`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/queries/${queryId}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +340,8 @@ function HRQueriesContent() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/queries/${queryId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/queries/${queryId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -350,7 +377,8 @@ function HRQueriesContent() {
 
   const updateQueryResolution = async (queryId: number, resolution: string, status: string) => {
     try {
-      const updateResponse = await fetch(`http://localhost:4000/api/hr/queries/${queryId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const updateResponse = await fetch(`${apiUrl}/api/hr/queries/${queryId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

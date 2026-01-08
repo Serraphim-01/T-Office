@@ -126,7 +126,8 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
   const fetchProvider = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -151,7 +152,8 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -169,7 +171,8 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
   const fetchAssignedUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${params.id}/assigned-users`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${params.id}/assigned-users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -183,7 +186,7 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
       // Fetch support staff for each assigned user
       const supportStaffPromises = data.map(async (assignedUser: AssignedUser) => {
         try {
-          const supportResponse = await fetch(`http://localhost:4000/api/users/${assignedUser.user_id}/support-staff`, {
+          const supportResponse = await fetch(`${apiUrl}/api/inventory/providers/${assignedUser.user_id}/support-staff`, {  // Use existing apiUrl
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -239,8 +242,11 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
     try {
       const token = localStorage.getItem('token');
       
+      // Define apiUrl once for the entire function
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      
       // Update provider
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${params.id}`, {
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -257,7 +263,7 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
       
       // Handle user assignment
       // First, get current assignments
-      const currentAssignmentsResponse = await fetch(`http://localhost:4000/api/inventory/providers/${params.id}/assigned-users`, {
+      const currentAssignmentsResponse = await fetch(`${apiUrl}/api/inventory/providers/${params.id}/assigned-users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -269,7 +275,7 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
         
         // If there's currently an assigned user and it's different from the selected one, unassign it
         if (attachedStaff && attachedStaff.user_id !== parseInt(selectedUserId || '0')) {
-          await fetch(`http://localhost:4000/api/inventory/providers/${params.id}/unassign-user/${attachedStaff.user_id}?assignmentType=attached_staff`, {
+          await fetch(`${apiUrl}/api/inventory/providers/${params.id}/unassign-user/${attachedStaff.user_id}?assignmentType=attached_staff`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${token}`
@@ -279,7 +285,7 @@ export default function ProviderDetailsPage({ params }: { params: { id: string }
         
         // If there's a selected user and it's different from the current one, assign it
         if (selectedUserId && attachedStaff?.user_id !== parseInt(selectedUserId)) {
-          const assignResponse = await fetch(`http://localhost:4000/api/inventory/providers/${params.id}/assign-user`, {
+          const assignResponse = await fetch(`${apiUrl}/api/inventory/providers/${params.id}/assign-user`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

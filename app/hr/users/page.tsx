@@ -86,7 +86,8 @@ function HRUsersContent() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -103,7 +104,8 @@ function HRUsersContent() {
   const fetchSupportStaffAssignments = async (userId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${userId}/support-staff`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -121,7 +123,8 @@ function HRUsersContent() {
   const fetchSupportedUsers = async (supportStaffId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${supportStaffId}/supported-users`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${supportStaffId}/supported-users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -158,7 +161,8 @@ function HRUsersContent() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${selectedUserId}/assign-support`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${selectedUserId}/assign-support`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +192,8 @@ function HRUsersContent() {
   const handleUnassignSupportStaff = async (supportStaffId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${selectedUserId}/unassign-support/${supportStaffId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${selectedUserId}/unassign-support/${supportStaffId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -230,7 +235,8 @@ function HRUsersContent() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${selectedUserId}/offboard`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${selectedUserId}/offboard`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

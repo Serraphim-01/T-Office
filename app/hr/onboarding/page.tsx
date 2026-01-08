@@ -75,7 +75,7 @@ function HROnboardingContent() {
 
   // Form states
   // Update newUser to include role
-  const [newUser, setNewUser] = useState<{ name: string; email: string; department: string; role: string }>({ name: '', email: '', department: '', role: '' });
+  const [newUser, setNewUser] = useState<{ name: string; email: string; department: string; role: string }>({ name: '', email: '', department: '', role: ''});
   const [newInductions, setNewInductions] = useState<DepartmentInduction[]>([{ department: '', induction_time: '', attendees: [] }]);
 
   // Check feature access when user loads
@@ -159,7 +159,8 @@ function HROnboardingContent() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -179,7 +180,8 @@ function HROnboardingContent() {
 
   const fetchInductions = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/hr/inductions', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/inductions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -200,7 +202,8 @@ function HROnboardingContent() {
   const createUser = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,8 +280,9 @@ function HROnboardingContent() {
       // Create each induction separately
       const promises = newInductions
         .filter(induction => induction.department && induction.induction_time)
-        .map(induction => 
-          fetch('http://localhost:4000/api/hr/inductions', {
+        .map(induction => {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          return fetch(`${apiUrl}/api/hr/inductions`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -286,7 +290,7 @@ function HROnboardingContent() {
             },
             body: JSON.stringify(induction),
           })
-        );
+        });
 
       const responses = await Promise.all(promises);
       const allSuccessful = responses.every(response => response.ok);
@@ -321,7 +325,8 @@ function HROnboardingContent() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/inductions/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/inductions/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

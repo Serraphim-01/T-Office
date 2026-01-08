@@ -51,7 +51,8 @@ export default function OutboundTransactionDetailsPage() {
   const fetchTransactionDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -81,7 +82,8 @@ export default function OutboundTransactionDetailsPage() {
   const handleUpdateStatus = async (status: 'Dispatched' | 'Delivered') => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -110,7 +112,8 @@ export default function OutboundTransactionDetailsPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

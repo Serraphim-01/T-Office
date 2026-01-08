@@ -27,7 +27,10 @@ export const fetchDepartments = async (): Promise<string[]> => {
       return DEFAULT_DEPARTMENTS;
     }
 
-    const response = await fetch('http://localhost:4000/api/admin/departments', {
+    // Get API URL from environment variable, fallback to localhost for development
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    
+    const response = await fetch(`${apiUrl}/api/admin/departments`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -56,8 +59,11 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
       return [];
     }
 
+    // Get API URL from environment variable, fallback to localhost for development
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    
     // First get department ID
-    const deptResponse = await fetch('http://localhost:4000/api/admin/departments', {
+    const deptResponse = await fetch(`${apiUrl}/api/admin/departments`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -77,7 +83,7 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
     }
 
     // Now get roles for this department
-    const rolesResponse = await fetch(`http://localhost:4000/api/admin/departments/${department.id}/roles`, {
+    const rolesResponse = await fetch(`${apiUrl}/api/admin/departments/${department.id}/roles`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },

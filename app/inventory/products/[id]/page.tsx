@@ -109,7 +109,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
   const fetchProviders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/providers', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -130,7 +131,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
   const fetchProduct = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/products/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/products/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -162,14 +164,15 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
       const token = localStorage.getItem('token');
       
       // Fetch all transaction types in parallel
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const [inboundResponse, storedResponse, outboundResponse] = await Promise.all([
-        fetch(`http://localhost:4000/api/inventory/inbound/product/${params.id}`, {
+        fetch(`${apiUrl}/api/inventory/inbound/product/${params.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:4000/api/inventory/inbound/store/product/${params.id}`, {
+        fetch(`${apiUrl}/api/inventory/inbound/store/product/${params.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:4000/api/inventory/outbound/product/${params.id}`, {
+        fetch(`${apiUrl}/api/inventory/outbound/product/${params.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -228,7 +231,8 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/products/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/products/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

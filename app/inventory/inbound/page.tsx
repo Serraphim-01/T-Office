@@ -151,7 +151,8 @@ function InboundContent() {
   const fetchInboundTransaction = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -169,7 +170,8 @@ function InboundContent() {
   const fetchProviders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/providers', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -189,7 +191,8 @@ function InboundContent() {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/products', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/products`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -210,7 +213,8 @@ function InboundContent() {
   const fetchProductsByProvider = async (providerId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${providerId}/all-products`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${providerId}/all-products`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -233,7 +237,8 @@ function InboundContent() {
   const fetchInboundTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/inbound', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -266,7 +271,8 @@ function InboundContent() {
     // Fetch serial numbers for this transaction
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${transaction.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${transaction.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -331,7 +337,8 @@ function InboundContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -517,7 +524,8 @@ function InboundContent() {
           unit_price: entry.unit_price  // Add unit_price to the update request
         };
         
-        const response = await fetch(`http://localhost:4000/api/inventory/inbound/${editingTransactionId}`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/inventory/inbound/${editingTransactionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -551,8 +559,9 @@ function InboundContent() {
           expected_arrival_end: expectedArrivalEnd
         };
         
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         // Submit all entries as bulk transaction
-        const response = await fetch('http://localhost:4000/api/inventory/inbound/bulk', {
+        const response = await fetch(`${apiUrl}/api/inventory/inbound/bulk`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -652,7 +661,8 @@ function InboundContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}/store`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}/store`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -685,7 +695,8 @@ function InboundContent() {
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:4000/api/inventory/export/inbound', {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                    const response = await fetch(`${apiUrl}/api/inventory/export/inbound`, {
                       headers: {
                         'Authorization': `Bearer ${token}`
                       }

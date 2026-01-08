@@ -46,7 +46,8 @@ export default function StoredTransactionDetailsPage() {
   const fetchTransactionDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/store/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/store/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

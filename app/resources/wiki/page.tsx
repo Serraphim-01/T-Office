@@ -93,7 +93,7 @@ export default function WikiPage() {
 
         if (dept && topicName) {
           completionPromises.push(
-            fetch(`http://localhost:4000/api/wiki/${dept}/${topicName}/completion`, {
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wiki/${dept}/${topicName}/completion`, {
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`,
               },
@@ -119,7 +119,7 @@ export default function WikiPage() {
   const fetchWikiData = async () => {
     try {
       // Fetch departments
-      const deptResponse = await fetch('http://localhost:4000/api/wiki/departments');
+      const deptResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wiki/departments`);
       const deptData = await deptResponse.json();
       setDepartments(deptData);
 
@@ -127,7 +127,7 @@ export default function WikiPage() {
       const topicsData: DepartmentTopics = {};
       for (const dept of deptData) {
         try {
-          const topicsResponse = await fetch(`http://localhost:4000/api/wiki/${dept}/topics`);
+          const topicsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wiki/${dept}/topics`);
           if (topicsResponse.ok) {
             const topics = await topicsResponse.json();
             topicsData[dept] = topics;

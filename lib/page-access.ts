@@ -43,8 +43,11 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
       return cachedEntry.pages.has(pagePath);
     }
     
-    // If not in cache or cache expired, fetch user data and pages
-    const response = await fetch('http://localhost:4000/api/profile', {
+    // If not in cache or cache expired, fetch from backend
+    // Get API URL from environment variable, fallback to localhost for development
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    
+    const response = await fetch(`${apiUrl}/api/profile`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -77,7 +80,8 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
       if (role) {
         try {
           // Fetch role-specific pages using the role name
-          const roleResponse = await fetch(`http://localhost:4000/api/admin/roles/${encodeURIComponent(role)}/pages`, {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          const roleResponse = await fetch(`${apiUrl}/api/admin/roles/${encodeURIComponent(role)}/pages`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -98,7 +102,10 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
         if (pages.length === 0) {
           try {
             // Fetch department ID first
-            const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
+            // Get API URL from environment variable, fallback to localhost for development
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+            
+            const deptIdResponse = await fetch(`${apiUrl}/api/admin/departments`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
               },
@@ -110,7 +117,10 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
               
               if (departmentData) {
                 // Fetch department-specific pages using the department ID
-                const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
+                // Get API URL from environment variable, fallback to localhost for development
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                              
+                const deptResponse = await fetch(`${apiUrl}/api/admin/departments/${departmentData.id}/pages`, {
                   headers: {
                     'Authorization': `Bearer ${token}`,
                   },
@@ -134,7 +144,10 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
       } else {
         try {
           // Fetch department ID first
-          const deptIdResponse = await fetch('http://localhost:4000/api/admin/departments', {
+          // Get API URL from environment variable, fallback to localhost for development
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          
+          const deptIdResponse = await fetch(`${apiUrl}/api/admin/departments`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -146,7 +159,10 @@ export async function hasPageAccess(userId: string | number, pagePath: string): 
             
             if (departmentData) {
               // Fetch department-specific pages using the department ID
-              const deptResponse = await fetch(`http://localhost:4000/api/admin/departments/${departmentData.id}/pages`, {
+              // Get API URL from environment variable, fallback to localhost for development
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+              
+              const deptResponse = await fetch(`${apiUrl}/api/admin/departments/${departmentData.id}/pages`, {
                 headers: {
                   'Authorization': `Bearer ${token}`,
                 },

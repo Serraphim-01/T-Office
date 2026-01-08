@@ -224,7 +224,8 @@ export default function WikiLessonPage() {
 
   const fetchLesson = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}`);
       if (response.ok) {
         const data = await response.json();
         setLesson(data);
@@ -246,7 +247,8 @@ export default function WikiLessonPage() {
 
   const fetchCompletionStatus = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/completion`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}/completion`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -262,7 +264,8 @@ export default function WikiLessonPage() {
 
   const fetchNextLesson = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/next`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}/next`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -278,7 +281,8 @@ export default function WikiLessonPage() {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/comments`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}/comments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -299,7 +303,8 @@ export default function WikiLessonPage() {
     if (!comment.trim()) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/comment`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,7 +345,8 @@ export default function WikiLessonPage() {
 
   const markLessonCompleted = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}/completion`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}/completion`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -364,7 +370,8 @@ export default function WikiLessonPage() {
     if (!confirm('Are you sure you want to delete this topic?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -422,7 +429,8 @@ export default function WikiLessonPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${department}/${topic}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${department}/${topic}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -592,7 +600,8 @@ export default function WikiLessonPage() {
 
             // Check if the linked lesson is completed
             try {
-              const response = await fetch(`http://localhost:4000/api/wiki/${linkDepartment}/${linkTopic}/completion`, {
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+              const response = await fetch(`${apiUrl}/api/wiki/${linkDepartment}/${linkTopic}/completion`, {
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`,
                 },

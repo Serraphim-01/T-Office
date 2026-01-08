@@ -46,7 +46,8 @@ export default function InboundTransactionDetailsPage() {
   const fetchTransactionDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -68,7 +69,8 @@ export default function InboundTransactionDetailsPage() {
   const handleMarkAsStored = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}/store`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}/store`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -97,7 +99,8 @@ export default function InboundTransactionDetailsPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/inbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

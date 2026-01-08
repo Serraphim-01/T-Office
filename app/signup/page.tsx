@@ -60,8 +60,9 @@ export default function SignupPage() {
 
   const loadDepartments = async () => {
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       // Use public endpoint for departments during signup
-      const deptResponse = await fetch('http://localhost:4000/api/public/departments');
+      const deptResponse = await fetch(`${apiUrl}/api/public/departments`);
       
       if (!deptResponse.ok) {
         throw new Error('Failed to fetch departments');
@@ -88,8 +89,9 @@ export default function SignupPage() {
 
   const loadRoles = async (deptName: string) => {
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       // First get department ID (using public endpoint)
-      const deptResponse = await fetch('http://localhost:4000/api/public/departments');
+      const deptResponse = await fetch(`${apiUrl}/api/public/departments`);
       
       if (!deptResponse.ok) {
         throw new Error('Failed to fetch departments');
@@ -103,7 +105,7 @@ export default function SignupPage() {
       }
       
       // Now get roles for this department using the new public endpoint
-      const rolesResponse = await fetch(`http://localhost:4000/api/public/roles/${departmentData.id}`);
+      const rolesResponse = await fetch(`${apiUrl}/api/public/roles/${departmentData.id}`);
       
       if (!rolesResponse.ok) {
         throw new Error('Failed to fetch roles');
@@ -144,7 +146,8 @@ export default function SignupPage() {
 
     try {
       console.log('Step 1: Sending signup request to backend');
-      const response = await fetch('http://localhost:4000/api/signup', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

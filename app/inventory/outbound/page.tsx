@@ -155,7 +155,8 @@ function OutboundContent() {
   const fetchOutboundTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/outbound', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -185,7 +186,8 @@ function OutboundContent() {
   const fetchStoredTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/inbound/store', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/store`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -207,13 +209,14 @@ function OutboundContent() {
       const token = localStorage.getItem('token');
       
       // Fetch both product serial numbers and product details
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const [serialsResponse, productResponse] = await Promise.all([
-        fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
+        fetch(`${apiUrl}/api/inventory/inbound/store/product/${productId}/serials`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch(`http://localhost:4000/api/inventory/products/${productId}`, {
+        fetch(`${apiUrl}/api/inventory/products/${productId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -305,7 +308,8 @@ function OutboundContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/outbound', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +364,8 @@ function OutboundContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/${id}/${status.toLowerCase()}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -399,7 +404,8 @@ function OutboundContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/outbound/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -436,7 +442,8 @@ function OutboundContent() {
                 onClick={async () => {
                   try {
                     const token = localStorage.getItem('token');
-                    const response = await fetch('http://localhost:4000/api/inventory/export/outbound', {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                    const response = await fetch(`${apiUrl}/api/inventory/export/outbound`, {
                       headers: {
                         'Authorization': `Bearer ${token}`
                       }

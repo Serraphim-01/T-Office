@@ -76,7 +76,8 @@ export default function CreateWikiPage() {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/wiki/departments');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/departments`);
       const data = await response.json();
       setDepartments(data);
 
@@ -84,7 +85,7 @@ export default function CreateWikiPage() {
       const topicsData: {[key: string]: Array<{id: number, topic: string}>} = {};
       for (const dept of data) {
         try {
-          const topicsResponse = await fetch(`http://localhost:4000/api/wiki/${dept}/topics`);
+          const topicsResponse = await fetch(`${apiUrl}/api/wiki/${dept}/topics`);
           if (topicsResponse.ok) {
             const topics = await topicsResponse.json();
             topicsData[dept] = topics;
@@ -140,7 +141,8 @@ export default function CreateWikiPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:4000/api/wiki/${formData.department}/${formData.topic}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/wiki/${formData.department}/${formData.topic}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

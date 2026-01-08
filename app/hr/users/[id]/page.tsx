@@ -97,7 +97,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     if (currentUser) {
       // Initialize socket connection
-      socketRef.current = io('http://localhost:4000');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      socketRef.current = io(apiUrl);
       
       // Listen for attendance updates
       socketRef.current.on('attendance_updated', (data: { userId: number, record: any, type: string }) => {
@@ -172,7 +173,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
   const fetchUserDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/users/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -190,7 +192,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
   const fetchUserAttendance = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/attendance/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/attendance/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -217,7 +220,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
   const fetchUserWikiCompletions = async () => {
     try {
-      const response = await fetch(`http://localhost:4000/api/hr/wiki-completions/${params.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/wiki-completions/${params.id}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -234,7 +238,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   const fetchSupportStaffAssignments = async (userId: string) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/users/${userId}/support-staff`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

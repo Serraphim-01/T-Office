@@ -188,7 +188,8 @@ function ProductsContent() {
   const fetchProviders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/providers', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -208,7 +209,8 @@ function ProductsContent() {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/products', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/products`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -284,7 +286,8 @@ function ProductsContent() {
       // Assign user to provider if selected
       if (assignedUserId) {
         try {
-          const assignResponse = await fetch(`http://localhost:4000/api/inventory/providers/${provider.id}/assign-user`, {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          const assignResponse = await fetch(`${apiUrl}/api/inventory/providers/${provider.id}/assign-user`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -335,7 +338,8 @@ function ProductsContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${createdProviderId}/products`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${createdProviderId}/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -397,7 +401,8 @@ function ProductsContent() {
       
       // Add all batch products with the same default price
       for (const product of batchProducts) {
-        const response = await fetch(`http://localhost:4000/api/inventory/providers/${createdProviderId}/products`, {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/inventory/providers/${createdProviderId}/products`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -493,7 +498,8 @@ function ProductsContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/products/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/products/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -526,7 +532,8 @@ function ProductsContent() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:4000/api/inventory/providers/${id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/providers/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -569,7 +576,8 @@ const handleCreateProduct = async (e: React.FormEvent) => {
   
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:4000/api/inventory/products', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const response = await fetch(`${apiUrl}/api/inventory/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -673,7 +681,8 @@ useEffect(() => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/hr/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/hr/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -707,7 +716,8 @@ useEffect(() => {
                       formData.append('file', file);
 
                       const token = localStorage.getItem('token');
-                      const response = await fetch('http://localhost:4000/api/inventory/products/import', {
+                      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                      const response = await fetch(`${apiUrl}/api/inventory/products/import`, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${token}`
@@ -752,7 +762,8 @@ useEffect(() => {
                       formData.append('file', file);
 
                       const token = localStorage.getItem('token');
-                      const response = await fetch('http://localhost:4000/api/inventory/comprehensive-import', {
+                      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                      const response = await fetch(`${apiUrl}/api/inventory/comprehensive-import`, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${token}`
@@ -797,7 +808,8 @@ useEffect(() => {
                   onExport={async (exportType) => {
                     try {
                       const token = localStorage.getItem('token');
-                      const response = await fetch(`http://localhost:4000/api/inventory/export/${exportType}`, {
+                      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                      const response = await fetch(`${apiUrl}/api/inventory/export/${exportType}`, {
                         headers: {
                           'Authorization': `Bearer ${token}`
                         }

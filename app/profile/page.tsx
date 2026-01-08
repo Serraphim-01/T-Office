@@ -183,15 +183,17 @@ export default function ProfilePage() {
     }
     
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      
       // Fetch profile data
-      const profileResponse = await fetch('http://localhost:4000/api/profile', {
+      const profileResponse = await fetch(`${apiUrl}/api/profile`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
       // Fetch queries data
-      const queriesResponse = await fetch('http://localhost:4000/api/profile/queries', {
+      const queriesResponse = await fetch(`${apiUrl}/api/profile/queries`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -201,7 +203,7 @@ export default function ProfilePage() {
       const userId = user.id; // Now we can safely access user.id
       // Removed console statement for production
       
-      const supportStaffResponse = await fetch(`http://localhost:4000/api/users/${userId}/support-staff`, {
+      const supportStaffResponse = await fetch(`${apiUrl}/api/users/${userId}/support-staff`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -293,7 +295,8 @@ export default function ProfilePage() {
     if (!newCert.title || !newCert.issuer) return;
 
     try {
-      const response = await fetch('http://localhost:4000/api/profile/certifications', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/profile/certifications`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -344,7 +347,8 @@ export default function ProfilePage() {
 
   const deleteCertification = async (certId: string) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/profile/certifications/${certId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/profile/certifications/${certId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -387,8 +391,9 @@ export default function ProfilePage() {
     if (!selectedQuery || !replyText.trim()) return;
 
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       // Reply to query without locking it when user replies from profile
-      const response = await fetch(`http://localhost:4000/api/hr/queries/${selectedQuery.id}/reply`, {
+      const response = await fetch(`${apiUrl}/api/hr/queries/${selectedQuery.id}/reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -409,7 +414,7 @@ export default function ProfilePage() {
         
         // Also refresh query replies in case this page is open in another tab
         try {
-          const response = await fetch('http://localhost:4000/api/hr/queries-replies', {
+          const response = await fetch(`${apiUrl}/api/hr/queries-replies`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -441,7 +446,8 @@ export default function ProfilePage() {
 
   const submitQuery = async (subject: string, description: string, query_type: string) => {
     try {
-      const response = await fetch('http://localhost:4000/api/profile/queries', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/profile/queries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -486,7 +492,8 @@ export default function ProfilePage() {
         const [mimePart, base64Data] = dataUrl.split(',');
         const mimeType = mimePart.split(':')[1].split(';')[0];
         
-        const response = await fetch('http://localhost:4000/api/profile/picture', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/profile/picture`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -541,7 +548,8 @@ export default function ProfilePage() {
   
   const handleProfilePictureDelete = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/profile/picture', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/profile/picture`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

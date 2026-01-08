@@ -138,7 +138,8 @@ function StoreContent() {
   const fetchStoredTransactions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/inventory/inbound/store', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/inbound/store`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -162,13 +163,14 @@ function StoreContent() {
       const token = localStorage.getItem('token');
       
       // Fetch both product serial numbers and product details
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const [serialsResponse, productResponse] = await Promise.all([
-        fetch(`http://localhost:4000/api/inventory/inbound/store/product/${productId}/serials`, {
+        fetch(`${apiUrl}/api/inventory/inbound/store/product/${productId}/serials`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch(`http://localhost:4000/api/inventory/products/${productId}`, {
+        fetch(`${apiUrl}/api/inventory/products/${productId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -235,7 +237,7 @@ function StoreContent() {
     
     // Validate form
     if (!selectedTransactionId || selectedSerialNumbers.length === 0 || !receiverAddress || !receiverEmail || !receiverPhone || 
-        !dispatchDate || !dispatchTime || !deliveryDate || !deliveryTime) {
+      !dispatchDate || !dispatchTime || !deliveryDate || !deliveryTime) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields and select at least one serial number',
@@ -274,7 +276,8 @@ function StoreContent() {
         serialPricesArray = selectedSerialNumbers.map(sn => serialNumberPrices[sn] || 0);
       }
       
-      const response = await fetch('http://localhost:4000/api/inventory/outbound/multi', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/multi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +332,8 @@ function StoreContent() {
               onClick={async () => {
                 try {
                   const token = localStorage.getItem('token');
-                  const response = await fetch('http://localhost:4000/api/inventory/export/stored', {
+                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                  const response = await fetch(`${apiUrl}/api/inventory/export/stored`, {
                     headers: {
                       'Authorization': `Bearer ${token}`
                     }

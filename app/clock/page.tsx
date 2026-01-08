@@ -83,7 +83,8 @@ export default function ClockPage() {
   useEffect(() => {
     if (user) {
       // Initialize socket connection
-      socketRef.current = io('http://localhost:4000');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      socketRef.current = io(apiUrl);
       
       // Listen for location added events
       socketRef.current.on('location_added', (newLocation: UserLocation) => {
@@ -146,7 +147,8 @@ export default function ClockPage() {
 
   const fetchLocations = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/locations', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/locations`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -162,7 +164,8 @@ export default function ClockPage() {
 
   const fetchUserLocations = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/user-locations', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/user-locations`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -178,7 +181,8 @@ export default function ClockPage() {
 
   const fetchAttendanceRecords = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/attendance', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/attendance`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -260,7 +264,8 @@ export default function ClockPage() {
 
   const handleClockIn = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/attendance/clock-in', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/attendance/clock-in`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,7 +293,8 @@ export default function ClockPage() {
 
   const handleClockOut = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/attendance/clock-out', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/attendance/clock-out`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +330,8 @@ export default function ClockPage() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:4000/api/user-locations', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/user-locations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -385,7 +392,8 @@ export default function ClockPage() {
 
   const handleToggleLocation = async (locationId: number, checked: boolean) => {
     try {
-      const response = await fetch(`http://localhost:4000/api/user-locations/${locationId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/user-locations/${locationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -414,7 +422,8 @@ export default function ClockPage() {
     if (!confirm('Are you sure you want to delete this location?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/api/user-locations/${locationId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/user-locations/${locationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
