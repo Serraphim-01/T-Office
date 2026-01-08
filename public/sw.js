@@ -30,11 +30,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const pathname = url.pathname;
   
+  // Don't intercept API calls, authentication endpoints, or critical assets
   if (pathname === '/manifest.json' || 
       pathname === '/sw.js' || 
       pathname === '/favicon.ico' || 
       pathname.startsWith('/_next/') ||
-      pathname.endsWith('.json')) {
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/auth/') ||
+      pathname.startsWith('/login/') ||
+      pathname.startsWith('/signup/')) {
     // Don't cache or intercept these files, let them be fetched directly
     event.respondWith(fetch(event.request));
     return;
