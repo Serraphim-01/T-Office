@@ -1,0 +1,40 @@
+{
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "x-vercel-protection-bypass",
+          "value": "public"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "x-vercel-protection-bypass",
+          "value": "public"
+        }
+      ]
+    },
+    {
+      "source": "/favicon.ico",
+      "headers": [
+        {
+          "key": "x-vercel-protection-bypass",
+          "value": "public"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "x-vercel-protection-bypass",
+          "value": "public"
+        }
+      ]
+    }
+  ]
+}
