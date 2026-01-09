@@ -17,6 +17,17 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
           });
       });
     }
+
+    // Dynamically add manifest link with the new URL to bypass Vercel SSO
+    if ('manifest' in document.createElement('link')) {
+      const existingLink = document.querySelector('link[rel="manifest"]');
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = '/app-manifest.json';
+        document.head.appendChild(link);
+      }
+    }
   }, []);
 
   return (

@@ -1,38 +1,21 @@
 {
+  "rewrites": [
+    {
+      "source": "/app-manifest.json",
+      "destination": "/manifest.json"
+    }
+  ],
   "headers": [
     {
-      "source": "/manifest.json",
+      "source": "/app-manifest.json",
       "headers": [
         {
-          "key": "x-vercel-protection-bypass",
-          "value": "public"
-        }
-      ]
-    },
-    {
-      "source": "/sw.js",
-      "headers": [
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        },
         {
-          "key": "x-vercel-protection-bypass",
-          "value": "public"
-        }
-      ]
-    },
-    {
-      "source": "/favicon.ico",
-      "headers": [
-        {
-          "key": "x-vercel-protection-bypass",
-          "value": "public"
-        }
-      ]
-    },
-    {
-      "source": "/_next/static/(.*)",
-      "headers": [
-        {
-          "key": "x-vercel-protection-bypass",
-          "value": "public"
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     }

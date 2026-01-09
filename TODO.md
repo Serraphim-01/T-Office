@@ -8,13 +8,16 @@
 ## Tasks
 - [x] Update public/sw.js to skip all /api/* routes
 - [x] Ensure manifest.json is not intercepted
-- [x] Create vercel.json to bypass Vercel SSO for static assets
+- [x] Create vercel.json with rewrite to bypass Vercel SSO
+- [x] Update PWA provider to use new manifest URL
+- [x] Remove manifest from layout metadata
 - [ ] Deploy and test the fix
 
 ## Testing Results
 - [x] Service Worker updated to skip API routes
-- [x] vercel.json created for SSO bypass
-- [ ] Deploy and verify manifest.json accessible
+- [x] vercel.json created with /app-manifest.json rewrite
+- [x] PWA provider updated to dynamically add manifest link
+- [ ] Deploy and verify /app-manifest.json accessible
 
 ## Files to Edit
 - public/sw.js
