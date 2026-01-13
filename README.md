@@ -156,12 +156,6 @@ For a detailed history of changes to the project, see [CHANGELOG.md](CHANGELOG.m
 - `npm run lint` - Run ESLint
 - `npm run changelog` - View the project changelog
 
-## Docker Support
-
-The application includes Docker configuration for easy deployment:
-```bash
-docker-compose up --build
-```
 
 ## Contributing
 

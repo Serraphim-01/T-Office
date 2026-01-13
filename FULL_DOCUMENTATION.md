@@ -357,7 +357,6 @@ flowchart LR
 ### DevOps & Tooling
 - **Build Tool**: npm scripts
 - **Development Orchestration**: concurrently
-- **Containerization**: Docker
 - **Linting**: ESLint + TypeScript
 
 ---
@@ -1042,18 +1041,7 @@ npm run build
 npm start
 ```
 
-Or using Docker:
-```bash
-docker build -t toffice .
-docker run -p 3000:3000 toffice
-```
 
-### Docker Support
-
-The application includes Docker configuration for easy deployment:
-```bash
-docker-compose up --build
-```
 
 ---
 
