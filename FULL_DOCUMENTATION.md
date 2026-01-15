@@ -351,7 +351,7 @@ flowchart LR
 - **Framework**: Express
 - **Database**: PostgreSQL (pg driver)
 - **Authentication**: JWT
-- **Password Security**: bcrypt
+- **Password Security**: bcryptjs
 - **Environment Management**: dotenv
 
 ### DevOps & Tooling

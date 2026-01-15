@@ -1,6 +1,6 @@
 import express from "express";
 import { authenticateJWT, saltRounds } from "./auth.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 // Import the helper functions for notifications
 import {
   getUsersToNotifyOnOnboarding,
