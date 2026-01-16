@@ -5,7 +5,7 @@
 
 echo "Starting database migration..."
 
-# Load environment variables from .env.local if it exists
+# Load environment variables - try .env.local first, fallback to .env
 ENV_FILE="../.env.local"
 if [ -f "$ENV_FILE" ]; then
   echo "Loading environment variables from $ENV_FILE"
@@ -14,7 +14,18 @@ if [ -f "$ENV_FILE" ]; then
   source "$ENV_FILE"
   set +a
 else
-  echo "Warning: $ENV_FILE not found. Make sure to set DATABASE_URL before running migrations."
+  # Fallback to .env if .env.local doesn't exist
+  ENV_FILE="../.env"
+  if [ -f "$ENV_FILE" ]; then
+    echo "Loading environment variables from $ENV_FILE (fallback)"
+    set -a
+    source "$ENV_FILE"
+    set +a
+  else
+    echo "Error: DATABASE_URL environment variable is not set."
+echo "Please set DATABASE_URL in your .env.local or .env file."
+exit 1
+  fi
 fi
 
 # Check if we're in the right directory by looking for key files
@@ -37,7 +48,7 @@ fi
 # Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
   echo "Error: DATABASE_URL environment variable is not set."
-  echo "Please set DATABASE_URL in your .env file."
+  echo "Please set DATABASE_URL in your .env.local or .env file."
   exit 1
 fi
 
@@ -45,7 +56,12 @@ echo "Running create_migration.sql with Node.js..."
 node -e "
 const fs = require('fs');
 const { Client } = require('pg');
-require('dotenv').config({ path: '../.env' });
+// Try .env.local first, fallback to .env
+require('dotenv').config({ path: '../.env.local' });
+// If DATABASE_URL not found, try .env as fallback
+if (!process.env.DATABASE_URL) {
+  require('dotenv').config({ path: '../.env' });
+}
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL
