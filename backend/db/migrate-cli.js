@@ -3,7 +3,12 @@
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import dotenv from 'dotenv';
 import runMigrations from './migrate.js';
+
+// Load environment variables from both .env and .env.local to ensure compatibility
+dotenv.config({ path: resolve(process.cwd(), '.env') });
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 
 // Parse command line arguments
 const args = process.argv.slice(2);

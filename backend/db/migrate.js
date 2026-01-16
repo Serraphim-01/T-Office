@@ -3,8 +3,9 @@ import { resolve } from 'path';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
-// Load environment variables
+// Load environment variables from both .env and .env.local to ensure compatibility
 dotenv.config({ path: resolve(process.cwd(), '.env') });
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 
 // Create database pool using DATABASE_URL from environment
 const pool = new Pool({
