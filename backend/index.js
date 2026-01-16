@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import pkg from "pg";
 const { Pool } = pkg;
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -30,9 +30,27 @@ const app = express();
 // ------------------------
 // Enable CORS for frontend
 // ------------------------
+// Configure CORS to support both localhost and production environments
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  // Load production URLs from environment variables
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim()) : [])
+];
+
 app.use(
   cors({
-    origin: "http://localhost:3000", // frontend requests
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if the origin is in the allowed list
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === "development") {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
@@ -73,8 +91,19 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if the origin is in the allowed list
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by Socket CORS"));
+      }
+    },
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 

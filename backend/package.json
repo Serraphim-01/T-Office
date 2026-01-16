@@ -9,12 +9,13 @@
     "dev": "nodemon index.js",
     "migrate": "node db/migrate-cli.js up",
     "create-migration": "node db/migrate-cli.js create",
-    "db:init": "node db-init.js"
+    "db:init": "node db-init.js",
+    "db:drop": "node db-drop.js"
   },
   "dependencies": {
     "@googlemaps/react-wrapper": "^1.2.0",
     "axios": "^1.6.0",
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.4.1",
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
