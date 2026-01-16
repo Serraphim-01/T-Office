@@ -23,7 +23,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgres://postgres:password@db:5433/office
+      - DATABASE_URL=postgres://postgres:password@db:5432/office
     command: npm run dev
     depends_on:
       - db
