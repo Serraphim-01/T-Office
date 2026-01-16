@@ -23,7 +23,9 @@ DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
 DROP TRIGGER IF EXISTS update_wiki_comments_updated_at ON wiki_comments;
 DROP TRIGGER IF EXISTS update_user_support_assignments_updated_at ON user_support_assignments;
 DROP TRIGGER IF EXISTS update_provider_user_assignments_updated_at ON provider_user_assignments;
-DROP TRIGGER IF EXISTS update_user_notifications_updated_at ON user_notifications; -- Add this line
+DROP TRIGGER IF EXISTS update_user_notifications_updated_at ON user_notifications;
+DROP TRIGGER IF EXISTS update_chat_settings_updated_at ON chat_settings;
+DROP TRIGGER IF EXISTS update_global_chat_settings_updated_at ON global_chat_settings;
 
 -- Drop indexes
 DROP INDEX IF EXISTS idx_roles_department_id;
@@ -32,6 +34,44 @@ DROP INDEX IF EXISTS idx_users_role_id;
 DROP INDEX IF EXISTS idx_products_default_unit_price;
 DROP INDEX IF EXISTS idx_inbound_transactions_batch_number;
 DROP INDEX IF EXISTS idx_outbound_transactions_prices;
+DROP INDEX IF EXISTS idx_users_department;
+DROP INDEX IF EXISTS idx_users_email;
+DROP INDEX IF EXISTS idx_user_activities_user_timestamp;
+DROP INDEX IF EXISTS idx_user_details_user_id;
+DROP INDEX IF EXISTS idx_chat_messages_created_at;
+DROP INDEX IF EXISTS idx_chat_summaries_user_created;
+DROP INDEX IF EXISTS idx_attendance_user_date;
+DROP INDEX IF EXISTS idx_hr_queries_assigned_to;
+DROP INDEX IF EXISTS idx_hr_queries_user_id;
+DROP INDEX IF EXISTS idx_hr_queries_query_type;
+DROP INDEX IF EXISTS idx_query_replies_query_id;
+DROP INDEX IF EXISTS idx_inductions_department;
+DROP INDEX IF EXISTS idx_inductions_time;
+DROP INDEX IF EXISTS idx_wiki_topics_department;
+DROP INDEX IF EXISTS idx_wiki_topics_topic;
+DROP INDEX IF EXISTS idx_wiki_questions_topic_id;
+DROP INDEX IF EXISTS idx_wiki_completions_user_id;
+DROP INDEX IF EXISTS idx_wiki_completions_topic_id;
+DROP INDEX IF EXISTS idx_wiki_comments_user_id;
+DROP INDEX IF EXISTS idx_wiki_comments_topic_id;
+DROP INDEX IF EXISTS idx_user_locations_user_id;
+DROP INDEX IF EXISTS idx_user_locations_active;
+DROP INDEX IF EXISTS idx_location_events_user_timestamp;
+DROP INDEX IF EXISTS idx_location_events_location_timestamp;
+DROP INDEX IF EXISTS idx_auto_attendance_user_timestamp;
+DROP INDEX IF EXISTS idx_providers_name;
+DROP INDEX IF EXISTS idx_products_name;
+DROP INDEX IF EXISTS idx_products_part_number;
+DROP INDEX IF EXISTS idx_products_provider_id;
+DROP INDEX IF EXISTS idx_inbound_transactions_product_id;
+DROP INDEX IF EXISTS idx_inbound_transactions_provider_id;
+DROP INDEX IF EXISTS idx_inbound_transactions_status;
+DROP INDEX IF EXISTS idx_inbound_serial_numbers_transaction_id;
+DROP INDEX IF EXISTS idx_outbound_transactions_inbound_id;
+DROP INDEX IF EXISTS idx_outbound_transactions_status;
+DROP INDEX IF EXISTS idx_outbound_serial_numbers_transaction_id;
+DROP INDEX IF EXISTS idx_user_support_assignments_user_id;
+DROP INDEX IF EXISTS idx_user_support_assignments_support_staff_id;
 
 -- Drop tables in reverse order of creation (due to foreign key constraints)
 DROP TABLE IF EXISTS wiki_comments CASCADE;
@@ -39,10 +79,11 @@ DROP TABLE IF EXISTS wiki_lesson_completions CASCADE;
 DROP TABLE IF EXISTS wiki_questions CASCADE;
 DROP TABLE IF EXISTS wiki_topics CASCADE;
 DROP TABLE IF EXISTS user_activities CASCADE;
-DROP TABLE IF EXISTS user_details CASCADE;
 DROP TABLE IF EXISTS chat_summaries CASCADE;
 DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS chat_settings CASCADE;
+DROP TABLE IF EXISTS global_chat_settings CASCADE;
+DROP TABLE IF EXISTS user_details CASCADE;
 DROP TABLE IF EXISTS attendance CASCADE;
 DROP TABLE IF EXISTS inductions CASCADE;
 DROP TABLE IF EXISTS query_replies CASCADE;
@@ -66,7 +107,10 @@ DROP TABLE IF EXISTS user_support_assignments CASCADE;
 DROP TABLE IF EXISTS provider_user_assignments CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS providers CASCADE;
-DROP TABLE IF EXISTS user_notifications CASCADE; -- Add this line
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS migration_history CASCADE;
+DROP TABLE IF EXISTS wiki_comments CASCADE;
+DROP TABLE IF EXISTS user_notifications CASCADE;
 
 -- Remove role_id column from users table (only if table exists)
 DO $$ BEGIN

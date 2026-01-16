@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import pkg from "pg";
 const { Pool } = pkg;
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -30,9 +30,28 @@ const app = express();
 // ------------------------
 // Enable CORS for frontend
 // ------------------------
+// Configure CORS to support both localhost and production environments
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  // Add your production URLs here
+  "https://your-production-url.vercel.app",
+  "https://your-custom-domain.com"
+];
+
 app.use(
   cors({
-    origin: "http://localhost:3000", // frontend requests
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Check if the origin is in the allowed list
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === "development") {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
