@@ -105,7 +105,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!token) return;
     
     try {
-      const response = await fetch(`/api/notifications/${user.id}`, {
+      // Use the API utility to get the correct backend URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/notifications/${user.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -443,7 +445,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         if (!token) return;
         
         try {
-          await fetch('/api/set-current-page', {
+          // Use the API utility to get the correct backend URL
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+          await fetch(`${apiUrl}/api/set-current-page`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -606,7 +610,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!token) return;
       
       try {
-        await fetch(`/api/notifications/${id}/read`, {
+        // Use the API utility to get the correct backend URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        await fetch(`${apiUrl}/api/notifications/${id}/read`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -643,7 +649,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!token) return;
       
       try {
-        await fetch('/api/notifications/read-all', {
+        // Use the API utility to get the correct backend URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        await fetch(`${apiUrl}/api/notifications/read-all`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -673,7 +681,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!token) return;
       
       try {
-        await fetch('/api/notifications/read', {
+        // Use the API utility to get the correct backend URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        await fetch(`${apiUrl}/api/notifications/read`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
