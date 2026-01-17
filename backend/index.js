@@ -14,6 +14,7 @@ import { logActivity } from "./activity.js";
 import adminRoutes from "./routes/admin.js";
 import hrRoutes from "./routes/hr.js";
 import chatRoutes from "./routes/chat.js";
+import chatbotRoutes from "./routes/chatbot.js";
 import profileRoutes from "./routes/profile.js";
 import wikiRoutes from "./routes/wiki.js";
 import locationRoutes from "./routes/locations.js";
@@ -695,6 +696,7 @@ app.post("/api/login", async (req, res) => {
 app.use("/api/admin", adminRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/wiki", wikiRoutes);
 app.use("/api", locationRoutes);

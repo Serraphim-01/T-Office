@@ -1,9 +1,8 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { X, Bot } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { X } from 'lucide-react';
+import { ChatbotComponent } from './chatbot-component';
 
 interface ChatbotSidebarProps {
   isOpen: boolean; 
@@ -60,22 +59,7 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
           ref={panelRef}
           className="relative h-full w-[50vw] max-w-[600px] min-w-[400px] bg-white shadow-xl border-l border-gray-200 flex flex-col z-50"
         >
-          <Card className="flex-1 flex flex-col h-full rounded-none border-0 border-l">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b">
-              <div className="flex items-center">
-                <Bot className="h-5 w-5 mr-2 text-primary" />
-                <CardTitle className="text-lg font-semibold">AI Assistant</CardTitle>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
-                <X className="h-4 w-4" />
-              </Button>
-            </CardHeader>
-            <CardContent className="flex-1 p-0 flex flex-col items-center justify-center p-6">
-              <Bot className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
-              <p className="text-gray-500 text-center">The AI assistant feature is coming soon</p>
-            </CardContent>
-          </Card>
+          <ChatbotComponent isOpen={isOpen} onClose={onClose} />
         </div>
       </div>
     </>
