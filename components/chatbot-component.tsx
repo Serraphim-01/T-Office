@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, BarChart3, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
@@ -26,7 +26,7 @@ export function ChatbotComponent({ isOpen, onClose }: ChatbotComponentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { user, logout } = useAuth(); // Destructure logout function
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -76,6 +76,18 @@ export function ChatbotComponent({ isOpen, onClose }: ChatbotComponentProps) {
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          // Token is invalid, logout the user
+          logout();
+          const errorMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            content: 'Your session has expired. Please log in again to continue using the chatbot.',
+            sender: 'bot',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, errorMessage]);
+          return;
+        }
         throw new Error('Failed to get response');
       }
 
@@ -148,7 +160,13 @@ export function ChatbotComponent({ isOpen, onClose }: ChatbotComponentProps) {
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                     Wiki Topics
                   </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                    Analytics
+                  </span>
                 </div>
+                <p className="text-gray-600 mt-4">
+                  Try asking: "Show user analytics", "Generate reports", or "How many active vs inactive users?"
+                </p>
               </div>
             )}
             
@@ -216,7 +234,7 @@ export function ChatbotComponent({ isOpen, onClose }: ChatbotComponentProps) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about the system..."
+              placeholder="Ask me anything about the system (try: 'Show user analytics', 'Compare active vs inactive users', etc.)..."
               className="flex-1 resize-none"
               rows={2}
               disabled={isLoading}

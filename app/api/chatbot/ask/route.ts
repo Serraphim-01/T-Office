@@ -7,7 +7,15 @@ export async function POST(request: NextRequest) {
     
     // Get the token from the authorization header
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+
+    // Validate token exists and is not malformed
+    if (!token || token.length < 10) { // Basic validation to avoid sending invalid tokens
+      return Response.json(
+        { error: 'Invalid or missing authorization token' },
+        { status: 401 }
+      );
+    }
 
     // Forward the request to the backend
     const backendResponse = await apiPost('/api/chatbot/ask', { question, sessionId }, token);
