@@ -718,7 +718,7 @@ router.post("/location-status", authenticateJWT, async (req, res) => {
 
 // Get user's attendance records
 router.get("/attendance", authenticateJWT, async (req, res) => {
-  const { date } = req.query;
+  const { date, limit = 50 } = req.query; // Default to 50, but allow specifying limit
 
   try {
     let query = `
@@ -736,6 +736,10 @@ router.get("/attendance", authenticateJWT, async (req, res) => {
     }
 
     query += ' ORDER BY aa.timestamp DESC';
+    
+    // Add LIMIT clause based on the limit parameter
+    query += ' LIMIT $' + (params.length + 1);
+    params.push(parseInt(limit));
 
     const result = await req.pool.query(query, params);
     res.json(result.rows);

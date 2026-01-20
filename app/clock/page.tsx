@@ -182,7 +182,7 @@ export default function ClockPage() {
   const fetchAttendanceRecords = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/attendance`, {
+      const response = await fetch(`${apiUrl}/api/attendance?limit=5`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
