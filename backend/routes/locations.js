@@ -774,8 +774,8 @@ router.get("/attendance-analytics", authenticateJWT, async (req, res) => {
       weekly_averages AS (
         SELECT 
           lw.week_start,
-          AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_in_hour,
-          AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_out_hour
+          ROUND(AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_in_hour,
+          ROUND(AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_out_hour
         FROM last_5_weeks lw
         LEFT JOIN user_attendance ua ON lw.week_start = ua.week_start
         GROUP BY lw.week_start
