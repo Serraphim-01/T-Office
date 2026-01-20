@@ -745,6 +745,97 @@ router.get("/attendance", authenticateJWT, async (req, res) => {
   }
 });
 
+// Get attendance analytics for the current user
+router.get("/attendance-analytics", authenticateJWT, async (req, res) => {
+  const userId = req.user.userId;
+
+  try {
+    // Get attendance data for the last 5 weeks
+    const query = `
+      WITH weekly_data AS (
+        SELECT 
+          EXTRACT(WEEK FROM timestamp) as week_number,
+          EXTRACT(YEAR FROM timestamp) as year,
+          event_type,
+          timestamp,
+          DATE_TRUNC('week', timestamp)::date as week_start
+        FROM auto_attendance 
+        WHERE user_id = $1 
+          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
+          AND event_type IN ('clock_in', 'clock_out')
+      ),
+      weekly_avg_times AS (
+        SELECT 
+          week_start,
+          AVG(CASE WHEN event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_in_hour,
+          AVG(CASE WHEN event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_out_hour
+        FROM weekly_data
+        GROUP BY week_start
+      ),
+      weekly_counts AS (
+        SELECT 
+          DATE_TRUNC('week', timestamp)::date as week_start,
+          COUNT(*) as total_clock_ins_and_outs
+        FROM auto_attendance 
+        WHERE user_id = $1 
+          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
+          AND event_type IN ('clock_in', 'clock_out')
+        GROUP BY DATE_TRUNC('week', timestamp)::date
+      ),
+      daily_counts AS (
+        SELECT 
+          DATE_TRUNC('week', timestamp)::date as week_start,
+          COUNT(*) as total_clock_ins_and_outs
+        FROM auto_attendance 
+        WHERE user_id = $1 
+          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
+          AND event_type IN ('clock_in', 'clock_out')
+        GROUP BY DATE_TRUNC('week', timestamp)::date
+      )
+      SELECT 
+        w.week_start,
+        w.avg_clock_in_hour,
+        w.avg_clock_out_hour,
+        COALESCE(d.total_clock_ins_and_outs, 0) as total_clock_ins_and_outs
+      FROM weekly_avg_times w
+      LEFT JOIN (
+        SELECT 
+          week_start,
+          SUM(total_clock_ins_and_outs) as total_clock_ins_and_outs
+        FROM daily_counts
+        GROUP BY week_start
+      ) d ON w.week_start = d.week_start
+      ORDER BY w.week_start;
+    `;
+    
+    const result = await req.pool.query(query, [userId]);
+    
+    // Format the data for the frontend
+    const formattedData = result.rows.map(row => {
+      // Convert decimal hour values back to time format for display
+      const formatHourToTime = (hourDecimal) => {
+        if (hourDecimal === null || hourDecimal === undefined) return null;
+        
+        const hours = Math.floor(hourDecimal);
+        const minutes = Math.floor((hourDecimal - hours) * 60);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      };
+      
+      return {
+        week_start: row.week_start,
+        avg_clock_in: formatHourToTime(row.avg_clock_in_hour),
+        avg_clock_out: formatHourToTime(row.avg_clock_out_hour),
+        clock_ins_outs_count: row.total_clock_ins_and_outs
+      };
+    });
+    
+    res.json(formattedData);
+  } catch (err) {
+    console.error('Error fetching attendance analytics:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Helper function to handle automatic attendance based on location events
 async function handleAutomaticAttendance(pool, userId, locationId, eventType, locationEventId) {
   try {
