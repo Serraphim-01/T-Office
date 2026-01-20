@@ -89,7 +89,7 @@ export default function DashboardPage() {
     
     return {
       ...item,
-      weekLabel: `Week of ${new Date(item.week_start).toLocaleDateString()}`,
+      weekLabel: new Date(item.week_start).toLocaleDateString(),
       avg_clock_in_decimal: parseTimeToDecimal(item.avg_clock_in),
       avg_clock_out_decimal: parseTimeToDecimal(item.avg_clock_out),
     };

@@ -750,62 +750,55 @@ router.get("/attendance-analytics", authenticateJWT, async (req, res) => {
   const userId = req.user.userId;
 
   try {
-    // Get attendance data for the last 5 weeks
+    // Get attendance data for the last 5 weeks (including current week)
     const query = `
-      WITH weekly_data AS (
+      WITH last_5_weeks AS (
         SELECT 
-          EXTRACT(WEEK FROM timestamp) as week_number,
-          EXTRACT(YEAR FROM timestamp) as year,
+          generate_series(
+            DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '4 weeks',
+            DATE_TRUNC('week', CURRENT_DATE),
+            '1 week'
+          )::date as week_start
+      ),
+      user_attendance AS (
+        SELECT 
+          DATE_TRUNC('week', timestamp)::date as week_start,
           event_type,
-          timestamp,
-          DATE_TRUNC('week', timestamp)::date as week_start
+          timestamp
         FROM auto_attendance 
         WHERE user_id = $1 
-          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
+          AND timestamp >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '4 weeks'
+          AND timestamp < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '1 week'
           AND event_type IN ('clock_in', 'clock_out')
       ),
-      weekly_avg_times AS (
+      weekly_averages AS (
         SELECT 
-          week_start,
-          AVG(CASE WHEN event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_in_hour,
-          AVG(CASE WHEN event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_out_hour
-        FROM weekly_data
-        GROUP BY week_start
+          lw.week_start,
+          AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_in_hour,
+          AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END) as avg_clock_out_hour
+        FROM last_5_weeks lw
+        LEFT JOIN user_attendance ua ON lw.week_start = ua.week_start
+        GROUP BY lw.week_start
       ),
       weekly_counts AS (
         SELECT 
           DATE_TRUNC('week', timestamp)::date as week_start,
-          COUNT(*) as total_clock_ins_and_outs
+          COUNT(*) as clock_ins_outs_count
         FROM auto_attendance 
         WHERE user_id = $1 
-          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
-          AND event_type IN ('clock_in', 'clock_out')
-        GROUP BY DATE_TRUNC('week', timestamp)::date
-      ),
-      daily_counts AS (
-        SELECT 
-          DATE_TRUNC('week', timestamp)::date as week_start,
-          COUNT(*) as total_clock_ins_and_outs
-        FROM auto_attendance 
-        WHERE user_id = $1 
-          AND timestamp >= CURRENT_DATE - INTERVAL '5 weeks'
+          AND timestamp >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '4 weeks'
+          AND timestamp < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '1 week'
           AND event_type IN ('clock_in', 'clock_out')
         GROUP BY DATE_TRUNC('week', timestamp)::date
       )
       SELECT 
-        w.week_start,
-        w.avg_clock_in_hour,
-        w.avg_clock_out_hour,
-        COALESCE(d.total_clock_ins_and_outs, 0) as total_clock_ins_and_outs
-      FROM weekly_avg_times w
-      LEFT JOIN (
-        SELECT 
-          week_start,
-          SUM(total_clock_ins_and_outs) as total_clock_ins_and_outs
-        FROM daily_counts
-        GROUP BY week_start
-      ) d ON w.week_start = d.week_start
-      ORDER BY w.week_start;
+        wa.week_start,
+        wa.avg_clock_in_hour,
+        wa.avg_clock_out_hour,
+        COALESCE(wc.clock_ins_outs_count, 0) as clock_ins_outs_count
+      FROM weekly_averages wa
+      LEFT JOIN weekly_counts wc ON wa.week_start = wc.week_start
+      ORDER BY wa.week_start;
     `;
     
     const result = await req.pool.query(query, [userId]);
@@ -825,7 +818,7 @@ router.get("/attendance-analytics", authenticateJWT, async (req, res) => {
         week_start: row.week_start,
         avg_clock_in: formatHourToTime(row.avg_clock_in_hour),
         avg_clock_out: formatHourToTime(row.avg_clock_out_hour),
-        clock_ins_outs_count: row.total_clock_ins_and_outs
+        clock_ins_outs_count: row.clock_ins_outs_count
       };
     });
     
