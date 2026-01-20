@@ -364,9 +364,9 @@ router.post('/picture', authenticateJWT, async (req, res) => {
     // Check file size - picture_data is base64 encoded, so we need to estimate the original size
     // Base64 encoding increases size by approximately 33%, so original size is roughly 0.75 * encoded size
     const estimatedOriginalSize = Math.round(picture_data.length * 0.75);
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    const maxSize = 1 * 1024 * 1024; // 1MB in bytes
     if (estimatedOriginalSize > maxSize) {
-      return res.status(400).json({ error: `File size too large. Maximum allowed size is 5MB. Current size is approximately ${(estimatedOriginalSize / (1024 * 1024)).toFixed(2)}MB.` });
+      return res.status(400).json({ error: `File size too large. Maximum allowed size is 1MB. Current size is approximately ${(estimatedOriginalSize / (1024 * 1024)).toFixed(2)}MB.` });
     }
 
     // Create a data URL for the profile picture

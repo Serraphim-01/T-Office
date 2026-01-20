@@ -696,7 +696,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
-                      Supported formats: JPG, PNG, GIF, WebP. Max size: 5MB.
+                      Supported formats: JPG, PNG, GIF, WebP. Max size: 1MB.
                     </p>
                     <p className="text-xs text-muted-foreground text-center">
                       Recommended size: 400x400 pixels for best quality.
