@@ -390,34 +390,6 @@ export default function ClockPage() {
     });
   };
 
-  const handleToggleLocation = async (locationId: number, checked: boolean) => {
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/user-locations/${locationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ is_active: checked }),
-      });
-
-      if (response.ok) {
-        setUserLocations(prev =>
-          prev.map(location =>
-            location.id === locationId ? { ...location, is_active: checked } : location
-          )
-        );
-        renderMarkers(); // Update map markers
-      } else {
-        alert('Failed to update location status');
-      }
-    } catch (error) {
-      console.error('Error updating location:', error);
-      alert('Error updating location');
-    }
-  };
-
   const handleDeleteLocation = async (locationId: number) => {
     if (!confirm('Are you sure you want to delete this location?')) return;
 
