@@ -42,6 +42,37 @@ T-Office is a full-stack internal office management platform designed to streaml
 - Role-based access control
 - Preset user system for initial admin accounts
 
+### 2. Environment Configuration
+- Single environment file: `.env.local` in the root directory
+- Frontend variables prefixed with `NEXT_PUBLIC_`
+- Backend uses same environment file through API
+- Docker Compose configured to use the single environment file
+
+#### Environment Variables
+
+**Frontend (in `.env.local`):**
+- `NEXT_PUBLIC_API_URL`: Backend API URL
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Google Maps API key
+- `NEXT_PUBLIC_GROQ_API_KEY`: GROQ API key
+
+**Backend (through same `.env.local` file):**
+- `DATABASE_URL`: Database connection string
+- `JWT_SECRET`: Secret for JWT token generation
+- `BCRYPT_SALT_ROUNDS`: Salt rounds for password hashing
+- `PORT`: Port number for the backend server
+- `ALLOWED_ORIGINS`: Allowed origins for CORS
+
+### 3. Testing Framework
+- Comprehensive test scripts in the `test/` directory
+- Automated user signup and cleanup tests
+- Test data management to prevent database pollution
+- Easy test runner utility
+
+#### Available Test Scripts
+- `user_signup.test.js`: Creates test users with unique emails
+- `user_cleanup.test.js`: Removes test users to keep database clean
+- `run_tests.js`: Convenient test runner with multiple options
+
 ### 2. Dashboard
 - Central hub for user activities
 - Activity tracking
@@ -132,7 +163,12 @@ T-Office/
 │   ├── about/               # About page
 │   ├── help/                # Help documentation
 │   ├── offline/             # Offline support page
-│   ├── test/                # Testing pages
+│   ├── test/                # Automated test scripts and utilities
+│   ├── user_signup.test.js     # User registration test script
+│   ├── user_cleanup.test.js    # User cleanup and data management script
+│   ├── run_tests.js            # Test runner utility
+│   ├── package.json            # Test dependencies
+│   └── README.md               # Test documentation
 │   ├── layout.tsx           # Root layout component
 │   └── page.tsx             # Home page
 ├── backend/                 # Express backend server

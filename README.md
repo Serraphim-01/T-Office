@@ -4,6 +4,33 @@ T-Office is a full-stack internal office management platform designed to streaml
 
 ## Features
 
+### Testing
+- Comprehensive test scripts in the `test/` directory
+- Automated user signup and cleanup tests
+- Easy test runner with `node test/run_tests.js`
+
+## Environment Configuration
+
+The project uses a single environment configuration file:
+- Root `.env.local` for frontend environment variables
+- Backend uses the same root `.env.local` file through the API
+- Docker Compose has been updated to use the single environment file
+
+### Environment Variables
+
+Frontend (in `.env.local`):
+- `NEXT_PUBLIC_API_URL`: Backend API URL
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Google Maps API key
+- `NEXT_PUBLIC_GROQ_API_KEY`: GROQ API key
+
+Backend (through the same `.env.local` file):
+- `DATABASE_URL`: Database connection string
+- `JWT_SECRET`: Secret for JWT token generation
+- `BCRYPT_SALT_ROUNDS`: Salt rounds for password hashing
+- `PORT`: Port number for the backend server
+
+## Features
+
 - **Authentication**: Login and signup flows
 - **Dashboard**: Central hub for user activities
 - **HR Management**: Onboarding, user management, query handling
