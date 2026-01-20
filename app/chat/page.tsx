@@ -48,7 +48,7 @@ export default function ChatPage() {
   const [isChatPaused, setIsChatPaused] = useState(false);
   const [isChatGloballyPaused, setIsChatGloballyPaused] = useState(false);
   const [globalPauseInfo, setGlobalPauseInfo] = useState<GlobalPauseStatus | null>(null);
-  const [canUseChat, setCanUseChat] = useState(false);
+  const [canUseChat, setCanUseChat] = useState<boolean | null>(null); // null means still checking
   const [canUseModerator, setCanUseModerator] = useState(false);
   const [canPauseChat, setCanPauseChat] = useState(false);
   const [canUseSummarizer, setCanUseSummarizer] = useState(false);
@@ -259,7 +259,8 @@ export default function ChatPage() {
   }
 
   // If user doesn't have access to chat page, show access denied message
-  if (!canUseChat) {
+  // But only show the access denied after checking is complete (not during loading)
+  if (canUseChat === false) {
     return (
       <DashboardLayout>
         <div className="h-full flex flex-col">
@@ -281,6 +282,11 @@ export default function ChatPage() {
         </div>
       </DashboardLayout>
     );
+  }
+
+  // Still checking access - return nothing while determining permissions
+  if (canUseChat === null) {
+    return null;
   }
 
   const fetchMessages = async () => {
