@@ -44,7 +44,7 @@ interface AttendanceRecord {
 }
 
 export default function ClockPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -681,6 +681,16 @@ export default function ClockPage() {
       googleMapRef.current.setCenter(currentLocation);
     }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (
