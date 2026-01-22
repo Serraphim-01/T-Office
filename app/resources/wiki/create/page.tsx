@@ -34,16 +34,9 @@ export default function CreateWikiPage() {
       correct_answer: number;
     }>
   });
-  const [canCreateTopic, setCanCreateTopic] = useState(false); // State for create topic access
+  const [canCreateTopic, setCanCreateTopic] = useState<boolean | null>(null); // Changed to nullable to indicate loading state
+  const [accessCheckComplete, setAccessCheckComplete] = useState(false); // Track if access check is complete
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    // Check feature access when component mounts
-    checkFeatureAccess();
-    
-    // Fetch available departments
-    fetchDepartments();
-  }, [user, router]);
 
   // Check feature access for creating topics
   const checkFeatureAccess = async () => {
@@ -74,6 +67,7 @@ export default function CreateWikiPage() {
     setCanCreateTopic(createWikiAccess && createTopicAccess);
   };
 
+  // Fetch available departments
   const fetchDepartments = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -102,6 +96,63 @@ export default function CreateWikiPage() {
       console.error('Error fetching departments:', error);
     }
   };
+
+  useEffect(() => {
+    // Check feature access when component mounts
+    checkFeatureAccess();
+    
+    // Fetch available departments
+    fetchDepartments();
+  }, [user, router]);
+
+  // Update access check complete when canCreateTopic changes
+  useEffect(() => {
+    if (canCreateTopic !== null) {
+      setAccessCheckComplete(true);
+    }
+  }, [canCreateTopic]);
+
+  // Show loading while access check is in progress
+  if (!accessCheckComplete) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // If user doesn't have access, show access denied message
+  if (!canCreateTopic) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/resources/wiki">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Wiki
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Access Denied</h1>
+              <p className="text-muted-foreground">
+                You don't have permission to create wiki topics.
+              </p>
+            </div>
+          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="text-lg text-muted-foreground">
+                Please contact your administrator to request access to create wiki topics.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -565,31 +616,11 @@ export default function CreateWikiPage() {
   };
 
   // If user doesn't have access, show access denied message
-  if (!canCreateTopic) {
+  if (!user) {
     return (
       <DashboardLayout>
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/resources/wiki">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Wiki
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Access Denied</h1>
-              <p className="text-muted-foreground">
-                You don't have permission to create wiki topics.
-              </p>
-            </div>
-          </div>
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="text-lg text-muted-foreground">
-                Please contact your administrator to request access to create wiki topics.
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </DashboardLayout>
     );
