@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Define the data type for our attendance analytics
 type AttendanceAnalyticsData = {
@@ -34,6 +35,11 @@ export default function DashboardPage() {
   const [attendanceData, setAttendanceData] = useState<AttendanceAnalyticsData[]>([]);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   
+  // State for time period selection
+  const [period, setPeriod] = useState<'monthly' | 'weekly' | 'daily'>('weekly');
+  const [timeframe, setTimeframe] = useState<string>('last_6_months');
+  const [quarter, setQuarter] = useState<string>('Q1');
+  
   // State to hold user department data
   const [departmentData, setDepartmentData] = useState<UserDepartmentData[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
@@ -44,7 +50,13 @@ export default function DashboardPage() {
       if (!user) return;
       
       try {
-        const response = await fetch('/api/attendance-analytics', {
+        const params = new URLSearchParams({
+          period,
+          timeframe,
+          quarter
+        });
+        
+        const response = await fetch(`/api/attendance-analytics?${params}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -66,7 +78,7 @@ export default function DashboardPage() {
     if (user && !loading) {
       fetchAttendanceAnalytics();
     }
-  }, [user, loading]);
+  }, [user, loading, period, timeframe, quarter]);
 
   // Fetch department user data - only for current user's department
   useEffect(() => {
@@ -147,9 +159,35 @@ export default function DashboardPage() {
       return hours + minutes / 60;
     };
     
+    // Format label based on period type
+    let label;
+    // Parse the date string properly
+    const dateValue = new Date(item.week_start);
+    
+    // Check if date is valid
+    if (isNaN(dateValue.getTime())) {
+      console.error('Invalid date:', item.week_start);
+      label = 'Invalid Date';
+    } else {
+      if (period === 'monthly') {
+        // Show Month and Year (e.g., "Jan 2025")
+        label = dateValue.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short' 
+        });
+      } else if (period === 'daily') {
+        // Show Day and Date (e.g., "Mon 19")
+        const dayName = dateValue.toLocaleDateString('en-US', { weekday: 'short' });
+        const dayNumber = dateValue.getDate();
+        label = `${dayName} ${dayNumber}`;
+      } else { // weekly
+        label = dateValue.toLocaleDateString();
+      }
+    }
+    
     return {
       ...item,
-      weekLabel: new Date(item.week_start).toLocaleDateString(),
+      weekLabel: label,
       avg_clock_in_decimal: parseTimeToDecimal(item.avg_clock_in),
       avg_clock_out_decimal: parseTimeToDecimal(item.avg_clock_out),
     };
@@ -167,13 +205,83 @@ export default function DashboardPage() {
         {/* Attendance Analytics Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Attendance Analytics (Last 5 Weeks)
-            </CardTitle>
-            <CardDescription>
-              Average clock-in/out times and total clock-ins/outs per week
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Attendance Analytics
+                </CardTitle>
+                <CardDescription>
+                  Average clock-in/out times and total clock-ins/outs
+                </CardDescription>
+              </div>
+              
+              {/* Time Period Controls */}
+              <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Period</label>
+                  <Select value={period} onValueChange={(value: 'monthly' | 'weekly' | 'daily') => setPeriod(value)}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Timeframe</label>
+                  <Select value={timeframe} onValueChange={setTimeframe}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {period === 'monthly' && (
+                        <>
+                          <SelectItem value="quarter">Quarter</SelectItem>
+                          <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                          <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                          <SelectItem value="last_12_months">Last 12 Months</SelectItem>
+                        </>
+                      )}
+                      {period === 'weekly' && (
+                        <>
+                          <SelectItem value="last_4_weeks">Last 4 Weeks</SelectItem>
+                          <SelectItem value="last_6_weeks">Last 6 Weeks</SelectItem>
+                          <SelectItem value="last_8_weeks">Last 8 Weeks</SelectItem>
+                        </>
+                      )}
+                      {period === 'daily' && (
+                        <>
+                          <SelectItem value="last_7_days">Last 7 Days</SelectItem>
+                          <SelectItem value="last_14_days">Last 14 Days</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {period === 'monthly' && timeframe === 'quarter' && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium">Quarter</label>
+                    <Select value={quarter} onValueChange={setQuarter}>
+                      <SelectTrigger className="w-[80px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Q1">Q1</SelectItem>
+                        <SelectItem value="Q2">Q2</SelectItem>
+                        <SelectItem value="Q3">Q3</SelectItem>
+                        <SelectItem value="Q4">Q4</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingAnalytics ? (
@@ -181,18 +289,18 @@ export default function DashboardPage() {
                 <p>Loading attendance data...</p>
               </div>
             ) : attendanceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={Math.max(400, Math.min(600, attendanceData.length * (period === 'daily' ? 60 : (period === 'monthly' ? 100 : 80))))}>
                 <LineChart
                   data={chartData}
-                  margin={{ top: 5, right: 50, left: 20, bottom: 5 }}
+                  margin={{ top: 5, right: 50, left: 20, bottom: period === 'daily' ? 60 : (period === 'monthly' ? 40 : 60) }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="weekLabel" 
                     tick={{ fontSize: 12 }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
+                    angle={period === 'daily' ? -45 : (period === 'monthly' ? 0 : -45)}
+                    textAnchor={period === 'daily' ? "end" : (period === 'monthly' ? "middle" : "end")}
+                    height={period === 'daily' ? 80 : (period === 'monthly' ? 60 : 80)}
                   />
                   <YAxis 
                     yAxisId="left"
@@ -220,7 +328,15 @@ export default function DashboardPage() {
                       }
                       return [value, name === 'clock_ins_outs_count' ? 'Clock Ins & Outs' : name];
                     }}
-                    labelFormatter={(label) => `Week: ${label}`}
+                    labelFormatter={(label) => {
+                      if (period === 'monthly') return `Month: ${label}`;
+                      if (period === 'daily') {
+                        // Extract the actual date from the data for tooltip
+                        const actualDate = chartData.find(item => item.weekLabel === label)?.week_start;
+                        return actualDate ? `Date: ${new Date(actualDate).toLocaleDateString()}` : `Date: ${label}`;
+                      }
+                      return `Week: ${label}`;
+                    }}
                   />
                   <Legend />
                   <Line
@@ -260,7 +376,7 @@ export default function DashboardPage() {
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-1">No attendance data</h3>
                 <p className="text-muted-foreground max-w-md">
-                  You don't have any attendance records in the last 5 weeks. 
+                  You don't have any attendance records for the selected {period} period. 
                   Start clocking in and out to see your analytics here.
                 </p>
               </div>
