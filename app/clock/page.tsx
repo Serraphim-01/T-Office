@@ -44,7 +44,7 @@ interface AttendanceRecord {
 }
 
 export default function ClockPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -182,7 +182,7 @@ export default function ClockPage() {
   const fetchAttendanceRecords = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/attendance`, {
+      const response = await fetch(`${apiUrl}/api/attendance?limit=5`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -388,34 +388,6 @@ export default function ClockPage() {
       radius_meters: '100',
       address: ''
     });
-  };
-
-  const handleToggleLocation = async (locationId: number, checked: boolean) => {
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/user-locations/${locationId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ is_active: checked }),
-      });
-
-      if (response.ok) {
-        setUserLocations(prev =>
-          prev.map(location =>
-            location.id === locationId ? { ...location, is_active: checked } : location
-          )
-        );
-        renderMarkers(); // Update map markers
-      } else {
-        alert('Failed to update location status');
-      }
-    } catch (error) {
-      console.error('Error updating location:', error);
-      alert('Error updating location');
-    }
   };
 
   const handleDeleteLocation = async (locationId: number) => {
@@ -709,6 +681,16 @@ export default function ClockPage() {
       googleMapRef.current.setCenter(currentLocation);
     }
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (

@@ -103,7 +103,7 @@ interface QueryReply {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<ProfileWithQueries | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +128,7 @@ export default function ProfilePage() {
   const [selectedQuery, setSelectedQuery] = useState<UserQuery | null>(null);
   const [isQueryModalOpen, setIsQueryModalOpen] = useState(false);
   const [replyText, setReplyText] = useState('');
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(user?.avatar_url || null);
   const [isUploading, setIsUploading] = useState(false);
 
   // Fetch profile data
@@ -485,6 +485,17 @@ export default function ProfilePage() {
     setIsUploading(true);
     
     const reader = new FileReader();
+    
+    // Handle file reading errors
+    reader.onerror = () => {
+      setIsUploading(false);
+      toast({
+        title: "Error",
+        description: "Failed to read the image file.",
+        variant: "destructive",
+      });
+    };
+    
     reader.onload = async (e) => {
       try {
         const dataUrl = e.target?.result as string;
@@ -515,9 +526,8 @@ export default function ProfilePage() {
               ...user,
               avatar_url: result.profile_picture_url || '',
             };
-            // Use the setUser function from auth context to update the user data
-            const auth = useAuth();
-            auth.setUser(updatedUser);
+            // Update the user context using the setUser from the component scope
+            setUser(updatedUser);
           }
           
           toast({
@@ -547,6 +557,7 @@ export default function ProfilePage() {
   };
   
   const handleProfilePictureDelete = async () => {
+    setIsUploading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const response = await fetch(`${apiUrl}/api/profile/picture`, {
@@ -565,8 +576,8 @@ export default function ProfilePage() {
             ...user,
             avatar_url: '',
           };
-          const auth = useAuth();
-          auth.setUser(updatedUser);
+          // Update the user context using the setUser from the component scope
+          setUser(updatedUser);
         }
         
         toast({
@@ -587,6 +598,8 @@ export default function ProfilePage() {
         description: "An unexpected error occurred.",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -683,7 +696,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground text-center">
-                      Supported formats: JPG, PNG, GIF, WebP. Max size: 5MB.
+                      Supported formats: JPG, PNG, GIF, WebP. Max size: 1MB.
                     </p>
                     <p className="text-xs text-muted-foreground text-center">
                       Recommended size: 400x400 pixels for best quality.

@@ -11,6 +11,8 @@
     "migrate": "cd backend && npm run migrate",
     "create-migration": "cd backend && npm run create-migration",
     "lint": "next lint",
+    "test": "jest",
+    "test:esm": "node --experimental-vm-modules node_modules/.bin/jest",
     "changelog": "cat CHANGELOG.md"
   },
   "dependencies": {
@@ -61,19 +63,17 @@
     "eslint": "8.49.0",
     "eslint-config-next": "13.5.1",
     "input-otp": "^1.2.4",
-    "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
     "lucide-react": "^0.279.0",
     "next": "13.5.1",
     "next-themes": "^0.2.1",
-    "pg": "^8.16.3",
     "postcss": "8.4.29",
     "react": "18.2.0",
     "react-day-picker": "^8.8.2",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.45.4",
     "react-resizable-panels": "^1.0.5",
-    "recharts": "^2.9.3",
+    "recharts": "^2.15.4",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.0.3",
@@ -85,7 +85,16 @@
     "zod": "^3.22.2"
   },
   "devDependencies": {
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "@babel/core": "^7.28.6",
+    "@babel/preset-env": "^7.28.6",
+    "axios": "^1.13.2",
+    "babel-jest": "^30.2.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jest": "^30.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.17.2",
+    "supertest": "^7.2.2"
   }
 }

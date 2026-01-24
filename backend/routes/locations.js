@@ -362,6 +362,14 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
       record: result.rows[0],
       type: 'clock_in'
     });
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'attendance',
+      userId,
+      record: result.rows[0],
+      timestamp: new Date().toISOString()
+    });
 
     // Send notification to users with HR Users access when someone clocks in
     try {
@@ -482,6 +490,14 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
       userId, 
       record: result.rows[0],
       type: 'clock_out'
+    });
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'attendance',
+      userId,
+      record: result.rows[0],
+      timestamp: new Date().toISOString()
     });
 
     // Send notification to users with HR Users access when someone clocks out
@@ -718,7 +734,7 @@ router.post("/location-status", authenticateJWT, async (req, res) => {
 
 // Get user's attendance records
 router.get("/attendance", authenticateJWT, async (req, res) => {
-  const { date } = req.query;
+  const { date, limit = 50 } = req.query; // Default to 50, but allow specifying limit
 
   try {
     let query = `
@@ -736,6 +752,10 @@ router.get("/attendance", authenticateJWT, async (req, res) => {
     }
 
     query += ' ORDER BY aa.timestamp DESC';
+    
+    // Add LIMIT clause based on the limit parameter
+    query += ' LIMIT $' + (params.length + 1);
+    params.push(parseInt(limit));
 
     const result = await req.pool.query(query, params);
     res.json(result.rows);
@@ -744,6 +764,295 @@ router.get("/attendance", authenticateJWT, async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Get attendance analytics for the current user
+router.get("/attendance-analytics", authenticateJWT, async (req, res) => {
+  const userId = req.user.userId;
+  const { period = 'weekly', timeframe = 'last_6_months', quarter = 'Q1' } = req.query;
+
+  try {
+    let query;
+    let queryParams = [userId];
+    
+    // Generate date ranges based on selected period and timeframe
+    switch(period) {
+      case 'monthly':
+        query = generateMonthlyQuery(timeframe, quarter);
+        break;
+      case 'weekly':
+        query = generateWeeklyQuery(timeframe);
+        break;
+      case 'daily':
+        query = generateDailyQuery(timeframe);
+        break;
+      default: // weekly (current default)
+        query = generateWeeklyQuery('last_5_weeks');
+    }
+    
+    const result = await req.pool.query(query, queryParams);
+    
+    // Format the data for the frontend
+    const formattedData = result.rows.map(row => {
+      // Convert decimal hour values back to time format for display
+      const formatHourToTime = (hourDecimal) => {
+        if (hourDecimal === null || hourDecimal === undefined) return null;
+        
+        const hours = Math.floor(hourDecimal);
+        const minutes = Math.floor((hourDecimal - hours) * 60);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      };
+      
+      return {
+        week_start: row.week_start,
+        avg_clock_in: formatHourToTime(row.avg_clock_in_hour),
+        avg_clock_out: formatHourToTime(row.avg_clock_out_hour),
+        clock_ins_outs_count: row.clock_ins_outs_count
+      };
+    });
+    
+    res.json(formattedData);
+  } catch (err) {
+    console.error('Error fetching attendance analytics:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Helper functions for generating different analytics queries
+function generateMonthlyQuery(timeframe, quarter) {
+  let startDateCondition = '';
+  let endDateCondition = 'CURRENT_DATE';
+  
+  switch(timeframe) {
+    case 'quarter':
+      // Calculate quarter dates
+      const currentYear = new Date().getFullYear();
+      let quarterStart, quarterEnd;
+      
+      switch(quarter) {
+        case 'Q1':
+          quarterStart = `${currentYear}-01-01`;
+          quarterEnd = `${currentYear}-03-31`;
+          break;
+        case 'Q2':
+          quarterStart = `${currentYear}-04-01`;
+          quarterEnd = `${currentYear}-06-30`;
+          break;
+        case 'Q3':
+          quarterStart = `${currentYear}-07-01`;
+          quarterEnd = `${currentYear}-09-30`;
+          break;
+        case 'Q4':
+          quarterStart = `${currentYear}-10-01`;
+          quarterEnd = `${currentYear}-12-31`;
+          break;
+        default:
+          quarterStart = `${currentYear}-01-01`;
+          quarterEnd = `${currentYear}-03-31`;
+      }
+      
+      startDateCondition = `'${quarterStart}'::date`;
+      endDateCondition = `'${quarterEnd}'::date`;
+      break;
+      
+    case 'last_3_months':
+      startDateCondition = `CURRENT_DATE - INTERVAL '3 months'`;
+      break;
+      
+    case 'last_6_months':
+      startDateCondition = `CURRENT_DATE - INTERVAL '6 months'`;
+      break;
+      
+    case 'last_12_months':
+      startDateCondition = `CURRENT_DATE - INTERVAL '12 months'`;
+      break;
+      
+    default:
+      startDateCondition = `CURRENT_DATE - INTERVAL '6 months'`;
+  }
+  
+  return `
+    WITH monthly_periods AS (
+      SELECT 
+        generate_series(
+          DATE_TRUNC('month', ${startDateCondition}),
+          DATE_TRUNC('month', ${endDateCondition}),
+          '1 month'
+        )::date as month_start
+    ),
+    user_attendance AS (
+      SELECT 
+        DATE_TRUNC('month', timestamp)::date as month_start,
+        event_type,
+        timestamp
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= ${startDateCondition}
+        AND timestamp <= ${endDateCondition}
+        AND event_type IN ('clock_in', 'clock_out')
+    ),
+    monthly_averages AS (
+      SELECT 
+        mp.month_start,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_in_hour,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_out_hour
+      FROM monthly_periods mp
+      LEFT JOIN user_attendance ua ON mp.month_start = ua.month_start
+      GROUP BY mp.month_start
+    ),
+    monthly_counts AS (
+      SELECT 
+        DATE_TRUNC('month', timestamp)::date as month_start,
+        COUNT(*) as clock_ins_outs_count
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= ${startDateCondition}
+        AND timestamp <= ${endDateCondition}
+        AND event_type IN ('clock_in', 'clock_out')
+      GROUP BY DATE_TRUNC('month', timestamp)::date
+    )
+    SELECT 
+      TO_CHAR(ma.month_start, 'YYYY-MM-DD') as week_start,
+      ma.avg_clock_in_hour,
+      ma.avg_clock_out_hour,
+      COALESCE(mc.clock_ins_outs_count, 0) as clock_ins_outs_count
+    FROM monthly_averages ma
+    LEFT JOIN monthly_counts mc ON ma.month_start = mc.month_start
+    ORDER BY ma.month_start;
+  `;
+}
+
+function generateWeeklyQuery(timeframe) {
+  let weeksBack = 5; // default
+  
+  switch(timeframe) {
+    case 'last_4_weeks':
+      weeksBack = 4;
+      break;
+    case 'last_6_weeks':
+      weeksBack = 6;
+      break;
+    case 'last_8_weeks':
+      weeksBack = 8;
+      break;
+    default:
+      weeksBack = 5;
+  }
+  
+  return `
+    WITH weekly_periods AS (
+      SELECT 
+        generate_series(
+          DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '${weeksBack - 1} weeks',
+          DATE_TRUNC('week', CURRENT_DATE),
+          '1 week'
+        )::date as week_start
+    ),
+    user_attendance AS (
+      SELECT 
+        DATE_TRUNC('week', timestamp)::date as week_start,
+        event_type,
+        timestamp
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '${weeksBack - 1} weeks'
+        AND timestamp < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '1 week'
+        AND event_type IN ('clock_in', 'clock_out')
+    ),
+    weekly_averages AS (
+      SELECT 
+        wp.week_start,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_in_hour,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_out_hour
+      FROM weekly_periods wp
+      LEFT JOIN user_attendance ua ON wp.week_start = ua.week_start
+      GROUP BY wp.week_start
+    ),
+    weekly_counts AS (
+      SELECT 
+        DATE_TRUNC('week', timestamp)::date as week_start,
+        COUNT(*) as clock_ins_outs_count
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= DATE_TRUNC('week', CURRENT_DATE) - INTERVAL '${weeksBack - 1} weeks'
+        AND timestamp < DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '1 week'
+        AND event_type IN ('clock_in', 'clock_out')
+      GROUP BY DATE_TRUNC('week', timestamp)::date
+    )
+    SELECT 
+      wa.week_start,
+      wa.avg_clock_in_hour,
+      wa.avg_clock_out_hour,
+      COALESCE(wc.clock_ins_outs_count, 0) as clock_ins_outs_count
+    FROM weekly_averages wa
+    LEFT JOIN weekly_counts wc ON wa.week_start = wc.week_start
+    ORDER BY wa.week_start;
+  `;
+}
+
+function generateDailyQuery(timeframe) {
+  let daysBack = 7; // default
+  
+  switch(timeframe) {
+    case 'last_7_days':
+      daysBack = 7;
+      break;
+    case 'last_14_days':
+      daysBack = 14;
+      break;
+    default:
+      daysBack = 7;
+  }
+  
+  return `
+    WITH daily_periods AS (
+      SELECT 
+        generate_series(
+          CURRENT_DATE - INTERVAL '${daysBack - 1} days',
+          CURRENT_DATE,
+          '1 day'
+        )::date as day_date
+    ),
+    user_attendance AS (
+      SELECT 
+        DATE(timestamp)::date as day_date,
+        event_type,
+        timestamp
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= CURRENT_DATE - INTERVAL '${daysBack - 1} days'
+        AND timestamp <= CURRENT_DATE + INTERVAL '1 day'
+        AND event_type IN ('clock_in', 'clock_out')
+    ),
+    daily_averages AS (
+      SELECT 
+        dp.day_date,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_in' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_in_hour,
+        ROUND(AVG(CASE WHEN ua.event_type = 'clock_out' THEN EXTRACT(EPOCH FROM (ua.timestamp::time - '00:00:00'::time))/3600 END), 2) as avg_clock_out_hour
+      FROM daily_periods dp
+      LEFT JOIN user_attendance ua ON dp.day_date = ua.day_date
+      GROUP BY dp.day_date
+    ),
+    daily_counts AS (
+      SELECT 
+        DATE(timestamp)::date as day_date,
+        COUNT(*) as clock_ins_outs_count
+      FROM auto_attendance 
+      WHERE user_id = $1 
+        AND timestamp >= CURRENT_DATE - INTERVAL '${daysBack - 1} days'
+        AND timestamp <= CURRENT_DATE + INTERVAL '1 day'
+        AND event_type IN ('clock_in', 'clock_out')
+      GROUP BY DATE(timestamp)::date
+    )
+    SELECT 
+      TO_CHAR(da.day_date, 'YYYY-MM-DD') as week_start,
+      da.avg_clock_in_hour,
+      da.avg_clock_out_hour,
+      COALESCE(dc.clock_ins_outs_count, 0) as clock_ins_outs_count
+    FROM daily_averages da
+    LEFT JOIN daily_counts dc ON da.day_date = dc.day_date
+    ORDER BY da.day_date;
+  `;
+}
 
 // Helper function to handle automatic attendance based on location events
 async function handleAutomaticAttendance(pool, userId, locationId, eventType, locationEventId) {

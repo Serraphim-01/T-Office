@@ -76,7 +76,7 @@ function splitSQLStatements(sql) {
 
 // Function to get all migration files and sort them
 function getMigrationFiles() {
-  const migrationsDir = resolve(process.cwd(), 'migrations');
+  const migrationsDir = resolve(process.cwd(), 'db', 'migrations');
   const files = readdirSync(migrationsDir);
   return files
     .filter(file => file.endsWith('.sql'))
@@ -205,7 +205,7 @@ async function runMigrations() {
     
     // Apply pending migrations in order
     for (const migrationFile of pendingMigrations) {
-      const filePath = resolve(process.cwd(), 'migrations', migrationFile);
+      const filePath = resolve(process.cwd(), 'db', 'migrations', migrationFile);
       await runMigrationFile(filePath, migrationFile);
       await recordMigration(migrationFile);
     }

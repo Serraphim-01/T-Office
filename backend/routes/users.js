@@ -269,6 +269,14 @@ router.post('/:userId/offboard', authenticateJWT, async (req, res) => {
       [userId]
     );
     
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'user_offboarded',
+      userId,
+      department: userDepartment,
+      timestamp: new Date().toISOString()
+    });
+    
     // Commit transaction
     await req.pool.query('COMMIT');
     
@@ -338,6 +346,79 @@ router.post('/:userId/offboard', authenticateJWT, async (req, res) => {
     await req.pool.query('ROLLBACK');
     console.error('Error offboarding user:', error);
     res.status(500).json({ error: 'Internal server error during offboarding' });
+  }
+});
+
+// Delete a user by ID (requires admin access)
+router.delete('/:userId', authenticateJWT, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    // Check if the requesting user has admin-like permissions
+    // In this system, users from 'Admin' department typically have admin access
+    if (req.user.department !== 'Admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Insufficient permissions to delete users' });
+    }
+    
+    // Check if user exists
+    const userCheck = await req.pool.query(
+      'SELECT id, full_name, email FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userCheck.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userToDelete = userCheck.rows[0];
+    
+    // Perform the deletion
+    // We'll soft-delete by setting active to false instead of hard deleting
+    const result = await req.pool.query(
+      'UPDATE users SET active = false WHERE id = $1 RETURNING id',
+      [userId]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found or could not be deleted' });
+    }
+    
+    console.log(`User ${userToDelete.email} (${userToDelete.full_name}) has been deactivated by ${req.user.full_name || req.user.userId}`);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: `User ${userToDelete.email} has been deactivated`,
+      deletedUserId: result.rows[0].id
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user by email (for admin operations)
+router.get('/email/:email', authenticateJWT, async (req, res) => {
+  const { email } = req.params;
+  
+  try {
+    // Check if the requesting user has admin-like permissions
+    if (req.user.department !== 'Admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Insufficient permissions to view user details' });
+    }
+    
+    const result = await req.pool.query(
+      'SELECT id, full_name, email, department, active FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

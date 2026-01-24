@@ -11,7 +11,7 @@ interface AccessControlWrapperProps {
 }
 
 export function AccessControlWrapper({ children, pagePath }: AccessControlWrapperProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,12 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
         setLoading(false);
       }
 
-      // Validate inputs
+      // Wait for auth context to finish loading before checking access
+      if (authLoading) {
+        return;
+      }
+
+      // Validate inputs - only redirect if auth is done loading and no user
       if (!user) {
         router.push('/login');
         return;
@@ -46,10 +51,11 @@ export function AccessControlWrapper({ children, pagePath }: AccessControlWrappe
     };
 
     checkAccess();
-  }, [user, pagePath, router, initialCheckDone]);
+  }, [user, pagePath, router, initialCheckDone, authLoading]);
 
   // Show loading only on subsequent checks, not initial render
-  if (loading && initialCheckDone) {
+  // Also show loading while auth context is still initializing
+  if ((loading && initialCheckDone) || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
