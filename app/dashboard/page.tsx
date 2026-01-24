@@ -5,12 +5,13 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock, Building, Activity } from 'lucide-react';
+import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock, Building, Activity, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { io, Socket } from 'socket.io-client';
 
 // Define the data type for our attendance analytics
 type AttendanceAnalyticsData = {
@@ -27,9 +28,17 @@ type UserDepartmentData = {
   color: string;
 };
 
+// Define the data type for role distribution
+type RoleDistributionData = {
+  role: string;
+  userCount: number;
+  color: string;
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const socketRef = useRef<Socket | null>(null);
 
   // State to hold attendance analytics data
   const [attendanceData, setAttendanceData] = useState<AttendanceAnalyticsData[]>([]);
@@ -43,6 +52,96 @@ export default function DashboardPage() {
   // State to hold user department data
   const [departmentData, setDepartmentData] = useState<UserDepartmentData[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
+  
+  // State to hold role distribution data
+  const [roleData, setRoleData] = useState<RoleDistributionData[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+  
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (user) {
+      // Initialize socket connection
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      socketRef.current = io(apiUrl);
+
+      // Listen for dashboard data updates
+      socketRef.current.on('dashboard_data_updated', (data) => {
+        console.log('Received dashboard data update:', data);
+        // Refresh all dashboard data when any relevant change occurs
+        refreshDashboardData();
+      });
+
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+        }
+      };
+    }
+  }, [user]);
+
+  // Function to refresh all dashboard data
+  const refreshDashboardData = async () => {
+    if (!user) return;
+
+    // Refresh attendance data
+    const attendanceParams = new URLSearchParams({
+      period,
+      timeframe,
+      quarter
+    });
+    
+    try {
+      const attendanceResponse = await fetch(`/api/attendance-analytics?${attendanceParams}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (attendanceResponse.ok) {
+        const attendanceData = await attendanceResponse.json();
+        setAttendanceData(attendanceData);
+      }
+    } catch (error) {
+      console.error('Error refreshing attendance data:', error);
+    }
+
+    // Refresh department statistics
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const deptResponse = await fetch(`${apiUrl}/api/hr/department-statistics`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (deptResponse.ok) {
+        const deptData = await deptResponse.json();
+        setDepartmentData(deptData);
+      }
+    } catch (error) {
+      console.error('Error refreshing department data:', error);
+    }
+
+    // Refresh role distribution
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const roleResponse = await fetch(`${apiUrl}/api/hr/role-distribution/${encodeURIComponent(user.department || 'Unassigned')}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (roleResponse.ok) {
+        const roleData = await roleResponse.json();
+        setRoleData(roleData);
+      }
+    } catch (error) {
+      console.error('Error refreshing role data:', error);
+    }
+  };
 
   // Fetch attendance analytics data
   useEffect(() => {
@@ -80,7 +179,7 @@ export default function DashboardPage() {
     }
   }, [user, loading, period, timeframe, quarter]);
 
-  // Fetch department user data - only for current user's department
+  // Fetch department statistics data - all departments
   useEffect(() => {
     const fetchDepartmentData = async () => {
       if (!user) return;
@@ -88,37 +187,20 @@ export default function DashboardPage() {
       try {
         const token = localStorage.getItem('token');
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-        const response = await fetch(`${apiUrl}/api/hr/users`, {
+        const response = await fetch(`${apiUrl}/api/hr/department-statistics`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
         
         if (response.ok) {
-          const users = await response.json();
-          
-          // Filter users by current user's department
-          const currentUserDepartment = user.department;
-          const departmentUsers = users.filter((u: any) => 
-            u.department === currentUserDepartment && u.active !== false
-          );
-          
-          // Count users in current department
-          const departmentCount = departmentUsers.length;
-          
-          // Generate data for current department only
-          const formattedData: UserDepartmentData[] = [{
-            department: currentUserDepartment || 'Unassigned',
-            userCount: departmentCount,
-            color: '#4f46e5'
-          }];
-          
-          setDepartmentData(formattedData);
+          const data = await response.json();
+          setDepartmentData(data);
         } else {
-          console.error('Failed to fetch department data');
+          console.error('Failed to fetch department statistics');
         }
       } catch (error) {
-        console.error('Error fetching department data:', error);
+        console.error('Error fetching department statistics:', error);
       } finally {
         setLoadingDepartments(false);
       }
@@ -128,6 +210,39 @@ export default function DashboardPage() {
       fetchDepartmentData();
     }
   }, [user, loading]);
+
+  // Fetch role distribution data for current user's department
+  useEffect(() => {
+    const fetchRoleData = async () => {
+      if (!user || !user.department) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+        const response = await fetch(`${apiUrl}/api/hr/role-distribution/${encodeURIComponent(user.department || 'Unassigned')}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRoleData(data);
+        } else {
+          console.error('Failed to fetch role distribution');
+        }
+      } catch (error) {
+        console.error('Error fetching role distribution:', error);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    if (user && !loading) {
+      fetchRoleData();
+    }
+  }, [user, loading]);
+  
 
   // Redirect if not logged in
   useEffect(() => {
@@ -384,16 +499,16 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Current Department User Distribution */}
+        {/* Department Analytics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Your Department: {user?.department}
+                All Departments
               </CardTitle>
               <CardDescription>
-                Number of active users in your department
+                Active user count across all departments
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -449,76 +564,77 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Department Breakdown
+                Roles in {user?.department || 'Your Department'}
               </CardTitle>
               <CardDescription>
-                Your department overview
+                User distribution by role in your department
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {loadingDepartments ? (
+              {loadingRoles ? (
                 <div className="h-80 flex items-center justify-center">
-                  <p>Loading department data...</p>
+                  <p>Loading role data...</p>
                 </div>
-              ) : departmentData.length > 0 ? (
+              ) : roleData.length > 0 ? (
                 <div className="flex flex-col items-center">
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={departmentData}
+                        data={roleData}
                         cx="50%"
                         cy="50%"
                         labelLine={true}
                         outerRadius={100}
                         fill="#8884d8"
                         dataKey="userCount"
-                        nameKey="department"
-                        label={({ department, userCount }) => `${department}: ${userCount}`}
+                        nameKey="role"
+                        label={({ role, userCount }) => `${role}: ${userCount}`}
                       >
-                        {departmentData.map((entry, index) => (
+                        {roleData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip 
-                        formatter={(value) => [value, 'Active Users']}
-                        labelFormatter={(label) => `Department: ${label}`}
+                        formatter={(value) => [value, 'Users']}
+                        labelFormatter={(label) => `Role: ${label}`}
                       />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
                   
                   <div className="mt-4 w-full">
-                    <h3 className="text-lg font-medium mb-3">Department Summary</h3>
+                    <h3 className="text-lg font-medium mb-3">Role Summary</h3>
                     <div className="space-y-2">
-                      {departmentData.map((dept, index) => (
+                      {roleData.map((role, index) => (
                         <div key={index} className="flex items-center justify-between p-2 border rounded">
                           <div className="flex items-center">
                             <div 
                               className="w-4 h-4 rounded-full mr-2" 
-                              style={{ backgroundColor: dept.color }}
+                              style={{ backgroundColor: role.color }}
                             ></div>
-                            <span className="font-medium">{dept.department}</span>
+                            <span className="font-medium">{role.role}</span>
                           </div>
-                          <Badge variant="secondary">{dept.userCount} users</Badge>
+                          <Badge variant="secondary">{role.userCount} users</Badge>
                         </div>
                       ))}
                     </div>
                     
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <h4 className="font-medium text-blue-800 mb-2">Your Department Info</h4>
+                      <h4 className="font-medium text-blue-800 mb-2">Department Overview</h4>
                       <p className="text-sm text-blue-700">
-                        You belong to the <span className="font-semibold">{user?.department}</span> department. 
-                        There are <span className="font-semibold">{departmentData[0]?.userCount || 0}</span> active users in your department.
+                        Your department <span className="font-semibold">{user?.department}</span> has{' '}
+                        <span className="font-semibold">{roleData.reduce((sum, role) => sum + role.userCount, 0)}</span>{' '}
+                        active users distributed across {roleData.length} different roles.
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="h-80 flex flex-col items-center justify-center text-center p-4">
-                  <Building className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-1">No department data</h3>
+                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No role data</h3>
                   <p className="text-muted-foreground max-w-md">
-                    No department data available. Contact your administrator to ensure proper data is loaded.
+                    No role data available for your department. Contact your administrator to ensure proper data is loaded.
                   </p>
                 </div>
               )}

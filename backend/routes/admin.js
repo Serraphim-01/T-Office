@@ -51,14 +51,24 @@ router.delete("/users/:id", authenticateJWT, async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Check if user exists
-    const userResult = await pool.query('SELECT id FROM users WHERE id = $1', [id]);
+    // Get user details before deletion for dashboard event
+    const userResult = await pool.query('SELECT id, department FROM users WHERE id = $1', [id]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-
+    
+    const userDepartment = userResult.rows[0].department;
+    
     // Delete user (CASCADE will handle related records)
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'user_deleted',
+      userId: id,
+      department: userDepartment,
+      timestamp: new Date().toISOString()
+    });
 
     res.json({ message: "User deleted successfully" });
   } catch (err) {
@@ -139,6 +149,14 @@ router.put("/departments/:id", authenticateJWT, async (req, res) => {
       'UPDATE users SET department = $1 WHERE department = $2',
       [name, oldName]
     );
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'department_renamed',
+      oldName,
+      newName: name,
+      timestamp: new Date().toISOString()
+    });
 
     res.json(result.rows[0]);
   } catch (err) {

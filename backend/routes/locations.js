@@ -362,6 +362,14 @@ router.post("/attendance/clock-in", authenticateJWT, async (req, res) => {
       record: result.rows[0],
       type: 'clock_in'
     });
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'attendance',
+      userId,
+      record: result.rows[0],
+      timestamp: new Date().toISOString()
+    });
 
     // Send notification to users with HR Users access when someone clocks in
     try {
@@ -482,6 +490,14 @@ router.post("/attendance/clock-out", authenticateJWT, async (req, res) => {
       userId, 
       record: result.rows[0],
       type: 'clock_out'
+    });
+    
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'attendance',
+      userId,
+      record: result.rows[0],
+      timestamp: new Date().toISOString()
     });
 
     // Send notification to users with HR Users access when someone clocks out

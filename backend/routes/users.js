@@ -269,6 +269,14 @@ router.post('/:userId/offboard', authenticateJWT, async (req, res) => {
       [userId]
     );
     
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'user_offboarded',
+      userId,
+      department: userDepartment,
+      timestamp: new Date().toISOString()
+    });
+    
     // Commit transaction
     await req.pool.query('COMMIT');
     

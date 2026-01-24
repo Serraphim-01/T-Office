@@ -88,6 +88,15 @@ router.post("/users", authenticateJWT, async (req, res) => {
       console.error('Error sending onboarding notifications:', notificationError);
     }
 
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'user_created',
+      userId,
+      department,
+      role,
+      timestamp: new Date().toISOString()
+    });
+    
     res.status(201).json({
       id: userId,
       full_name: name,
@@ -552,6 +561,156 @@ router.post("/attendance", authenticateJWT, async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('Error adding attendance:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get department statistics - count of users per department
+router.get("/department-statistics", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  try {
+    const result = await pool.query(`
+      SELECT 
+        u.department,
+        COUNT(u.id) as user_count
+      FROM users u
+      WHERE u.active = true
+      GROUP BY u.department
+      ORDER BY u.department
+    `);
+    
+    // Add colors for chart visualization
+    const colors = [
+      '#4f46e5', '#10b981', '#ef4444', '#f59e0b', 
+      '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6',
+      '#f97316', '#6366f1', '#84cc16', '#f43f5e'
+    ];
+    
+    const formattedData = result.rows.map((row, index) => ({
+      department: row.department || 'Unassigned',
+      userCount: parseInt(row.user_count),
+      color: colors[index % colors.length]
+    }));
+    
+    res.json(formattedData);
+  } catch (err) {
+    console.error('Error fetching department statistics:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get role distribution for a specific department
+router.get("/role-distribution/:department", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { department } = req.params;
+  
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COALESCE(r.name, 'Unassigned') as role_name,
+        COUNT(u.id) as user_count
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.department = $1 AND u.active = true
+      GROUP BY r.name
+      ORDER BY user_count DESC, role_name
+    `, [department]);
+    
+    // Add colors for chart visualization
+    const colors = [
+      '#4f46e5', '#10b981', '#ef4444', '#f59e0b', 
+      '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6',
+      '#f97316', '#6366f1', '#84cc16', '#f43f5e'
+    ];
+    
+    const formattedData = result.rows.map((row, index) => ({
+      role: row.role_name,
+      userCount: parseInt(row.user_count),
+      color: colors[index % colors.length]
+    }));
+    
+    res.json(formattedData);
+  } catch (err) {
+    console.error('Error fetching role distribution:', err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get user profile with extended information
+router.get("/user-profile/:userId", authenticateJWT, async (req, res) => {
+  const pool = req.pool;
+  const { userId } = req.params;
+
+  try {
+    // Get user info with role
+    const userResult = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.department, u.created_at, r.name as role
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+    
+    // Get user details
+    const detailsResult = await pool.query(
+      `SELECT certifications, cv, portfolio, job_description, contract, query_count, attendance, other_details, profile_picture_url
+       FROM user_details
+       WHERE user_id = $1`,
+      [userId]
+    );
+    
+    const userDetails = detailsResult.rows.length > 0 ? detailsResult.rows[0] : {};
+    
+    // Get support staff assigned to this user
+    const supportResult = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.department
+       FROM user_support_assignments usa
+       JOIN users u ON usa.support_staff_id = u.id
+       WHERE usa.user_id = $1`,
+      [userId]
+    );
+    
+    const supportStaff = supportResult.rows;
+    
+    // Get users that this user is supporting
+    const supportedResult = await pool.query(
+      `SELECT u.id, u.full_name, u.email, u.department
+       FROM user_support_assignments usa
+       JOIN users u ON usa.user_id = u.id
+       WHERE usa.support_staff_id = $1`,
+      [userId]
+    );
+    
+    const usersBeingSupported = supportedResult.rows;
+    
+    res.json({
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      department: user.department,
+      role: user.role,
+      created_at: user.created_at,
+      profile_picture_url: userDetails.profile_picture_url || null,
+      certification_count: (userDetails.certifications || []).length,
+      certifications: userDetails.certifications || [],
+      cv: userDetails.cv || null,
+      portfolio: userDetails.portfolio || null,
+      job_description: userDetails.job_description || null,
+      contract: userDetails.contract || null,
+      query_count: userDetails.query_count || 0,
+      attendance: userDetails.attendance || [],
+      other_details: userDetails.other_details || {},
+      support_staff: supportStaff,
+      users_being_supported: usersBeingSupported
+    });
+  } catch (err) {
+    console.error('Error fetching user profile:', err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -621,6 +621,15 @@ app.post("/api/signup", async (req, res) => {
       expiresIn: "1h",
     });
 
+    // Emit dashboard update event for real-time charts
+    req.app.get('io').emit('dashboard_data_updated', {
+      type: 'user_created',
+      userId,
+      department,
+      role: roleName,
+      timestamp: new Date().toISOString()
+    });
+    
     // Signup successful, user added to DB
     res.status(201).json({
       token,
