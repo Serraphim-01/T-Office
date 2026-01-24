@@ -1,7 +1,10 @@
 module.exports = {
   testEnvironment: 'node',
   transform: {
-    '^.+\\.js$': 'babel-jest',
+    '^.+\\.js$': ['babel-jest', { 
+      presets: ['@babel/preset-env'],
+      plugins: ['@babel/plugin-transform-modules-commonjs']
+    }],
   },
   transformIgnorePatterns: [
     '<rootDir>/node_modules/(?!(supertest|.+\\.js$))',

@@ -104,7 +104,7 @@ describe('Multi User Creation in Database', () => {
         
         departmentsWithRoles.push({
           ...dept,
-          roles: roles.length > 0 ? roles : [{ id: null, name: 'user' }] // fallback to user if no roles
+          roles: roles.length > 0 ? roles : [{ id: null, name: 'default' }] // fallback to default if no roles
         });
       }
       
@@ -113,11 +113,9 @@ describe('Multi User Creation in Database', () => {
       console.error('Error fetching departments and roles:', error);
       // Return some default departments as fallback
       return [
-        { id: 1, name: 'Admin', roles: [{ id: 1, name: 'admin' }, { id: 2, name: 'user' }] },
-        { id: 2, name: 'HR', roles: [{ id: 3, name: 'hr_manager' }, { id: 4, name: 'user' }] },
-        { id: 3, name: 'Engineering', roles: [{ id: 5, name: 'manager' }, { id: 6, name: 'developer' }, { id: 7, name: 'user' }] },
-        { id: 4, name: 'Sales', roles: [{ id: 8, name: 'manager' }, { id: 9, name: 'representative' }, { id: 10, name: 'user' }] },
-        { id: 5, name: 'Marketing', roles: [{ id: 11, name: 'manager' }, { id: 12, name: 'specialist' }, { id: 13, name: 'user' }] }
+        { id: 1, name: 'Admin', roles: [{ id: 1, name: 'default' }] },
+        { id: 2, name: 'HR', roles: [{ id: 2, name: 'default' }] },
+        { id: 3, name: 'Sales', roles: [{ id: 3, name: 'default' }] }
       ];
     }
   };
@@ -217,7 +215,7 @@ describe('Multi User Creation in Database', () => {
       // Verify users exist in database
       for (const user of allUsersCreated) {
         const verifyResult = await dbClient.query(
-          'SELECT id, full_name, email, department FROM users WHERE id = $1',
+          'SELECT id, full_name, email, department, role_id FROM users WHERE id = $1',
           [user.id]
         );
         

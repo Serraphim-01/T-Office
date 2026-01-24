@@ -205,7 +205,7 @@ async function runMigrations() {
     
     // Apply pending migrations in order
     for (const migrationFile of pendingMigrations) {
-      const filePath = resolve(process.cwd(), 'migrations', migrationFile);
+      const filePath = resolve(process.cwd(), 'db', 'migrations', migrationFile);
       await runMigrationFile(filePath, migrationFile);
       await recordMigration(migrationFile);
     }
