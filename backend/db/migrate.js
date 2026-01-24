@@ -76,7 +76,7 @@ function splitSQLStatements(sql) {
 
 // Function to get all migration files and sort them
 function getMigrationFiles() {
-  const migrationsDir = resolve(process.cwd(), 'migrations');
+  const migrationsDir = resolve(process.cwd(), 'db', 'migrations');
   const files = readdirSync(migrationsDir);
   return files
     .filter(file => file.endsWith('.sql'))

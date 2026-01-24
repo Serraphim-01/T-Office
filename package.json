@@ -11,7 +11,8 @@
     "migrate": "cd backend && npm run migrate",
     "create-migration": "cd backend && npm run create-migration",
     "lint": "next lint",
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:single": "node --experimental-vm-modules node_modules/.bin/jest",
     "changelog": "cat CHANGELOG.md"
   },
   "dependencies": {
