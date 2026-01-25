@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 export interface Profile {
   id: number; // Changed from string to number to match database
@@ -65,6 +66,7 @@ const refreshAuthToken = async (): Promise<string | null> => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true); // Start with loading true
+  const router = useRouter();
 
   // Check for existing session on mount
   useEffect(() => {
@@ -108,14 +110,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               department: userData.department,
             });
           } else {
-            // Token is invalid, remove it
+            // Token is invalid, remove it and redirect to login
             console.error('Profile fetch failed with status:', response.status);
             localStorage.removeItem('token');
+            setUser(null);
+            router.push('/login');
           }
         } catch (error) {
           console.error('Auth check failed:', error);
-          // Remove token on network errors as well
+          // Remove token on network errors as well and redirect to login
           localStorage.removeItem('token');
+          setUser(null);
+          router.push('/login');
         }
       }
       setLoading(false);
@@ -138,9 +144,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const newToken = await refreshAuthToken();
           if (newToken) {
             localStorage.setItem('token', newToken);
+          } else {
+            // If refresh fails during scheduled refresh, redirect to login
+            setUser(null);
+            router.push('/login');
           }
         } catch (error) {
           console.error('Scheduled token refresh failed:', error);
+          // On scheduled refresh failure, redirect to login
+          setUser(null);
+          router.push('/login');
         }
       }
     }, 55 * 60 * 1000); // 55 minutes
@@ -153,6 +166,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (newToken && typeof window !== 'undefined') {
       localStorage.setItem('token', newToken);
       return true;
+    } else if (typeof window !== 'undefined') {
+      // If refresh fails when explicitly called, redirect to login
+      setUser(null);
+      router.push('/login');
     }
     return false;
   };

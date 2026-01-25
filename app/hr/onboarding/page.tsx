@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchDepartments, fetchRoles } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +60,7 @@ export default function HROnboardingPage() {
 
 function HROnboardingContent() {
   const { user } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [inductions, setInductions] = useState<Induction[]>([]);
@@ -119,6 +121,12 @@ function HROnboardingContent() {
       const deptList = await fetchDepartments();
       setDepartments(deptList);
     } catch (error) {
+      // Handle authentication errors by redirecting to login
+      if (error instanceof Error && (error.message.includes('authentication') || error.message.includes('token'))) {
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to load departments",

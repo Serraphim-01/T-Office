@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { fetchDepartments } from '@/lib/departments';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface Certification {
   id: string;
@@ -103,6 +104,7 @@ interface QueryReply {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, setUser } = useAuth();
   const { toast } = useToast();
   const [profile, setProfile] = useState<ProfileWithQueries | null>(null);
@@ -166,6 +168,12 @@ export default function ProfilePage() {
       const deptList = await fetchDepartments();
       setDepartments(deptList);
     } catch (error) {
+      // Handle authentication errors by redirecting to login
+      if (error instanceof Error && (error.message.includes('authentication') || error.message.includes('token'))) {
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
+      }
       // Removed console statement for production
       toast({
         title: "Error",
@@ -237,6 +245,21 @@ export default function ProfilePage() {
         
         // Set profile picture from profile data
         setProfilePicture(profileData.profile_picture_url);
+      } else {
+        // Handle authentication errors
+        if (profileResponse.status === 401 || profileResponse.status === 403 || 
+            queriesResponse.status === 401 || queriesResponse.status === 403) {
+          // Token expired or invalid, redirect to login
+          localStorage.removeItem('token');
+          router.push('/login');
+          return;
+        }
+        // Handle other errors
+        toast({
+          title: "Error",
+          description: "Failed to load profile data.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       // Removed console statement for production

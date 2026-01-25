@@ -79,6 +79,13 @@ export default function ClockPage() {
     }
   }, [user]);
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
   // Initialize WebSocket connection
   useEffect(() => {
     if (user) {
@@ -156,6 +163,11 @@ export default function ClockPage() {
       if (response.ok) {
         const data = await response.json();
         setLocations(data);
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Failed to fetch locations:', error);
@@ -173,6 +185,11 @@ export default function ClockPage() {
       if (response.ok) {
         const data = await response.json();
         setUserLocations(data);
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Failed to fetch user locations:', error);
@@ -202,6 +219,11 @@ export default function ClockPage() {
         if (lastRecord && lastRecord.type === 'clock_in') {
           setIsClockedIn(true);
         }
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Failed to fetch attendance records:', error);
@@ -311,6 +333,11 @@ export default function ClockPage() {
         setLastClockAction('Clocked Out');
         fetchAttendanceRecords();
         alert('Successfully clocked out!');
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       } else {
         alert('Failed to clock out.');
       }
@@ -358,6 +385,11 @@ export default function ClockPage() {
           address: ''
         });
         // Toast notification will be shown globally by the notification context
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to save location');
@@ -406,6 +438,11 @@ export default function ClockPage() {
         // The real-time update will come through the WebSocket
         // We don't need to manually update the state here anymore
         // Toast notification will be shown globally by the notification context
+      } else if (response.status === 401 || response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
+        router.push('/login');
+        return;
       } else {
         toast({
           title: "Error",

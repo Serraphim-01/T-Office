@@ -23,8 +23,8 @@ export const fetchDepartments = async (): Promise<string[]> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     
     if (!token) {
-      console.warn('No auth token found, using default departments');
-      return DEFAULT_DEPARTMENTS;
+      console.warn('No auth token found, throwing error to trigger redirect');
+      throw new Error('No authentication token found');
     }
 
     // Get API URL from environment variable, fallback to localhost for development
@@ -37,6 +37,10 @@ export const fetchDepartments = async (): Promise<string[]> => {
     });
 
     if (!response.ok) {
+      // If it's an auth error, throw to trigger redirect
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Authentication failed');
+      }
       console.warn('Failed to fetch departments, using default departments');
       return DEFAULT_DEPARTMENTS;
     }
@@ -45,7 +49,8 @@ export const fetchDepartments = async (): Promise<string[]> => {
     return departments.map((dept: { name: string }) => dept.name);
   } catch (error) {
     console.error('Error fetching departments:', error);
-    return DEFAULT_DEPARTMENTS;
+    // Always re-throw errors to let calling components handle authentication redirects
+    throw error;
   }
 };
 
@@ -55,8 +60,8 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     
     if (!token) {
-      console.warn('No auth token found, returning empty roles');
-      return [];
+      console.warn('No auth token found, throwing error to trigger redirect');
+      throw new Error('No authentication token found');
     }
 
     // Get API URL from environment variable, fallback to localhost for development
@@ -70,6 +75,10 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
     });
 
     if (!deptResponse.ok) {
+      // If it's an auth error, throw to trigger redirect
+      if (deptResponse.status === 401 || deptResponse.status === 403) {
+        throw new Error('Authentication failed');
+      }
       console.warn('Failed to fetch departments');
       return [];
     }
@@ -90,6 +99,10 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
     });
 
     if (!rolesResponse.ok) {
+      // If it's an auth error, throw to trigger redirect
+      if (rolesResponse.status === 401 || rolesResponse.status === 403) {
+        throw new Error('Authentication failed');
+      }
       console.warn('Failed to fetch roles');
       return [];
     }
@@ -97,7 +110,8 @@ export const fetchRoles = async (departmentName: string): Promise<{id: number, n
     return await rolesResponse.json();
   } catch (error) {
     console.error('Error fetching roles:', error);
-    return [];
+    // Always re-throw errors to let calling components handle authentication redirects
+    throw error;
   }
 };
 
