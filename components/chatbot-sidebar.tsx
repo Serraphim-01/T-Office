@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { groqChatService, type ChatMessage, type ChatResponse } from '@/lib/groq-chat-service';
+import { n8nChatService, type ChatMessage, type ChatResponse } from '@/lib/n8n-chat-service';
 
 interface ChatbotSidebarProps {
-  isOpen: boolean; 
-  onClose: () => void; 
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
@@ -51,7 +51,7 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     }
-    
+
     // Clean up on unmount or when component closes
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
@@ -64,7 +64,7 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
     if (!inputValue.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: inputValue.trim() };
-    
+
     // Add user message to chat
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
@@ -74,24 +74,31 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
     try {
       // Get conversation history (last 10 messages to keep context manageable)
       const recentHistory = messages.slice(-10);
-      
-      const response: ChatResponse = await groqChatService.sendMessage(
+
+      const response: ChatResponse = await n8nChatService.sendMessage(
         userMessage.content,
         recentHistory
       );
 
-      const botMessage: ChatMessage = { 
-        role: 'assistant', 
-        content: response.message 
+      const extractBotContent = (data: any) => {
+        if (typeof data === 'string') return data;
+        if (data.reply) return data.reply;
+        if (data.message) return data.message;
+        return JSON.stringify(data);
       };
-      
+
+      const botMessage: ChatMessage = {
+        role: 'assistant',
+        content: response.message
+      };
+
       setMessages(prev => [...prev, botMessage]);
     } catch (err: any) {
       setError(err.message || 'Failed to get response from AI assistant');
       // Add error message to chat
-      const errorMessage: ChatMessage = { 
-        role: 'assistant', 
-        content: `❌ ${err.message || 'Sorry, I encountered an error. Please try again.'}` 
+      const errorMessage: ChatMessage = {
+        role: 'assistant',
+        content: `❌ ${err.message || 'Sorry, I encountered an error. Please try again.'}`
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -112,14 +119,14 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
       <div className={`fixed inset-y-0 right-0 z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Backdrop - only show when panel is open */}
         {isOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40" 
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={onClose}
           />
         )}
-        
+
         {/* Panel */}
-        <div 
+        <div
           ref={panelRef}
           className="relative h-full w-[50vw] max-w-[600px] min-w-[400px] bg-white shadow-xl border-l border-gray-200 flex flex-col z-50"
         >
@@ -138,8 +145,8 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                   {messages.map((message, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -148,11 +155,10 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
                             {message.role === 'user' ? 'U' : 'AI'}
                           </AvatarFallback>
                         </Avatar>
-                        <div className={`mx-2 px-3 py-2 rounded-lg ${
-                          message.role === 'user' 
-                            ? 'bg-primary text-primary-foreground' 
+                        <div className={`mx-2 px-3 py-2 rounded-lg ${message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
-                        }`}>
+                          }`}>
                           <p className="text-sm">{message.content}</p>
                         </div>
                       </div>
@@ -174,7 +180,7 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
-              
+
               {/* Error Message */}
               {error && (
                 <div className="px-4 pb-2">
@@ -183,7 +189,7 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
                   </div>
                 </div>
               )}
-              
+
               {/* Input Form */}
               <form onSubmit={handleSubmit} className="p-4 border-t">
                 <div className="flex gap-2">
@@ -195,8 +201,8 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
                     rows={2}
                     disabled={isLoading}
                   />
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     size="icon"
                     disabled={isLoading || !inputValue.trim()}
                   >
@@ -208,14 +214,14 @@ export function ChatbotSidebar({ isOpen, onClose }: ChatbotSidebarProps) {
                   </Button>
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={clearChat}
                     className="hover:text-foreground transition-colors"
                   >
                     Clear chat
                   </button>
-                  <span>Powered by Groq</span>
+                  <span>Powered by n8n</span>
                 </div>
               </form>
             </CardContent>
