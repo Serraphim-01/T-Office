@@ -11,14 +11,14 @@ import path from 'path';
 
 // Test scripts in order
 const testScripts = [
-  { name: 'Provider Creation', file: 'create_providers.test.js' },
-  { name: 'Product Creation', file: 'create_products.test.js' },
-  { name: 'Provider User Assignment', file: 'assign_provider_user.test.js' },
-  { name: 'Inbound Transactions Creation', file: 'create_inbound_transactions.test.js' },
-  { name: 'Move to Stored State', file: 'move_to_stored.test.js' },
-  { name: 'Outbound Transactions Creation', file: 'create_outbound_transactions.test.js' },
-  { name: 'Update to Dispatched State', file: 'update_to_dispatched.test.js' },
-  { name: 'Update to Delivered State', file: 'update_to_delivered.test.js' }
+  { name: 'Provider Creation', file: 'inventory/create_providers.test.js' },
+  { name: 'Product Creation', file: 'inventory/create_products.test.js' },
+  { name: 'Provider User Assignment', file: 'inventory/assign_provider_user.test.js' },
+  { name: 'Inbound Transactions Creation', file: 'inventory/create_inbound_transactions.test.js' },
+  { name: 'Move to Stored State', file: 'inventory/move_to_stored.test.js' },
+  { name: 'Outbound Transactions Creation', file: 'inventory/create_outbound_transactions.test.js' },
+  { name: 'Update to Dispatched State', file: 'inventory/update_to_dispatched.test.js' },
+  { name: 'Update to Delivered State', file: 'inventory/update_to_delivered.test.js' }
 ];
 
 async function runTestScript(scriptInfo, index) {

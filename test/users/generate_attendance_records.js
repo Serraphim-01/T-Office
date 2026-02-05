@@ -288,11 +288,6 @@ if (startDateArg) {
     process.exit(1);
   }
   
-  if (startDate > new Date()) {
-    console.error('❌ Start date cannot be in the future.');
-    process.exit(1);
-  }
-  
   generateAttendanceRecords(startDateArg);
 } else {
   console.log('ℹ️  No start date provided. Using default: 2024-01-01');

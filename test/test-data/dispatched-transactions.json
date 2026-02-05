@@ -1,0 +1,70 @@
+{
+  "dispatched_transactions": [
+    {
+      "id": 2,
+      "inbound_transaction_id": 4,
+      "product_id": 1,
+      "product_name": "4K Monitor 27\"",
+      "product_part_number": "MON-2023-001",
+      "quantity": 2,
+      "receiver_address": "456 Business Ave, Los Angeles, CA 90210",
+      "receiver_email": "jane.smith@corp.com",
+      "receiver_phone": "+1-555-0456",
+      "dispatch_datetime": "2024-02-26T10:00:00.000Z",
+      "delivery_datetime": "2024-02-27T16:00:00.000Z",
+      "status": "Outgoing",
+      "created_at": "2026-02-05T13:55:18.832Z",
+      "inbound_price": "450.00",
+      "outbound_price": "850.00",
+      "provider_name": "Digital Devices Corp.",
+      "batch_number": "BO-050226-4",
+      "serial_numbers_with_prices": [
+        {
+          "serial_number": "M2023001",
+          "inbound_price": 0
+        },
+        {
+          "serial_number": "M2023003",
+          "inbound_price": 0
+        }
+      ],
+      "previous_status": "Outgoing",
+      "new_status": "Dispatched"
+    },
+    {
+      "id": 1,
+      "inbound_transaction_id": 5,
+      "product_id": 7,
+      "product_name": "Ergonomic Office Chair",
+      "product_part_number": "EOC-2023-001",
+      "quantity": 2,
+      "receiver_address": "123 Main Street, New York, NY 10001",
+      "receiver_email": "john.doe@company.com",
+      "receiver_phone": "+1-555-0123",
+      "dispatch_datetime": "2024-02-25T09:00:00.000Z",
+      "delivery_datetime": "2024-02-26T17:00:00.000Z",
+      "status": "Outgoing",
+      "created_at": "2026-02-05T13:55:18.369Z",
+      "inbound_price": "350.00",
+      "outbound_price": "2800.00",
+      "provider_name": "Office Supply Co.",
+      "batch_number": "BO-050226-5",
+      "serial_numbers_with_prices": [
+        {
+          "serial_number": "C2023007",
+          "inbound_price": 0
+        },
+        {
+          "serial_number": "C2023008",
+          "inbound_price": 0
+        }
+      ],
+      "previous_status": "Outgoing",
+      "new_status": "Dispatched"
+    }
+  ],
+  "failed_transactions": [],
+  "timestamp": "2026-02-05T13:55:20.769Z",
+  "total_dispatched": 2,
+  "total_failed": 0
+}

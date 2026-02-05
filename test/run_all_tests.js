@@ -8,6 +8,10 @@ import path from 'path';
 
 const testSuites = [
   {
+    name: 'Admin User Creation',
+    runner: 'auth/create_admin_user.js'
+  },
+  {
     name: 'User Management Tests',
     runner: 'run_user_tests.js'
   },

@@ -1,0 +1,13 @@
+{
+  "email": "superadmin@test.com",
+  "password": "SuperAdmin123!",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIyLCJkZXBhcnRtZW50IjoiQWRtaW4iLCJyb2xlIjoiZGVmYXVsdCIsImlhdCI6MTc3MDI5OTcwMiwiZXhwIjoxNzcwMzAzMzAyfQ.srSV_bv3laqSv5W_3Ff_r4ZApwY0l_J7ptdxo8UN3pw",
+  "user": {
+    "id": 22,
+    "full_name": "Super Admin User",
+    "email": "superadmin@test.com",
+    "department": "Admin",
+    "role": "default"
+  },
+  "timestamp": "2026-02-05T13:55:02.022Z"
+}

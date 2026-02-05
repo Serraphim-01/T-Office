@@ -1,6 +1,6 @@
 /**
  * Update Outbound Transactions to Delivered State Test Script
- * This script changes outbound transactions from Dispatched to Delivered status
+ * This script updates outbound transactions to delivered state
  */
 
 import axios from 'axios';
@@ -13,18 +13,49 @@ dotenv.config({ path: '.env.local' });
 
 // Configuration
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin_password';
+
+// Function to load admin credentials from file
+async function loadAdminCredentials() {
+  const adminDataPath = path.join(process.cwd(), '..', 'test-data', 'admin-user.json');
+  const localAdminDataPath = path.join(process.cwd(), 'test-data', 'admin-user.json');
+  
+  // Check both possible locations
+  if (fs.existsSync(localAdminDataPath)) {
+    return JSON.parse(fs.readFileSync(localAdminDataPath, 'utf8'));
+  } else if (fs.existsSync(adminDataPath)) {
+    return JSON.parse(fs.readFileSync(adminDataPath, 'utf8'));
+  } else {
+    throw new Error('Admin user credentials not found. Run auth/create_admin_user.js first.');
+  }
+}
 
 async function authenticate() {
   try {
     console.log('Authenticating as admin user...');
-    const response = await axios.post(`${API_BASE_URL}/api/login`, {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD
-    });
     
-    return response.data.token;
+    // Load admin credentials from the created file
+    const adminData = await loadAdminCredentials();
+    
+    // Use the token directly if it's fresh, otherwise login
+    // Check if token is expired by verifying it against the API
+    try {
+      // Try to make a simple authenticated request to verify the token
+      await axios.get(`${API_BASE_URL}/api/admin/departments`, {
+        headers: { 'Authorization': `Bearer ${adminData.token}` }
+      });
+      
+      console.log('✓ Using existing admin token');
+      return adminData.token;
+    } catch (verificationError) {
+      // If token is invalid/expired, try to log in with credentials
+      console.log('Token verification failed, attempting to login with credentials...');
+      const response = await axios.post(`${API_BASE_URL}/api/login`, {
+        email: adminData.email,
+        password: adminData.password
+      });
+      
+      return response.data.token;
+    }
   } catch (error) {
     console.error('Authentication failed:', error.response?.data || error.message);
     throw new Error('Failed to authenticate');

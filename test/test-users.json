@@ -1,0 +1,110 @@
+[
+  {
+    "email": "edward.scott.5835@admin.com",
+    "userId": 49,
+    "department": "Admin",
+    "timestamp": "2026-02-05T13:54:53.609Z"
+  },
+  {
+    "email": "carol.hall.5997@admin.com",
+    "userId": 50,
+    "department": "Admin",
+    "timestamp": "2026-02-05T13:54:53.847Z"
+  },
+  {
+    "email": "betty.martinez.3090@admin.com",
+    "userId": 51,
+    "department": "Admin",
+    "timestamp": "2026-02-05T13:54:54.040Z"
+  },
+  {
+    "email": "brian.torres.2698@admin.com",
+    "userId": 52,
+    "department": "Admin",
+    "timestamp": "2026-02-05T13:54:54.295Z"
+  },
+  {
+    "email": "elizabeth.king.3421@admin.com",
+    "userId": 53,
+    "department": "Admin",
+    "timestamp": "2026-02-05T13:54:54.526Z"
+  },
+  {
+    "email": "sandra.harris.5923@hr.com",
+    "userId": 54,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:54.798Z"
+  },
+  {
+    "email": "thomas.walker.3654@hr.com",
+    "userId": 55,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:55.057Z"
+  },
+  {
+    "email": "john.lopez.1979@hr.com",
+    "userId": 56,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:55.249Z"
+  },
+  {
+    "email": "donald.jones.1487@hr.com",
+    "userId": 57,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:55.450Z"
+  },
+  {
+    "email": "charles.ramirez.6229@hr.com",
+    "userId": 58,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:55.701Z"
+  },
+  {
+    "email": "helen.scott.2206@hr.com",
+    "userId": 59,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:55.979Z"
+  },
+  {
+    "email": "michelle.hernandez.5818@hr.com",
+    "userId": 60,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:56.216Z"
+  },
+  {
+    "email": "kimberly.walker.664@hr.com",
+    "userId": 61,
+    "department": "HR",
+    "timestamp": "2026-02-05T13:54:56.635Z"
+  },
+  {
+    "email": "michael.robinson.3984@sales.com",
+    "userId": 62,
+    "department": "Sales",
+    "timestamp": "2026-02-05T13:54:56.919Z"
+  },
+  {
+    "email": "mary.martinez.8342@sales.com",
+    "userId": 63,
+    "department": "Sales",
+    "timestamp": "2026-02-05T13:54:57.205Z"
+  },
+  {
+    "email": "kimberly.clark.1009@sales.com",
+    "userId": 64,
+    "department": "Sales",
+    "timestamp": "2026-02-05T13:54:57.372Z"
+  },
+  {
+    "email": "sarah.thompson.1422@sales.com",
+    "userId": 65,
+    "department": "Sales",
+    "timestamp": "2026-02-05T13:54:57.589Z"
+  },
+  {
+    "email": "karen.gonzalez.290@sales.com",
+    "userId": 66,
+    "department": "Sales",
+    "timestamp": "2026-02-05T13:54:57.789Z"
+  }
+]

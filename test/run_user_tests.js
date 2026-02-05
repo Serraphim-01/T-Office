@@ -9,17 +9,17 @@ import path from 'path';
 const tests = [
   {
     name: 'Create Extra Roles',
-    script: 'create_extra_roles.js',
+    script: 'users/create_extra_roles.js',
     description: 'Creates additional roles for testing'
   },
   {
     name: 'Multi User Creation', 
-    script: 'multi_user_signup.test.js',
+    script: 'users/multi_user_creation.js',
     description: 'Creates multiple users across departments'
   },
   {
     name: 'Support Staff Allocation',
-    script: 'support_staff_allocation.test.js',
+    script: 'users/support_staff_allocation.js',
     description: 'Assigns support staff and generates attendance records'
   }
 ];

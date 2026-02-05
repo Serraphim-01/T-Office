@@ -7,6 +7,12 @@
 
 const commands = [
   {
+    category: 'Setup Tests',
+    commands: [
+      { cmd: 'npm run test:setup:admin', desc: 'Create super admin user with full access' }
+    ]
+  },
+  {
     category: 'User Management Tests',
     commands: [
       { cmd: 'npm run test:users:roles', desc: 'Create extra roles for testing' },
@@ -35,7 +41,8 @@ const commands = [
     category: 'Complete Test Suites',
     commands: [
       { cmd: 'npm run test:all', desc: 'Run all user and inventory tests' },
-      { cmd: 'npm run cleanup:all', desc: 'Clean up all test data' }
+      { cmd: 'npm run cleanup:all', desc: 'Clean up all test data' },
+      { cmd: 'npm run test:list', desc: 'List all available test commands' }
     ]
   }
 ];

@@ -40,6 +40,11 @@ router.post('/:userId/assign-support', authenticateJWT, async (req, res) => {
     
     const staffName = staffCheck.rows[0].full_name;
     
+    // Prevent a user from assigning themselves as their own support staff
+    if (userId === supportStaffId) {
+      return res.status(400).json({ error: 'A user cannot assign themselves as their own support staff' });
+    }
+    
     // Create assignment
     const result = await req.pool.query(
       `INSERT INTO user_support_assignments (user_id, support_staff_id) 

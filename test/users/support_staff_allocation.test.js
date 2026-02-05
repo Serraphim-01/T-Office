@@ -12,12 +12,26 @@ import { Client } from 'pg';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
 // Path to test users data
 const testDataPath = path.join(process.cwd(), 'test-users.json');
+
+// Configuration
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
+
+// Function to load admin credentials
+async function loadAdminCredentials() {
+  const adminDataPath = path.join(process.cwd(), 'test-data', 'admin-user.json');
+  if (fs.existsSync(adminDataPath)) {
+    const adminData = JSON.parse(fs.readFileSync(adminDataPath, 'utf8'));
+    return adminData;
+  }
+  throw new Error('Admin user credentials not found. Run auth/create_admin_user.js first.');
+}
 
 // Function to check if database has sufficient users
 async function checkDatabaseUserCount(dbClient) {
@@ -187,10 +201,28 @@ async function verifySupportAssignment(dbClient, userId, supportStaffId) {
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 
+// Function to test API assignment (including self-assignment prevention)
+async function testApiAssignment(userId, supportStaffId, token) {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/users/${userId}/assign-support`,
+      { supportStaffId },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    return { success: false, error: error.response?.data || error.message };
+  }
+}
+
 describe('Support Staff Allocation Test', () => {
   let dbClient;
+  let adminCredentials;
 
   beforeAll(async () => {
+    // Load admin credentials
+    adminCredentials = await loadAdminCredentials();
+    
     // Create a database client to be reused
     dbClient = new Client({
       connectionString: process.env.DATABASE_URL || process.env.BACKEND_DATABASE_URL
@@ -207,6 +239,30 @@ describe('Support Staff Allocation Test', () => {
       await dbClient.end();
     }
   });
+
+  test('should prevent self-assignment of support staff via API', async () => {
+    console.log('🔒 Testing self-assignment prevention via API...\n');
+    
+    // Test that a user cannot assign themselves as their own support staff
+    const result = await testApiAssignment(
+      adminCredentials.user.id, 
+      adminCredentials.user.id, 
+      adminCredentials.token
+    );
+    
+    console.log(`   Testing user ID ${adminCredentials.user.id} assigning themselves as support staff...`);
+    
+    if (result.success) {
+      console.log('   ❌ Self-assignment was allowed - this is a security vulnerability!');
+      expect(result.success).toBe(false);
+    } else {
+      console.log('   ✅ Self-assignment correctly prevented');
+      console.log(`   Error message: ${JSON.stringify(result.error)}`);
+      expect(result.success).toBe(false);
+      expect(result.error).toHaveProperty('error');
+      expect(result.error.error.toLowerCase()).toContain('cannot assign themselves');
+    }
+  }, 30000);
 
   test('should identify eligible users and support staff', async () => {
     console.log('🔍 Identifying eligible users and support staff...\n');

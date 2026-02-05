@@ -3,18 +3,9 @@
  * This script creates multiple providers for testing the inventory system
  */
 
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config({ path: '.env.local' });
-
-// Configuration
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000';
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin_password';
+import { getAdminToken, makeAuthenticatedRequest } from '../utils/test-auth.js';
 
 // Test data
 const testProviders = [
@@ -71,14 +62,11 @@ const testProviders = [
 async function authenticate() {
   try {
     console.log('Authenticating as admin user...');
-    const response = await axios.post(`${API_BASE_URL}/api/login`, {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD
-    });
-    
-    return response.data.token;
+    const token = await getAdminToken();
+    console.log('✓ Authentication successful');
+    return token;
   } catch (error) {
-    console.error('Authentication failed:', error.response?.data || error.message);
+    console.error('Authentication failed:', error.message);
     throw new Error('Failed to authenticate');
   }
 }
@@ -86,12 +74,7 @@ async function authenticate() {
 async function createProvider(providerData, token) {
   try {
     console.log(`Creating provider: ${providerData.name}`);
-    const response = await axios.post(`${API_BASE_URL}/api/inventory/providers`, providerData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await makeAuthenticatedRequest('POST', '/api/inventory/providers', providerData);
     
     console.log(`✓ Provider created successfully: ${providerData.name} (ID: ${response.data.id})`);
     return response.data;
@@ -100,9 +83,7 @@ async function createProvider(providerData, token) {
       console.log(`⚠ Provider already exists: ${providerData.name}`);
       // Try to get existing provider
       try {
-        const providersResponse = await axios.get(`${API_BASE_URL}/api/inventory/providers`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const providersResponse = await makeAuthenticatedRequest('GET', '/api/inventory/providers');
         
         const existingProvider = providersResponse.data.find(p => p.name === providerData.name);
         if (existingProvider) {
@@ -121,9 +102,7 @@ async function createProvider(providerData, token) {
 
 async function getAllProviders(token) {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/inventory/providers`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const response = await makeAuthenticatedRequest('GET', '/api/inventory/providers');
     return response.data;
   } catch (error) {
     console.error('Error fetching providers:', error.response?.data || error.message);
