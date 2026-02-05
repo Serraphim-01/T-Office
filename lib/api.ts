@@ -150,3 +150,48 @@ export const apiPatch = async (endpoint: string, body?: any, token?: string): Pr
   
   return response;
 };
+
+// Analytics API functions
+export const fetchInventoryAnalytics = async () => {
+  const token = localStorage.getItem('token');
+  const response = await apiGet('/api/analytics/inventory', token);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch inventory analytics');
+  }
+  
+  return response.json();
+};
+
+export const fetchProfitAnalytics = async () => {
+  const token = localStorage.getItem('token');
+  const response = await apiGet('/api/analytics/profit', token);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch profit analytics');
+  }
+  
+  return response.json();
+};
+
+export const fetchPredictiveAnalytics = async () => {
+  const token = localStorage.getItem('token');
+  const response = await apiGet('/api/analytics/predictive', token);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch predictive analytics');
+  }
+  
+  return response.json();
+};
+
+export const fetchUserActivityAnalytics = async () => {
+  const token = localStorage.getItem('token');
+  const response = await apiGet('/api/analytics/user-activity', token);
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch user activity analytics');
+  }
+  
+  return response.json();
+};

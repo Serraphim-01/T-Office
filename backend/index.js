@@ -21,6 +21,7 @@ import inventoryRoutes from "./routes/inventory.js";
 import inboundRoutes from "./routes/inbound.js"; 
 import outboundRoutes from "./routes/outbound.js"; 
 import userRoutes from "./routes/users.js"; 
+import analyticsRoutes from "./routes/analytics.js"; 
 
 // Load environment variables
 dotenv.config({ path: ".env.local" });
@@ -710,6 +711,7 @@ app.use("/api", locationRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/inventory/inbound", inboundRoutes);
 app.use("/api/inventory/outbound", outboundRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/users", userRoutes);
 
 // Public endpoint to get roles for a department during signup

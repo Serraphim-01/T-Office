@@ -1,15 +1,78 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { X, PieChart } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { X, PieChart, BarChart3, Users, MessageCircle, User, Package, Clock, FileText, Settings, Building, TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { useAnalytics } from '@/lib/analytics-context';
+import { useRouter } from 'next/navigation';
+import { 
+  fetchInventoryAnalytics, 
+  fetchProfitAnalytics, 
+  fetchPredictiveAnalytics, 
+  fetchUserActivityAnalytics 
+} from '@/lib/api';
+import { BarChartComponent, LineChartComponent, PieChartComponent, DoughnutChartComponent, AreaChartComponent } from './charts';
 
 export function GlobalAnalyticsSidebar() {
   const { isAnalyticsSidebarOpen, closeAnalyticsSidebar } = useAnalytics();
   const panelRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle data fetching
+  useEffect(() => {
+    if (isAnalyticsSidebarOpen) {
+      const fetchData = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          // Fetch all analytics data in parallel with individual error handling
+          const [inventoryData, profitData, predictiveData, userData] = await Promise.all([
+            fetchInventoryAnalytics().catch(err => {
+              console.error('Error fetching inventory analytics:', err);
+              return null;
+            }),
+            fetchProfitAnalytics().catch(err => {
+              console.error('Error fetching profit analytics:', err);
+              return null;
+            }),
+            fetchPredictiveAnalytics().catch(err => {
+              console.error('Error fetching predictive analytics:', err);
+              return null;
+            }),
+            fetchUserActivityAnalytics().catch(err => {
+              console.error('Error fetching user activity analytics:', err);
+              return null;
+            })
+          ]);
+          
+          setAnalyticsData({
+            inventory: inventoryData || { total_inventory_value: 0, inventory_by_category: [], low_stock_items: [] },
+            profit: profitData || { 
+              product_profit_details: [], 
+              overall_summary: { total_profit: 0, profit_margin_percent: 0 }, 
+              monthly_profit: [] 
+            },
+            predictive: predictiveData || { demand_predictions: [], revenue_prediction: {} },
+            user: userData || { daily_active_users: [], user_engagement_by_department: [] }
+          });
+        } catch (err) {
+          console.error('Error fetching analytics data:', err);
+          setError('Failed to load analytics data');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchData();
+    }
+  }, [isAnalyticsSidebarOpen]);
 
   // Handle click outside to close panel
   const handleClickOutside = (event: MouseEvent) => {
@@ -42,13 +105,250 @@ export function GlobalAnalyticsSidebar() {
     };
   }, [isAnalyticsSidebarOpen]);
 
-  // Get global analytics content (currently coming soon)
+  // Navigate to analytics page
+  const goToAnalyticsPage = () => {
+    closeAnalyticsSidebar();
+    router.push('/analytics');
+  };
+
+  // Get global analytics content
   const getGlobalAnalytics = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="p-6 text-center">
+          <MessageCircle className="h-12 w-12 mx-auto text-red-400 mb-3" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Analytics</h3>
+          <p className="text-gray-500">{error}</p>
+        </div>
+      );
+    }
+
+    if (!analyticsData) {
+      return (
+        <div className="p-6 text-center">
+          <PieChart className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+          <h3 className="text-lg font-medium text-gray-900 mb-1">No Data Available</h3>
+          <p className="text-gray-500">Analytics data could not be loaded</p>
+        </div>
+      );
+    }
+
+    // Prepare data for charts
+    const inventoryByCategory = analyticsData.inventory?.inventory_by_category || [];
+    const profitByMonth = analyticsData.profit?.monthly_profit || [];
+    const demandPredictions = analyticsData.predictive?.demand_predictions || [];
+    const userActivity = analyticsData.user?.daily_active_users || [];
+
+    // Prepare inventory by category data
+    const inventoryCategoryData = inventoryByCategory.map((cat: any) => ({
+      name: cat.name,
+      value: cat.total_value
+    }));
+
+    // Prepare monthly profit data
+    const monthlyProfitData = profitByMonth.map((month: any) => ({
+      name: month.month ? new Date(month.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : 'N/A',
+      profit: parseFloat(month.monthly_profit || 0),
+      units: parseInt(month.total_units_sold || 0)
+    }));
+
+    // Prepare demand prediction data (top 5 items)
+    const demandPredictionData = demandPredictions.slice(0, 5).map((item: any) => ({
+      name: item.name,
+      monthsLeft: parseFloat(item.months_of_supply_left || 0),
+      predictedDemand: parseFloat(item.predicted_monthly_demand || 0)
+    }));
+
+    // Prepare user activity data
+    const userActivityData = userActivity.slice(0, 7).map((day: any) => ({
+      name: day.date ? new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A',
+      users: parseInt(day.active_users || 0)
+    })).reverse(); // Reverse to show oldest first
+
     return (
-      <div className="p-6 text-center">
-        <PieChart className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-        <h3 className="text-lg font-medium text-gray-900 mb-1">Coming Soon</h3>
-        <p className="text-gray-500">Global analytics are coming soon</p>
+      <div className="space-y-6 p-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4 flex items-center">
+              <div className="bg-blue-100 p-3 rounded-lg mr-4">
+                <DollarSign className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Inventory Value</p>
+                <p className="text-xl font-bold">${Number(analyticsData.inventory?.total_inventory_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4 flex items-center">
+              <div className="bg-green-100 p-3 rounded-lg mr-4">
+                <Activity className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Profit</p>
+                <p className="text-xl font-bold">${Number(analyticsData.profit?.overall_summary?.total_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-purple-50 border-purple-200">
+            <CardContent className="p-4 flex items-center">
+              <div className="bg-purple-100 p-3 rounded-lg mr-4">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Profit Margin</p>
+                <p className="text-xl font-bold">{Number(analyticsData.profit?.overall_summary?.profit_margin_percent || 0).toFixed(2)}%</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-yellow-50 border-yellow-200">
+            <CardContent className="p-4 flex items-center">
+              <div className="bg-yellow-100 p-3 rounded-lg mr-4">
+                <Package className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Low Stock Items</p>
+                <p className="text-xl font-bold">{analyticsData.inventory?.low_stock_items?.length || 0}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Inventory by Category
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {inventoryCategoryData.length > 0 ? (
+                <DoughnutChartComponent 
+                  data={inventoryCategoryData} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  title="Inventory Value by Category" 
+                  height={250}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-500">
+                  No inventory category data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Monthly Profit Trends
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {monthlyProfitData.length > 0 ? (
+                <LineChartComponent 
+                  data={monthlyProfitData} 
+                  dataKey="profit" 
+                  nameKey="name" 
+                  title="Monthly Profit" 
+                  color="#10b981"
+                  height={200}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-500">
+                  No profit data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Activity className="mr-2 h-4 w-4" />
+                  Demand Predictions
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {demandPredictionData.length > 0 ? (
+                <BarChartComponent 
+                  data={demandPredictionData} 
+                  dataKey="monthsLeft" 
+                  nameKey="name" 
+                  title="Months of Supply Left" 
+                  color="#f59e0b"
+                  height={200}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-500">
+                  No demand prediction data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Users className="mr-2 h-4 w-4" />
+                  User Activity
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userActivityData.length > 0 ? (
+                <AreaChartComponent 
+                  data={userActivityData} 
+                  dataKey="users" 
+                  nameKey="name" 
+                  title="Daily Active Users" 
+                  color="#8b5cf6"
+                  height={200}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-500">
+                  No user activity data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Button 
+            onClick={goToAnalyticsPage}
+            className="w-full flex items-center justify-center"
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Open Analytics Page
+          </Button>
+        </div>
       </div>
     );
   };
@@ -81,7 +381,7 @@ export function GlobalAnalyticsSidebar() {
               </Button>
             </CardHeader>
             <CardContent className="flex-1 p-0 flex flex-col">
-              <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)] p-4">
+              <ScrollArea className="flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
                 {getGlobalAnalytics()}
               </ScrollArea>
             </CardContent>
