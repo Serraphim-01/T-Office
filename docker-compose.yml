@@ -12,6 +12,8 @@ services:
     command: npm run dev:frontend
     env_file:
       - ./.env.local
+    networks:
+      - office_net
 
   backend:
     build: ./backend
@@ -30,6 +32,8 @@ services:
       - db
     env_file:
       - ./backend/.env
+    networks:
+      - office_net
 
   db:
     image: postgres:15
@@ -43,6 +47,12 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - office_net
 
 volumes:
   postgres_data:
+
+networks:
+  office_net:
+    external: true

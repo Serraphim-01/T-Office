@@ -1,0 +1,2281 @@
+{
+  "database_name": "T-Office",
+  "description": "Complete database schema for the T-Office management system",
+  "version": "1.0",
+  "last_updated": "2026-02-04",
+  "tables": {
+    "users": {
+      "description": "Core user information table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for each user"
+        },
+        "full_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Full name of the user"
+        },
+        "email": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "unique": true,
+          "description": "Email address of the user"
+        },
+        "department": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "description": "Department the user belongs to"
+        },
+        "password_hash": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Hashed password for authentication"
+        },
+        "active": {
+          "type": "BOOLEAN",
+          "default": true,
+          "description": "Whether the user account is active or offboarded"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when the user was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when the user was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_users_department",
+          "columns": ["department"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_users_email",
+          "columns": ["email"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_users_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "references": [
+          {
+            "table": "departments",
+            "column": "manager_id",
+            "foreign_key": "id"
+          }
+        ],
+        "referenced_by": [
+          {
+            "table": "user_details",
+            "column": "user_id"
+          },
+          {
+            "table": "user_activities",
+            "column": "user_id"
+          },
+          {
+            "table": "chat_settings",
+            "column": "user_id"
+          },
+          {
+            "table": "chat_summaries",
+            "column": "user_id"
+          },
+          {
+            "table": "attendance",
+            "column": "user_id"
+          },
+          {
+            "table": "hr_queries",
+            "column": "user_id"
+          },
+          {
+            "table": "hr_queries",
+            "column": "assigned_to"
+          },
+          {
+            "table": "query_replies",
+            "column": "replied_by"
+          },
+          {
+            "table": "wiki_topics",
+            "column": "created_by"
+          },
+          {
+            "table": "wiki_lesson_completions",
+            "column": "user_id"
+          },
+          {
+            "table": "wiki_comments",
+            "column": "user_id"
+          },
+          {
+            "table": "locations",
+            "column": "created_by"
+          },
+          {
+            "table": "user_locations",
+            "column": "user_id"
+          },
+          {
+            "table": "location_events",
+            "column": "user_id"
+          },
+          {
+            "table": "auto_attendance",
+            "column": "user_id"
+          },
+          {
+            "table": "compliance_documents",
+            "column": "uploaded_by"
+          },
+          {
+            "table": "crawled_sites",
+            "column": "created_by"
+          },
+          {
+            "table": "provider_user_assignments",
+            "column": "user_id"
+          },
+          {
+            "table": "user_support_assignments",
+            "column": "user_id"
+          },
+          {
+            "table": "user_support_assignments",
+            "column": "support_staff_id"
+          }
+        ]
+      }
+    },
+    "user_details": {
+      "description": "Extended user information table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for user details"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "unique": true,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "phone": {
+          "type": "VARCHAR(20)",
+          "description": "User's phone number"
+        },
+        "address": {
+          "type": "TEXT",
+          "description": "User's address"
+        },
+        "emergency_contact_name": {
+          "type": "VARCHAR(255)",
+          "description": "Emergency contact person name"
+        },
+        "emergency_contact_phone": {
+          "type": "VARCHAR(20)",
+          "description": "Emergency contact phone number"
+        },
+        "date_of_birth": {
+          "type": "DATE",
+          "description": "User's date of birth"
+        },
+        "hire_date": {
+          "type": "DATE",
+          "description": "User's hire date"
+        },
+        "position": {
+          "type": "VARCHAR(100)",
+          "description": "User's job position"
+        },
+        "manager_id": {
+          "type": "INTEGER",
+          "description": "Manager's user ID",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "profile_picture_url": {
+          "type": "TEXT",
+          "description": "URL to user's profile picture"
+        },
+        "certifications": {
+          "type": "JSONB",
+          "default": "[]",
+          "description": "Array of user certifications"
+        },
+        "cv": {
+          "type": "TEXT",
+          "description": "User's CV/resume"
+        },
+        "portfolio": {
+          "type": "TEXT",
+          "description": "User's portfolio"
+        },
+        "job_description": {
+          "type": "TEXT",
+          "description": "User's job description"
+        },
+        "contract": {
+          "type": "TEXT",
+          "description": "User's contract information"
+        },
+        "query_count": {
+          "type": "INTEGER",
+          "default": 0,
+          "description": "Number of HR queries submitted"
+        },
+        "attendance": {
+          "type": "JSONB",
+          "default": "[]",
+          "description": "Attendance records in JSON format"
+        },
+        "other_details": {
+          "type": "JSONB",
+          "default": "{}",
+          "description": "Other user details in JSON format"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when details were created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when details were last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_user_details_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_user_details_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "user_activities": {
+      "description": "User activity audit log table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for activity record"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "activity_type": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "description": "Type of activity performed"
+        },
+        "description": {
+          "type": "TEXT",
+          "description": "Description of the activity"
+        },
+        "ip_address": {
+          "type": "INET",
+          "description": "IP address of the user"
+        },
+        "user_agent": {
+          "type": "TEXT",
+          "description": "User agent string"
+        },
+        "timestamp": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when activity occurred"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_user_activities_user_timestamp",
+          "columns": ["user_id", "timestamp"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        }
+      ]
+    },
+    "departments": {
+      "description": "Departments table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for department"
+        },
+        "name": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "unique": true,
+          "description": "Department name"
+        },
+        "description": {
+          "type": "TEXT",
+          "description": "Department description"
+        },
+        "manager_id": {
+          "type": "INTEGER",
+          "description": "Manager's user ID",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when department was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when department was last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_departments_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "users",
+            "column": "department"
+          },
+          {
+            "table": "wiki_topics",
+            "column": "department"
+          },
+          {
+            "table": "inductions",
+            "column": "department"
+          },
+          {
+            "table": "department_page_access",
+            "column": "department_id"
+          }
+        ]
+      }
+    },
+    "chat_messages": {
+      "description": "Chat messages table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for message"
+        },
+        "text": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Message content"
+        },
+        "is_moderator": {
+          "type": "BOOLEAN",
+          "default": false,
+          "description": "Whether message is from moderator"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "is_bot": {
+          "type": "BOOLEAN",
+          "default": false,
+          "description": "Whether message is from bot"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when message was created"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_chat_messages_created_at",
+          "columns": ["created_at"],
+          "type": "BTREE",
+          "order": "DESC"
+        }
+      ]
+    },
+    "chat_settings": {
+      "description": "User-specific chat settings table",
+      "columns": {
+        "user_id": {
+          "type": "INTEGER",
+          "primary_key": true,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "is_paused": {
+          "type": "BOOLEAN",
+          "default": false,
+          "nullable": false,
+          "description": "Whether chat is paused for user"
+        },
+        "paused_by": {
+          "type": "INTEGER",
+          "description": "User who paused the chat",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "paused_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Timestamp when chat was paused"
+        },
+        "theme": {
+          "type": "VARCHAR(20)",
+          "default": "light",
+          "description": "Chat theme preference"
+        },
+        "notifications_enabled": {
+          "type": "BOOLEAN",
+          "default": true,
+          "description": "Whether notifications are enabled"
+        },
+        "sound_enabled": {
+          "type": "BOOLEAN",
+          "default": true,
+          "description": "Whether sound is enabled"
+        },
+        "auto_summarize": {
+          "type": "BOOLEAN",
+          "default": false,
+          "description": "Whether auto summarization is enabled"
+        },
+        "summary_interval": {
+          "type": "INTEGER",
+          "default": 50,
+          "description": "Number of messages between summaries"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when settings were created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when settings were last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_chat_settings_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "global_chat_settings": {
+      "description": "System-wide chat settings table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "description": "Unique identifier for settings"
+        },
+        "is_chat_paused": {
+          "type": "BOOLEAN",
+          "default": false,
+          "nullable": false,
+          "description": "Whether chat is paused system-wide"
+        },
+        "paused_by": {
+          "type": "INTEGER",
+          "description": "User who paused the chat",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "paused_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Timestamp when chat was paused"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when settings were created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when settings were last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_global_chat_settings_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "chat_summaries": {
+      "description": "Chat summaries table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for summary"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "summary_text": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Summary content"
+        },
+        "message_count": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Number of messages summarized"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when summary was created"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_chat_summaries_user_created",
+          "columns": ["user_id", "created_at"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        }
+      ]
+    },
+    "attendance": {
+      "description": "Attendance tracking table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for attendance record"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "clock_in": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Clock in timestamp"
+        },
+        "clock_out": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Clock out timestamp"
+        },
+        "total_hours": {
+          "type": "DECIMAL(5,2)",
+          "description": "Total hours worked"
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "default": "present",
+          "description": "Attendance status"
+        },
+        "notes": {
+          "type": "TEXT",
+          "description": "Additional notes"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when record was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when record was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_attendance_user_date",
+          "columns": ["user_id", "clock_in"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_attendance_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "inductions": {
+      "description": "Employee induction scheduling table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for induction"
+        },
+        "department": {
+          "type": "VARCHAR(100)",
+          "description": "Department for the induction"
+        },
+        "induction_time": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Scheduled induction time"
+        },
+        "attendees": {
+          "type": "JSONB",
+          "default": "[]",
+          "description": "List of attendees in JSON format"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when induction was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when induction was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_inductions_department",
+          "columns": ["department"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_inductions_time",
+          "columns": ["induction_time"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_inductions_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "hr_queries": {
+      "description": "HR query management table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for query"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table (query submitter)",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "subject": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Query subject"
+        },
+        "description": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Query description"
+        },
+        "assigned_to": {
+          "type": "INTEGER",
+          "description": "User ID of assigned handler",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "resolution": {
+          "type": "TEXT",
+          "description": "Query resolution"
+        },
+        "resolved_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Timestamp when query was resolved"
+        },
+        "query_type": {
+          "type": "VARCHAR(100)",
+          "description": "Type/category of query"
+        },
+        "is_locked": {
+          "type": "BOOLEAN",
+          "default": false,
+          "description": "Whether query is locked"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when query was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when query was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_hr_queries_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_hr_queries_assigned_to",
+          "columns": ["assigned_to"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_hr_queries_query_type",
+          "columns": ["query_type"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_hr_queries_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "query_replies",
+            "column": "query_id"
+          }
+        ]
+      }
+    },
+    "query_types": {
+      "description": "Predefined HR query types",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for query type"
+        },
+        "name": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "unique": true,
+          "description": "Query type name"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when query type was created"
+        }
+      },
+      "indexes": []
+    },
+    "query_replies": {
+      "description": "HR query replies table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for reply"
+        },
+        "query_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to hr_queries table",
+          "references": {
+            "table": "hr_queries",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "reply_text": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Reply content"
+        },
+        "replied_by": {
+          "type": "INTEGER",
+          "description": "User ID of replier",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when reply was created"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_query_replies_query_id",
+          "columns": ["query_id"],
+          "type": "BTREE"
+        }
+      ]
+    },
+    "wiki_topics": {
+      "description": "Wiki topics table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for topic"
+        },
+        "department": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "description": "Department associated with topic"
+        },
+        "topic": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Topic name"
+        },
+        "content": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Topic content"
+        },
+        "video_url": {
+          "type": "TEXT",
+          "description": "Associated video URL"
+        },
+        "created_by": {
+          "type": "INTEGER",
+          "description": "User ID of creator",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when topic was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when topic was last updated"
+        }
+      },
+      "constraints": {
+        "unique_department_topic": {
+          "type": "UNIQUE",
+          "columns": ["department", "topic"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_wiki_topics_department",
+          "columns": ["department"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_wiki_topics_topic",
+          "columns": ["topic"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_wiki_topics_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "wiki_questions",
+            "column": "topic_id"
+          },
+          {
+            "table": "wiki_lesson_completions",
+            "column": "topic_id"
+          },
+          {
+            "table": "wiki_comments",
+            "column": "topic_id"
+          }
+        ]
+      }
+    },
+    "wiki_questions": {
+      "description": "Wiki quiz questions table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for question"
+        },
+        "topic_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to wiki_topics table",
+          "references": {
+            "table": "wiki_topics",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "question": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Question text"
+        },
+        "options": {
+          "type": "JSONB",
+          "nullable": false,
+          "description": "Answer options in JSON array"
+        },
+        "correct_answer": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Index of correct answer in options array"
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when question was created"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_wiki_questions_topic_id",
+          "columns": ["topic_id"],
+          "type": "BTREE"
+        }
+      ]
+    },
+    "wiki_lesson_completions": {
+      "description": "Wiki lesson completion tracking table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for completion record"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "topic_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to wiki_topics table",
+          "references": {
+            "table": "wiki_topics",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "completed_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when lesson was completed"
+        }
+      },
+      "constraints": {
+        "unique_user_topic": {
+          "type": "UNIQUE",
+          "columns": ["user_id", "topic_id"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_wiki_completions_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_wiki_completions_topic_id",
+          "columns": ["topic_id"],
+          "type": "BTREE"
+        }
+      ]
+    },
+    "wiki_comments": {
+      "description": "Wiki comments table",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for comment"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "topic_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to wiki_topics table",
+          "references": {
+            "table": "wiki_topics",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "comment": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Comment content"
+        },
+        "created_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when comment was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP",
+          "default": "NOW()",
+          "description": "Timestamp when comment was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_wiki_comments_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_wiki_comments_topic_id",
+          "columns": ["topic_id"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_wiki_comments_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "locations": {
+      "description": "Company locations for geofencing",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for location"
+        },
+        "name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Location name"
+        },
+        "latitude": {
+          "type": "DECIMAL(10, 8)",
+          "nullable": false,
+          "description": "Latitude coordinate"
+        },
+        "longitude": {
+          "type": "DECIMAL(11, 8)",
+          "nullable": false,
+          "description": "Longitude coordinate"
+        },
+        "radius_meters": {
+          "type": "INTEGER",
+          "default": 100,
+          "nullable": false,
+          "description": "Geofencing radius in meters"
+        },
+        "address": {
+          "type": "TEXT",
+          "description": "Location address"
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "default": true,
+          "description": "Whether location is active"
+        },
+        "created_by": {
+          "type": "INTEGER",
+          "description": "User ID of creator",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when location was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when location was last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_locations_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "user_locations",
+            "column": "user_id"
+          },
+          {
+            "table": "location_events",
+            "column": "location_id"
+          }
+        ]
+      }
+    },
+    "user_locations": {
+      "description": "User-specific custom locations",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for user location"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Location name"
+        },
+        "latitude": {
+          "type": "DECIMAL(10, 8)",
+          "nullable": false,
+          "description": "Latitude coordinate"
+        },
+        "longitude": {
+          "type": "DECIMAL(11, 8)",
+          "nullable": false,
+          "description": "Longitude coordinate"
+        },
+        "radius_meters": {
+          "type": "INTEGER",
+          "default": 100,
+          "nullable": false,
+          "description": "Geofencing radius in meters"
+        },
+        "address": {
+          "type": "TEXT",
+          "description": "Location address"
+        },
+        "is_active": {
+          "type": "BOOLEAN",
+          "default": true,
+          "description": "Whether location is active"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when location was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when location was last updated"
+        }
+      },
+      "constraints": {
+        "unique_user_location_name": {
+          "type": "UNIQUE",
+          "columns": ["user_id", "name"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_user_locations_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_user_locations_active",
+          "columns": ["user_id", "is_active"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_user_locations_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "department_page_access": {
+      "description": "Department page access control table",
+      "columns": {
+        "department_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to departments table",
+          "references": {
+            "table": "departments",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "page_name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Page name/path that department can access"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when access was granted"
+        }
+      },
+      "constraints": {
+        "primary_key": {
+          "type": "PRIMARY KEY",
+          "columns": ["department_id", "page_name"]
+        }
+      },
+      "indexes": []
+    },
+    "location_events": {
+      "description": "Location entry/exit events tracking",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for location event"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "location_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to locations table",
+          "references": {
+            "table": "locations",
+            "column": "id"
+          }
+        },
+        "event_type": {
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "description": "Event type: 'entry' or 'exit'",
+          "check": "event_type IN ('entry', 'exit')"
+        },
+        "latitude": {
+          "type": "DECIMAL(10, 8)",
+          "nullable": false,
+          "description": "Latitude coordinate of event"
+        },
+        "longitude": {
+          "type": "DECIMAL(11, 8)",
+          "nullable": false,
+          "description": "Longitude coordinate of event"
+        },
+        "accuracy": {
+          "type": "DECIMAL(5, 2)",
+          "description": "GPS accuracy in meters"
+        },
+        "timestamp": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when event occurred"
+        },
+        "is_auto_generated": {
+          "type": "BOOLEAN",
+          "default": false,
+          "description": "Whether event was auto-generated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_location_events_user_timestamp",
+          "columns": ["user_id", "timestamp"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        },
+        {
+          "name": "idx_location_events_location_timestamp",
+          "columns": ["location_id", "timestamp"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        }
+      ]
+    },
+    "auto_attendance": {
+      "description": "Automatic attendance records from location events",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for auto attendance record"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "location_event_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to location_events table",
+          "references": {
+            "table": "location_events",
+            "column": "id"
+          }
+        },
+        "event_type": {
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "description": "Attendance event type: 'clock_in' or 'clock_out'",
+          "check": "event_type IN ('clock_in', 'clock_out')"
+        },
+        "timestamp": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when attendance was recorded"
+        },
+        "notes": {
+          "type": "TEXT",
+          "description": "Additional notes"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_auto_attendance_user_timestamp",
+          "columns": ["user_id", "timestamp"],
+          "type": "BTREE",
+          "order": ["ASC", "DESC"]
+        }
+      ]
+    },
+    "compliance_documents": {
+      "description": "Compliance documents management",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for compliance document"
+        },
+        "title": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Document title"
+        },
+        "description": {
+          "type": "TEXT",
+          "description": "Document description"
+        },
+        "document_type": {
+          "type": "VARCHAR(100)",
+          "description": "Type of document"
+        },
+        "file_url": {
+          "type": "TEXT",
+          "description": "URL to document file"
+        },
+        "expiry_date": {
+          "type": "DATE",
+          "description": "Document expiry date"
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "default": "active",
+          "description": "Document status"
+        },
+        "uploaded_by": {
+          "type": "INTEGER",
+          "description": "User ID of uploader",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when document was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when document was last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_compliance_documents_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "crawled_sites": {
+      "description": "Web crawling sites management",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for crawled site"
+        },
+        "url": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Website URL"
+        },
+        "title": {
+          "type": "VARCHAR(255)",
+          "description": "Website title"
+        },
+        "description": {
+          "type": "TEXT",
+          "description": "Website description"
+        },
+        "last_crawled": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "description": "Timestamp of last crawl"
+        },
+        "crawl_status": {
+          "type": "VARCHAR(20)",
+          "default": "pending",
+          "description": "Crawling status"
+        },
+        "created_by": {
+          "type": "INTEGER",
+          "description": "User ID of creator",
+          "references": {
+            "table": "users",
+            "column": "id"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when site was added"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when site was last updated"
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_crawled_sites_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "providers": {
+      "description": "Product providers/suppliers",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for provider"
+        },
+        "name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "unique": true,
+          "description": "Provider name"
+        },
+        "email": {
+          "type": "VARCHAR(255)",
+          "description": "Provider email"
+        },
+        "phone": {
+          "type": "VARCHAR(20)",
+          "description": "Provider phone"
+        },
+        "address": {
+          "type": "TEXT",
+          "description": "Provider address"
+        },
+        "official_contact_name": {
+          "type": "VARCHAR(255)",
+          "description": "Official contact person name"
+        },
+        "official_contact_email": {
+          "type": "VARCHAR(255)",
+          "description": "Official contact email"
+        },
+        "official_contact_phone": {
+          "type": "VARCHAR(20)",
+          "description": "Official contact phone"
+        },
+        "organization_contact_name": {
+          "type": "VARCHAR(255)",
+          "description": "Organization contact person name"
+        },
+        "organization_contact_email": {
+          "type": "VARCHAR(255)",
+          "description": "Organization contact email"
+        },
+        "organization_contact_phone": {
+          "type": "VARCHAR(20)",
+          "description": "Organization contact phone"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when provider was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when provider was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_providers_name",
+          "columns": ["name"],
+          "type": "BTREE"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "products",
+            "column": "provider_id"
+          },
+          {
+            "table": "inbound_transactions",
+            "column": "provider_id"
+          },
+          {
+            "table": "provider_user_assignments",
+            "column": "provider_id"
+          }
+        ]
+      }
+    },
+    "provider_user_assignments": {
+      "description": "Provider-user assignment relationships",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for assignment"
+        },
+        "provider_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to providers table",
+          "references": {
+            "table": "providers",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "assignment_type": {
+          "type": "VARCHAR(50)",
+          "default": "attached_staff",
+          "description": "Type of assignment (attached_staff, support_staff, etc.)"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when assignment was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when assignment was last updated"
+        }
+      },
+      "constraints": {
+        "unique_provider_user_type": {
+          "type": "UNIQUE",
+          "columns": ["provider_id", "user_id", "assignment_type"]
+        }
+      },
+      "indexes": [],
+      "triggers": [
+        {
+          "name": "update_provider_user_assignments_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "user_support_assignments": {
+      "description": "User support staff assignment relationships",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for assignment"
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table (user being supported)",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "support_staff_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to users table (support staff)",
+          "references": {
+            "table": "users",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when assignment was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when assignment was last updated"
+        }
+      },
+      "constraints": {
+        "unique_user_support_staff": {
+          "type": "UNIQUE",
+          "columns": ["user_id", "support_staff_id"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_user_support_assignments_user_id",
+          "columns": ["user_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_user_support_assignments_support_staff_id",
+          "columns": ["support_staff_id"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_user_support_assignments_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ]
+    },
+    "products": {
+      "description": "Product inventory management",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for product"
+        },
+        "name": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Product name"
+        },
+        "part_number": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "unique": true,
+          "description": "Unique part number"
+        },
+        "product_type": {
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "description": "Product type/category"
+        },
+        "provider_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to providers table",
+          "references": {
+            "table": "providers",
+            "column": "id",
+            "on_delete": "RESTRICT"
+          }
+        },
+        "default_unit_price": {
+          "type": "DECIMAL(10, 2)",
+          "default": 0.00,
+          "description": "Default unit price for the product"
+        },
+        "default_markup_percentage": {
+          "type": "DECIMAL(5, 2)",
+          "default": 0.00,
+          "description": "Default markup percentage"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when product was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when product was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_products_name",
+          "columns": ["name"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_products_part_number",
+          "columns": ["part_number"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_products_provider_id",
+          "columns": ["provider_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_products_default_unit_price",
+          "columns": ["default_unit_price"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_products_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "inbound_transactions",
+            "column": "product_id"
+          }
+        ]
+      }
+    },
+    "inbound_transactions": {
+      "description": "Inbound inventory transactions",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for transaction"
+        },
+        "product_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to products table",
+          "references": {
+            "table": "products",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Quantity of items"
+        },
+        "provider_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to providers table",
+          "references": {
+            "table": "providers",
+            "column": "id",
+            "on_delete": "RESTRICT"
+          }
+        },
+        "expected_arrival_start": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Expected arrival start date"
+        },
+        "expected_arrival_end": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Expected arrival end date"
+        },
+        "arrival_date": {
+          "type": "DATE",
+          "description": "Actual arrival date"
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "default": "Incoming",
+          "description": "Transaction status",
+          "check": "status IN ('Incoming', 'Stored', 'Outbound')"
+        },
+        "batch_number": {
+          "type": "VARCHAR(100)",
+          "description": "Batch/lot number"
+        },
+        "unit_price": {
+          "type": "DECIMAL(10, 2)",
+          "default": 0.00,
+          "description": "Actual unit price for this transaction"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when transaction was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when transaction was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_inbound_transactions_product_id",
+          "columns": ["product_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_inbound_transactions_provider_id",
+          "columns": ["provider_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_inbound_transactions_status",
+          "columns": ["status"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_inbound_transactions_batch_number",
+          "columns": ["batch_number"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_inbound_transactions_unit_price",
+          "columns": ["unit_price"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_inbound_transactions_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "inbound_serial_numbers",
+            "column": "transaction_id"
+          },
+          {
+            "table": "outbound_transactions",
+            "column": "inbound_transaction_id"
+          }
+        ]
+      }
+    },
+    "inbound_serial_numbers": {
+      "description": "Serial numbers for inbound inventory items",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for serial number record"
+        },
+        "transaction_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to inbound_transactions table",
+          "references": {
+            "table": "inbound_transactions",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "serial_number": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Serial number"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when serial number was recorded"
+        }
+      },
+      "constraints": {
+        "unique_transaction_serial": {
+          "type": "UNIQUE",
+          "columns": ["transaction_id", "serial_number"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_inbound_serial_numbers_transaction_id",
+          "columns": ["transaction_id"],
+          "type": "BTREE"
+        }
+      ]
+    },
+    "outbound_transactions": {
+      "description": "Outbound inventory transactions",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for transaction"
+        },
+        "inbound_transaction_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to inbound_transactions table",
+          "references": {
+            "table": "inbound_transactions",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "quantity": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Quantity of items"
+        },
+        "receiver_address": {
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Receiver's address"
+        },
+        "receiver_email": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Receiver's email"
+        },
+        "receiver_phone": {
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "description": "Receiver's phone"
+        },
+        "dispatch_datetime": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nullable": false,
+          "description": "Dispatch timestamp"
+        },
+        "delivery_datetime": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nullable": false,
+          "description": "Expected delivery timestamp"
+        },
+        "status": {
+          "type": "VARCHAR(20)",
+          "default": "Outgoing",
+          "description": "Transaction status",
+          "check": "status IN ('Outgoing', 'Dispatched', 'Delivered')"
+        },
+        "inbound_price": {
+          "type": "DECIMAL(10, 2)",
+          "default": 0.00,
+          "description": "Price paid for the items (from inbound)"
+        },
+        "outbound_price": {
+          "type": "DECIMAL(10, 2)",
+          "default": 0.00,
+          "description": "Price sold for the items"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when transaction was created"
+        },
+        "updated_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when transaction was last updated"
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_outbound_transactions_inbound_id",
+          "columns": ["inbound_transaction_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_outbound_transactions_status",
+          "columns": ["status"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_outbound_transactions_prices",
+          "columns": ["inbound_price", "outbound_price"],
+          "type": "BTREE"
+        }
+      ],
+      "triggers": [
+        {
+          "name": "update_outbound_transactions_updated_at",
+          "event": "BEFORE UPDATE",
+          "function": "update_updated_at_column"
+        }
+      ],
+      "relationships": {
+        "referenced_by": [
+          {
+            "table": "outbound_serial_numbers",
+            "column": "outbound_transaction_id"
+          }
+        ]
+      }
+    },
+    "outbound_serial_numbers": {
+      "description": "Serial numbers for outbound inventory items",
+      "columns": {
+        "id": {
+          "type": "SERIAL",
+          "primary_key": true,
+          "auto_increment": true,
+          "description": "Unique identifier for serial number record"
+        },
+        "outbound_transaction_id": {
+          "type": "INTEGER",
+          "nullable": false,
+          "description": "Foreign key to outbound_transactions table",
+          "references": {
+            "table": "outbound_transactions",
+            "column": "id",
+            "on_delete": "CASCADE"
+          }
+        },
+        "serial_number": {
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "description": "Serial number"
+        },
+        "inbound_price": {
+          "type": "DECIMAL(10, 2)",
+          "default": 0.00,
+          "description": "Price paid for this specific item"
+        },
+        "created_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "default": "NOW()",
+          "description": "Timestamp when serial number was recorded"
+        }
+      },
+      "constraints": {
+        "unique_outbound_serial": {
+          "type": "UNIQUE",
+          "columns": ["outbound_transaction_id", "serial_number"]
+        }
+      },
+      "indexes": [
+        {
+          "name": "idx_outbound_serial_numbers_transaction_id",
+          "columns": ["outbound_transaction_id"],
+          "type": "BTREE"
+        },
+        {
+          "name": "idx_outbound_serial_numbers_inbound_price",
+          "columns": ["inbound_price"],
+          "type": "BTREE"
+        }
+      ]
+    }
+  },
+  "functions": {
+    "update_updated_at_column": {
+      "description": "Trigger function to automatically update the updated_at column",
+      "language": "plpgsql",
+      "definition": "BEGIN NEW.updated_at = NOW(); RETURN NEW; END;"
+    }
+  },
+  "migrations": [
+    {
+      "version": "001",
+      "name": "initial_schema",
+      "description": "Initial database schema with all core tables and relationships"
+    },
+    {
+      "version": "002",
+      "name": "add_active_to_users",
+      "description": "Add active column to users table for account status tracking"
+    },
+    {
+      "version": "003",
+      "name": "create_global_chat_settings",
+      "description": "Create global_chat_settings table for system-wide chat settings"
+    },
+    {
+      "version": "004",
+      "name": "add_unit_price_to_inbound_transactions",
+      "description": "Add unit_price column to inbound_transactions table for actual purchase prices"
+    },
+    {
+      "version": "005",
+      "name": "add_inbound_price_to_outbound_serial_numbers",
+      "description": "Add inbound_price column to outbound_serial_numbers table for cost tracking"
+    }
+  ],
+  "statistics": {
+    "total_tables": 27,
+    "total_columns": 189,
+    "total_indexes": 45,
+    "total_triggers": 17,
+    "total_constraints": 12,
+    "total_relationships": 67
+  }
+}
