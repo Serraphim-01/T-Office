@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlledNav } from './access-controlled-nav';
 import { NotificationPanel } from './notification-panel';
-import { AnalyticsSidebar } from './analytics-sidebar';
+import { useAnalytics } from '@/lib/analytics-context';
 import { ChatbotSidebar } from './chatbot-sidebar';
 import { Button } from './ui/button';
 import { Bell, Menu, X, ChevronLeft, ChevronRight, PieChart, Bot } from 'lucide-react';
@@ -16,8 +16,9 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
-  const [analyticsSidebarOpen, setAnalyticsSidebarOpen] = useState(false);
+
   const [chatbotSidebarOpen, setChatbotSidebarOpen] = useState(false);
+  const { setCurrentPage, openAnalyticsSidebar } = useAnalytics();
   const { unreadCount } = useNotification();
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -48,6 +49,11 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
   };
   
   const currentPage = getPageName();
+  
+  // Update the current page in analytics context for global analytics
+  useEffect(() => {
+    setCurrentPage(currentPage);
+  }, [currentPage, setCurrentPage]);
 
   // Function to handle refresh
   const handleRefresh = () => {
@@ -165,10 +171,14 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setAnalyticsSidebarOpen(true)}
-              className="relative"
+              onClick={openAnalyticsSidebar}
+              className="relative group"
             >
               <PieChart className="h-5 w-5" />
+              <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-50">
+                Analytics
+                <div className="absolute top-1/2 -translate-y-1/2 right-full w-0 h-0 border-t-4 border-b-4 border-r-4 border-t-transparent border-b-transparent border-r-gray-800"></div>
+              </div>
             </Button>
             
             <Button 
@@ -266,12 +276,7 @@ export function DashboardLayout({ children, customTitle }: { children: React.Rea
         onClose={() => setNotificationPanelOpen(false)} 
       />
       
-      {/* Analytics Sidebar */}
-      <AnalyticsSidebar 
-        isOpen={analyticsSidebarOpen} 
-        onClose={() => setAnalyticsSidebarOpen(false)} 
-        currentPage={currentPage}
-      />
+
       
       {/* Chatbot Sidebar */}
       <ChatbotSidebar 

@@ -4,8 +4,10 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth-context';
 import { UIProvider } from '@/lib/ui-context';
 import { NotificationProvider } from '@/lib/notification-context';
+import { AnalyticsProvider } from '@/lib/analytics-context';
 import { Toaster } from '@/components/ui/toaster';
 import { PWAProvider } from '@/components/pwa-provider';
+import { GlobalAnalyticsSidebar } from '@/components/global-analytics-sidebar';
 import '@/lib/theme-utils';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -36,10 +38,13 @@ export default function RootLayout({
         <UIProvider>
           <AuthProvider>
             <NotificationProvider>
-              <PWAProvider>
-                {children}
-                <Toaster />
-              </PWAProvider>
+              <AnalyticsProvider>
+                <PWAProvider>
+                  {children}
+                  <GlobalAnalyticsSidebar />
+                  <Toaster />
+                </PWAProvider>
+              </AnalyticsProvider>
             </NotificationProvider>
           </AuthProvider>
         </UIProvider>
