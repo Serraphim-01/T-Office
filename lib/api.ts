@@ -48,7 +48,7 @@ export const apiRequest = async (
   return response;
 };
 
-export const apiGet = async (endpoint: string, token?: string): Promise<Response> => {
+export const apiGet = async (endpoint: string, token?: string | null): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {
@@ -68,7 +68,7 @@ export const apiGet = async (endpoint: string, token?: string): Promise<Response
   return response;
 };
 
-export const apiPost = async (endpoint: string, body?: any, token?: string): Promise<Response> => {
+export const apiPost = async (endpoint: string, body?: any, token?: string | null): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {
@@ -89,7 +89,7 @@ export const apiPost = async (endpoint: string, body?: any, token?: string): Pro
   return response;
 };
 
-export const apiPut = async (endpoint: string, body?: any, token?: string): Promise<Response> => {
+export const apiPut = async (endpoint: string, body?: any, token?: string | null): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {
@@ -110,7 +110,7 @@ export const apiPut = async (endpoint: string, body?: any, token?: string): Prom
   return response;
 };
 
-export const apiDelete = async (endpoint: string, token?: string): Promise<Response> => {
+export const apiDelete = async (endpoint: string, token?: string | null): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {
@@ -130,7 +130,7 @@ export const apiDelete = async (endpoint: string, token?: string): Promise<Respo
   return response;
 };
 
-export const apiPatch = async (endpoint: string, body?: any, token?: string): Promise<Response> => {
+export const apiPatch = async (endpoint: string, body?: any, token?: string | null): Promise<Response> => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {

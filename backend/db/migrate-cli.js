@@ -26,7 +26,7 @@ function createMigration(name) {
   const sanitizedName = name.replace(/[^a-zA-Z0-9_]/g, '_');
   
   // Get the next migration number
-  const migrationsDir = resolve(process.cwd(), 'db', 'migrations');
+  const migrationsDir = resolve(process.cwd(), 'migrations');
   if (!existsSync(migrationsDir)) {
     mkdirSync(migrationsDir, { recursive: true });
   }
