@@ -1,0 +1,41 @@
+{
+  "transactions": [
+    {
+      "id": 11,
+      "batch_number": "B-050226-11",
+      "message": "Inbound transaction created successfully",
+      "product_name": "MacBook Pro 16\"",
+      "provider_name": "Tech Solutions Inc."
+    },
+    {
+      "id": 12,
+      "batch_number": "B-050226-12",
+      "message": "Inbound transaction created successfully",
+      "product_name": "iPad Air",
+      "provider_name": "Tech Solutions Inc."
+    },
+    {
+      "id": 13,
+      "batch_number": "B-050226-12",
+      "message": "Inbound transaction created successfully",
+      "product_name": "Dell XPS 13",
+      "provider_name": "Global Electronics Ltd."
+    },
+    {
+      "id": 14,
+      "batch_number": "B-050226-12",
+      "message": "Inbound transaction created successfully",
+      "product_name": "4K Monitor 27\"",
+      "provider_name": "Digital Devices Corp."
+    },
+    {
+      "id": 15,
+      "batch_number": "B-050226-12",
+      "message": "Inbound transaction created successfully",
+      "product_name": "Ergonomic Office Chair",
+      "provider_name": "Office Supply Co."
+    }
+  ],
+  "timestamp": "2026-02-05T12:47:24.085Z",
+  "totalCreated": 5
+}

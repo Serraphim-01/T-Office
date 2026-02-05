@@ -7,7 +7,18 @@
   "scripts": {
     "test:signup": "node user_signup.test.js",
     "test:cleanup": "node user_cleanup.test.js",
-    "test:both": "node run_tests.js both"
+    "test:both": "node run_tests.js both",
+    "test:inventory": "node run_inventory_tests.js",
+    "test:inventory:all": "node run_inventory_tests.js",
+    "test:inventory:providers": "node create_providers.test.js",
+    "test:inventory:products": "node create_products.test.js",
+    "test:inventory:assign": "node assign_provider_user.test.js",
+    "test:inventory:inbound": "node create_inbound_transactions.test.js",
+    "test:inventory:stored": "node move_to_stored.test.js",
+    "test:inventory:outbound": "node create_outbound_transactions.test.js",
+    "test:inventory:dispatched": "node update_to_dispatched.test.js",
+    "test:inventory:delivered": "node update_to_delivered.test.js",
+    "cleanup:inventory": "node cleanup_inventory_tests.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
