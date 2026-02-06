@@ -78,6 +78,7 @@ async function main() {
     console.log('  - Multiple providers');
     console.log('  - Multiple products');
     console.log('  - User-provider assignments');
+    console.log('  - Support staff allocated to users');
     console.log('  - Inbound transactions');
     console.log('  - Stored inventory');
     console.log('  - Outbound transactions');

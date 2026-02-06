@@ -16,6 +16,7 @@ router.get('/products', authenticateJWT, async (req, res) => {
   try {
     const result = await req.pool.query(
       `SELECT p.id, p.name, p.part_number, p.product_type, 
+              p.default_unit_price, p.default_markup_percentage,
               pr.id as provider_id, 
               pr.name as provider_name
        FROM products p

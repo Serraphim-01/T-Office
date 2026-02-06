@@ -1,8 +1,6 @@
-#!/usr/bin/env node
-
 /**
- * Inventory System Test Runner
- * This script runs all inventory test scripts in the correct sequence
+ * Inventory System Test Runner with Support Staff Allocation
+ * This script runs inventory tests along with support staff allocation
  */
 
 import { spawn } from 'child_process';
@@ -50,7 +48,7 @@ async function runTestScript(scriptInfo, index) {
 }
 
 async function runAllTests() {
-  console.log('=== T-Office Inventory System Test Suite ===\n');
+  console.log('=== T-Office Inventory System Test Suite with Support Staff Allocation ===\n');
   
   // Check if test directory exists
   if (!fs.existsSync(process.cwd())) {
@@ -83,11 +81,7 @@ async function runAllTests() {
       failureCount++;
       failedTests.push(scriptInfo.name);
       
-      // Ask user if they want to continue
-      console.log('\nTest failed. Do you want to continue with remaining tests? (y/n)');
-      
       // For automation, we'll continue by default
-      // In interactive mode, you could add user input here
       console.log('Continuing with next test...\n');
     }
   }
@@ -151,9 +145,9 @@ async function main() {
     await runAllTests();
   } else if (args[0] === '--help' || args[0] === '-h') {
     console.log('Usage:');
-    console.log('  node run_inventory_tests.js           # Run all tests');
-    console.log('  node run_inventory_tests.js <test>    # Run specific test');
-    console.log('  node run_inventory_tests.js --help    # Show this help');
+    console.log('  node run_inventory_with_support_tests.js           # Run all tests');
+    console.log('  node run_inventory_with_support_tests.js <test>    # Run specific test');
+    console.log('  node run_inventory_with_support_tests.js --help    # Show this help');
     console.log('\nAvailable tests:');
     testScripts.forEach((script, index) => {
       console.log(`  ${index + 1}. ${script.name}`);

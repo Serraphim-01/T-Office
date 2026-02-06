@@ -30,6 +30,8 @@ interface Product {
   name: string;
   part_number: string;
   product_type: string;
+  default_unit_price?: number;
+  default_markup_percentage?: number;
   provider_name?: string;
   provider_id?: number;
 }
@@ -231,12 +233,12 @@ function ProductsContent() {
 
   const toggleProvider = (providerId: number) => {
     setExpandedProviders(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(providerId)) {
-        newSet.delete(providerId);
-      } else {
+      const newSet = new Set<number>();
+      // If this provider is not currently expanded, expand it (and close others)
+      if (!prev.has(providerId)) {
         newSet.add(providerId);
       }
+      // If it's already expanded, close it
       return newSet;
     });
   };
@@ -968,6 +970,7 @@ useEffect(() => {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Part Number</TableHead>
                                 <TableHead>Product Type</TableHead>
+                                <TableHead>Price</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -987,6 +990,9 @@ useEffect(() => {
                                     </TableCell>
                                     <TableCell>{product.part_number}</TableCell>
                                     <TableCell>{product.product_type}</TableCell>
+                                    <TableCell>
+                                      {product.default_unit_price ? `₦${product.default_unit_price.toLocaleString()}` : 'N/A'}
+                                    </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex justify-end space-x-1">
                                         {canDeleteProduct && (
@@ -1007,7 +1013,7 @@ useEffect(() => {
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                                     No products found for this provider
                                   </TableCell>
                                 </TableRow>
@@ -1092,6 +1098,7 @@ useEffect(() => {
                               <TableHead>Name</TableHead>
                               <TableHead>Part Number</TableHead>
                               <TableHead>Product Type</TableHead>
+                              <TableHead>Price</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -1112,6 +1119,9 @@ useEffect(() => {
                                   </TableCell>
                                   <TableCell>{product.part_number}</TableCell>
                                   <TableCell>{product.product_type}</TableCell>
+                                  <TableCell>
+                                    {product.default_unit_price ? `₦${product.default_unit_price.toLocaleString()}` : 'N/A'}
+                                  </TableCell>
                                   <TableCell className="text-right">
                                     <div className="flex justify-end space-x-1">
                                       {canDeleteProduct && (
@@ -1133,7 +1143,7 @@ useEffect(() => {
                             }
                             {products.filter(product => !product.provider_id || !providers.some(p => p.id === product.provider_id)).length === 0 && (
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                <TableCell colSpan={5} className="text-center text-muted-foreground">
                                   No products found
                                 </TableCell>
                               </TableRow>

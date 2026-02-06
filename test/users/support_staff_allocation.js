@@ -7,6 +7,7 @@ import { Client } from 'pg';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { checkSupportAllocationStatus } from '../utils/check_support_allocation.js';
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
@@ -377,6 +378,16 @@ async function showDepartmentStatus(dbClient) {
 
 async function main() {
   console.log('=== Support Staff Allocation Script ===\n');
+  
+  // Check if allocation has already been done
+  const status = await checkSupportAllocationStatus();
+  
+  if (status.isCompleted) {
+    console.log('⚠️  Support staff allocation has already been completed.');
+    console.log('📊 Current allocation: ' + status.allocationPercentage.toFixed(2) + '%');
+    console.log('✅ Skipping allocation process.');
+    return;
+  }
   
   let dbClient;
   
