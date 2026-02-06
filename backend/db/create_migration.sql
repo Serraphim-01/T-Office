@@ -1418,6 +1418,26 @@ ALTER TABLE users
 ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL;
 
 -- ===========================================
+-- ROLE CHANGE REQUESTS TABLE
+-- ===========================================
+
+-- Table to store role change requests
+CREATE TABLE IF NOT EXISTS role_change_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    current_role_id INTEGER REFERENCES roles(id),
+    requested_role_id INTEGER REFERENCES roles(id),
+    status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected
+    requested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    approved_at TIMESTAMP WITH TIME ZONE,
+    approved_by INTEGER REFERENCES users(id),
+    rejection_reason TEXT,
+    expires_at TIMESTAMP WITH TIME ZONE, -- When the change status should disappear
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ===========================================
 -- INDEXES FOR ROLES
 -- ===========================================
 
@@ -1425,6 +1445,11 @@ ADD COLUMN IF NOT EXISTS role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL
 CREATE INDEX IF NOT EXISTS idx_roles_department_id ON roles(department_id);
 CREATE INDEX IF NOT EXISTS idx_role_page_access_role_id ON role_page_access(role_id);
 CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+
+-- Role change request indexes
+CREATE INDEX IF NOT EXISTS idx_role_change_requests_user_id ON role_change_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_role_change_requests_status ON role_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_role_change_requests_requested_at ON role_change_requests(requested_at);
 
 -- ===========================================
 -- TRIGGERS FOR ROLES

@@ -1,0 +1,58 @@
+{
+  "providers": [
+    {
+      "id": 1,
+      "name": "Tech Solutions Inc.",
+      "email": "info@techsolutions.com",
+      "phone": "+1-555-0123",
+      "address": "123 Tech Street, San Francisco, CA",
+      "official_contact_name": "Sam Wilson",
+      "official_contact_email": "sam@techsolutions.com",
+      "official_contact_phone": "+1-555-0124",
+      "organization_contact_name": "Jane Smith",
+      "organization_contact_email": "jane@techsolutions.com",
+      "organization_contact_phone": "+1-555-0125"
+    },
+    {
+      "id": 2,
+      "name": "Global Electronics Ltd.",
+      "email": "contact@globalelectronics.com",
+      "phone": "+1-555-0456",
+      "address": "456 Electronics Ave, New York, NY",
+      "official_contact_name": "Michael Johnson",
+      "official_contact_email": "michael@globalelectronics.com",
+      "official_contact_phone": "+1-555-0457",
+      "organization_contact_name": "Sarah Davis",
+      "organization_contact_email": "sarah@globalelectronics.com",
+      "organization_contact_phone": "+1-555-0458"
+    },
+    {
+      "id": 3,
+      "name": "Office Supply Co.",
+      "email": "orders@officesupply.com",
+      "phone": "+1-555-0789",
+      "address": "789 Office Blvd, Chicago, IL",
+      "official_contact_name": "Robert Brown",
+      "official_contact_email": "robert@officesupply.com",
+      "official_contact_phone": "+1-555-0790",
+      "organization_contact_name": "Lisa Wilson",
+      "organization_contact_email": "lisa@officesupply.com",
+      "organization_contact_phone": "+1-555-0791"
+    },
+    {
+      "id": 4,
+      "name": "Digital Devices Corp.",
+      "email": "sales@digitaldevices.com",
+      "phone": "+1-555-1011",
+      "address": "1011 Digital Drive, Austin, TX",
+      "official_contact_name": "David Miller",
+      "official_contact_email": "david@digitaldevices.com",
+      "official_contact_phone": "+1-555-1012",
+      "organization_contact_name": "Emma Thompson",
+      "organization_contact_email": "emma@digitaldevices.com",
+      "organization_contact_phone": "+1-555-1013"
+    }
+  ],
+  "timestamp": "2026-02-06T13:15:54.270Z",
+  "totalCreated": 4
+}

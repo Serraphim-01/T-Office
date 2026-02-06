@@ -22,6 +22,7 @@ import inboundRoutes from "./routes/inbound.js";
 import outboundRoutes from "./routes/outbound.js"; 
 import userRoutes from "./routes/users.js"; 
 import analyticsRoutes from "./routes/analytics.js"; 
+import roleChangeRoutes from "./routes/role-changes.js"; 
 
 // Load environment variables
 dotenv.config({ path: ".env.local" });
@@ -713,6 +714,7 @@ app.use("/api/inventory/inbound", inboundRoutes);
 app.use("/api/inventory/outbound", outboundRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/role-changes", roleChangeRoutes);
 
 // Public endpoint to get roles for a department during signup
 app.get("/api/public/roles/:departmentId", async (req, res) => {

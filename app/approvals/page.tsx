@@ -7,7 +7,7 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Clock, FileText, Eye, Link } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, Eye, Link, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/auth-context';
 import { AccessControlWrapper } from '@/components/access-control-wrapper';
@@ -31,6 +31,18 @@ interface CertificationApproval {
   created_at: string;
 }
 
+interface RoleChangeRequest {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  current_role_name: string;
+  requested_role_name: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  expires_at?: string;
+}
+
 export default function ApprovalsPage() {
   return (
     <AccessControlWrapper pagePath="approvals">
@@ -42,20 +54,31 @@ export default function ApprovalsPage() {
 function ApprovalsContent() {
   const { user } = useAuth();
   const [certifications, setCertifications] = useState<CertificationApproval[]>([]);
+  const [roleChanges, setRoleChanges] = useState<RoleChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCert, setSelectedCert] = useState<CertificationApproval | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [rejectionReasons, setRejectionReasons] = useState<{[key: string]: string}>({});
   const [showRejectionInput, setShowRejectionInput] = useState<{[key: string]: boolean}>({});
+  const [roleChangeRejectionReasons, setRoleChangeRejectionReasons] = useState<{[key: string]: string}>({});
+  const [showRoleChangeRejectionInput, setShowRoleChangeRejectionInput] = useState<{[key: string]: boolean}>({});
 
   const fetchApprovals = async () => {
     try {
       // Fetch pending certifications
       const certResponse = await apiGet('/api/admin/approvals/certifications', localStorage.getItem('token') || '');
+      
+      // Fetch pending role change requests
+      const roleChangeResponse = await apiGet('/api/role-changes/pending-requests', localStorage.getItem('token') || '');
 
       if (certResponse.ok) {
         const certData = await certResponse.json();
         setCertifications(certData);
+      }
+      
+      if (roleChangeResponse.ok) {
+        const roleChangeData = await roleChangeResponse.json();
+        setRoleChanges(roleChangeData);
       }
     } catch (error) {
       console.error('Failed to fetch approvals:', error);
@@ -140,6 +163,49 @@ function ApprovalsContent() {
 
     setSelectedCert(cert);
     setIsImageModalOpen(true);
+  };
+  
+  const handleRoleChangeApproval = async (requestId: number, status: 'approved' | 'rejected') => {
+    // Optimistic update - remove from UI immediately for approved, update status for rejected
+    if (status === 'approved') {
+      setRoleChanges(prev => prev.filter(req => req.id !== requestId));
+    } else {
+      setRoleChanges(prev =>
+        prev.map(req =>
+          req.id === requestId ? { ...req, status } : req
+        )
+      );
+    }
+
+    try {
+      const requestBody: any = { status };
+      
+      // Include rejection reason if rejecting
+      if (status === 'rejected' && roleChangeRejectionReasons[requestId.toString()]) {
+        requestBody.rejection_reason = roleChangeRejectionReasons[requestId.toString()];
+      }
+
+      const response = await apiPut(`/api/role-changes/requests/${requestId}`, requestBody, localStorage.getItem('token') || '');
+
+      if (!response.ok) {
+        // Revert optimistic update on failure
+        await fetchApprovals(); // Refetch to restore the correct state
+        console.error('Failed to update role change request status');
+      } else {
+        // Clear rejection reason after successful rejection
+        if (status === 'rejected') {
+          setRoleChangeRejectionReasons(prev => {
+            const newReasons = { ...prev };
+            delete newReasons[requestId.toString()];
+            return newReasons;
+          });
+        }
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      await fetchApprovals(); // Refetch to restore the correct state
+      console.error('Failed to update role change request:', error);
+    }
   };
 
   if (loading) {
@@ -282,6 +348,107 @@ function ApprovalsContent() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No certificate approvals pending.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Role Change Approvals Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Role Change Approvals</CardTitle>
+            <CardDescription>Review and approve user role change requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {roleChanges.length > 0 ? (
+              <div className="space-y-4">
+                {roleChanges.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{req.user_name}</span>
+                        <Badge
+                          variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
+                        >
+                          {req.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {req.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
+                          {req.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">Current Role: {req.current_role_name}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Requested Role: {req.requested_role_name}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Email: {req.user_email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Requested: {new Date(req.requested_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {req.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleRoleChangeApproval(req.id, 'approved')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <div className="flex flex-col space-y-2">
+                            {showRoleChangeRejectionInput[req.id.toString()] ? (
+                              <div className="flex flex-col space-y-2">
+                                <Input
+                                  placeholder="Reason for rejection"
+                                  value={roleChangeRejectionReasons[req.id.toString()] || ''}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRoleChangeRejectionReasons(prev => ({
+                                    ...prev,
+                                    [req.id.toString()]: e.target.value
+                                  }))}
+                                />
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleRoleChangeApproval(req.id, 'rejected')}
+                                    disabled={!roleChangeRejectionReasons[req.id.toString()]}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Confirm Reject
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowRoleChangeRejectionInput(prev => ({
+                                      ...prev,
+                                      [req.id.toString()]: false
+                                    }))}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setShowRoleChangeRejectionInput(prev => ({
+                                  ...prev,
+                                  [req.id.toString()]: true
+                                }))}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No role change approvals pending.</p>
             )}
           </CardContent>
         </Card>

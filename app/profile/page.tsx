@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare, Plus, Send, Link } from 'lucide-react';
+import { User, Mail, Building, FileText, Upload, Calendar, CheckCircle, AlertCircle, Eye, Download, Trash2, MessageSquare, Plus, Send, Link, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -103,6 +103,26 @@ interface QueryReply {
   created_at: string;
 }
 
+interface Role {
+  id: number;
+  name: string;
+}
+
+interface RoleChangeRequest {
+  id: number;
+  user_id: number;
+  current_role_id: number;
+  requested_role_id: number;
+  status: 'pending' | 'approved' | 'rejected';
+  requested_at: string;
+  approved_at?: string;
+  approved_by?: number;
+  rejection_reason?: string;
+  expires_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -132,6 +152,13 @@ export default function ProfilePage() {
   const [replyText, setReplyText] = useState('');
   const [profilePicture, setProfilePicture] = useState<string | null>(user?.avatar_url || null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Role change states
+  const [isRoleChangeModalOpen, setIsRoleChangeModalOpen] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [selectedRole, setSelectedRole] = useState<number | null>(null);
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false);
+  const [recentRoleChange, setRecentRoleChange] = useState<RoleChangeRequest | null>(null);
 
   // Fetch profile data
   useEffect(() => {
@@ -632,6 +659,105 @@ export default function ProfilePage() {
     }
   };
   
+  // Role change functions
+  const fetchAvailableRoles = async (userId: number) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/role-changes/available-roles/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const roles = await response.json();
+        setAvailableRoles(roles);
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to fetch available roles.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while fetching roles.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleRoleChangeRequest = async () => {
+    if (!selectedRole) return;
+    
+    setRoleChangeLoading(true);
+    
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const response = await fetch(`${apiUrl}/api/role-changes/request-role-change`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ requested_role_id: selectedRole })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setRecentRoleChange(result);
+        toast({
+          title: "Success",
+          description: "Role change request submitted successfully!",
+        });
+        setIsRoleChangeModalOpen(false);
+        setSelectedRole(null);
+        // Refetch profile to update the UI
+        fetchProfile();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.error || "Failed to submit role change request.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setRoleChangeLoading(false);
+    }
+  };
+  
+  const openRoleChangeModal = async () => {
+    if (user) {
+      await fetchAvailableRoles(user.id);
+      setIsRoleChangeModalOpen(true);
+    }
+  };
+    
+  // Check if the user's role was recently changed (within 2 days)
+  const isRoleRecentlyChanged = (): boolean => {
+    if (!profile || !profile.role || !recentRoleChange) return false;
+      
+    // Check if there's a recent approved role change request
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
+    if (recentRoleChange.status === 'approved' && recentRoleChange.approved_at) {
+      const approvedDate = new Date(recentRoleChange.approved_at);
+      return approvedDate > twoDaysAgo;
+    }
+      
+    return false;
+  };
+    
   if (loading || !user) {
     return (
       <DashboardLayout>
@@ -755,7 +881,23 @@ export default function ProfilePage() {
                   <div className="flex items-center space-x-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Role</span>
-                    <span className="text-sm font-medium text-foreground">{profile?.role || 'No Role'}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-foreground">{profile?.role || 'No Role'}</span>
+                      {isRoleRecentlyChanged() && (
+                        <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                          Changed
+                        </Badge>
+                      )}
+                    </div>
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={openRoleChangeModal}
+                      className="ml-2 h-8"
+                    >
+                      <Settings className="h-3 w-3 mr-1" />
+                      Change
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -1247,6 +1389,72 @@ export default function ProfilePage() {
               ) : (
                 <p className="text-muted-foreground">No image available</p>
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Role Change Modal */}
+        <Dialog open={isRoleChangeModalOpen} onOpenChange={setIsRoleChangeModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change Role</DialogTitle>
+              <DialogDescription>
+                Select a new role from your department
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Available Roles</Label>
+                <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map((role) => (
+                      <div 
+                        key={role.id}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          profile?.role === role.name 
+                            ? 'bg-muted border-muted-foreground/30 cursor-not-allowed' 
+                            : selectedRole === role.id 
+                              ? 'border-primary bg-primary/10' 
+                              : 'hover:bg-muted'
+                        }`}
+                        onClick={() => {
+                          if (profile?.role !== role.name) {
+                            setSelectedRole(role.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`${profile?.role === role.name ? 'text-muted-foreground' : ''}`}>
+                            {role.name}
+                          </span>
+                          {profile?.role === role.name && (
+                            <Badge variant="secondary" className="text-xs">
+                              Current
+                            </Badge>
+                          )}
+                          {selectedRole === role.id && (
+                            <Badge variant="default" className="bg-primary text-primary-foreground text-xs">
+                              Selected
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      Loading roles...
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <Button
+                onClick={handleRoleChangeRequest}
+                disabled={!selectedRole || roleChangeLoading}
+                className="w-full"
+              >
+                {roleChangeLoading ? 'Submitting...' : 'Submit Role Change Request'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
