@@ -560,7 +560,9 @@ function OutboundContent() {
                                 <div className="mt-1 space-y-1">
                                   {transaction.serial_numbers_with_prices.map((item, index) => (
                                     <div key={index} className="flex justify-between">
-                                      <span className="text-muted-foreground">{item.serial_number}:</span>
+                                      <Link href={`/inventory/serials/${item.serial_number}`} className="text-muted-foreground hover:underline">
+                                        {item.serial_number}:
+                                      </Link>
                                       <span>₦{item.inbound_price != null ? Number(item.inbound_price).toFixed(2) : '0.00'}</span>
                                     </div>
                                   ))}
@@ -762,7 +764,9 @@ function OutboundContent() {
                                 onCheckedChange={() => handleSerialNumberToggle(serial)}
                               />
                               <Label htmlFor={`serial-${transactionIndex}-${serialIndex}`} className="text-sm">
-                                {serial}
+                                <Link href={`/inventory/serials/${serial}`} className="hover:underline">
+                                  {serial}
+                                </Link>
                               </Label>
                             </div>
                           ))

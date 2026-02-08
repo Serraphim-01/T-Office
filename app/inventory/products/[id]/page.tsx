@@ -14,6 +14,7 @@ import { format, parseISO } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { hasPageAccess } from '@/lib/page-access';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom-fast-tooltip';
@@ -293,9 +294,11 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     return (
       <div className="flex flex-wrap gap-1">
         {displayedSerials.map((serial, index) => (
-          <Badge key={index} variant="outline" className="text-xs">
-            {serial}
-          </Badge>
+          <Link key={index} href={`/inventory/serials/${serial}`} className="hover:underline">
+            <Badge variant="outline" className="text-xs cursor-pointer hover:bg-accent">
+              {serial}
+            </Badge>
+          </Link>
         ))}
         {remainingCount > 0 && (
           <Badge variant="secondary" className="text-xs">

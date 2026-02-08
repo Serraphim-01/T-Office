@@ -867,4 +867,129 @@ router.post('/store/:id/outbound', authenticateJWT, async (req, res) => {
   }
 });
 
+// Get details for a specific serial number
+router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
+  const { serialNumber } = req.params;
+  
+  try {
+    const result = await req.pool.query(`
+      SELECT 
+        isn.id,
+        isn.serial_number,
+        isn.created_at as serial_created_at,
+        i.id as transaction_id,
+        i.product_id,
+        i.quantity,
+        i.provider_id,
+        i.expected_arrival_start,
+        i.expected_arrival_end,
+        i.arrival_date,
+        i.status as inbound_status,
+        i.batch_number,
+        i.unit_price as inbound_price,
+        i.created_at as transaction_created_at,
+        p.name as product_name,
+        p.part_number as product_part_number,
+        p.default_unit_price as product_default_unit_price,
+        pr.name as provider_name,
+        -- Get all serial numbers in the same transaction
+        ARRAY_AGG(isn2.serial_number) OVER (PARTITION BY i.id) as all_serial_numbers_in_batch,
+        -- Check if this serial number is in any outbound transaction and get the outbound price
+        osn.inbound_price as outbound_inbound_price,
+        ot.status as outbound_status,
+        ot.outbound_price as final_outbound_price
+      FROM inbound_serial_numbers isn
+      JOIN inbound_transactions i ON isn.transaction_id = i.id
+      JOIN products p ON i.product_id = p.id
+      LEFT JOIN providers pr ON i.provider_id = pr.id
+      JOIN inbound_serial_numbers isn2 ON isn2.transaction_id = i.id
+      LEFT JOIN outbound_serial_numbers osn ON isn.serial_number = osn.serial_number
+      LEFT JOIN outbound_transactions ot ON osn.outbound_transaction_id = ot.id
+      WHERE isn.serial_number = $1
+      LIMIT 1
+    `, [serialNumber]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Serial number not found' });
+    }
+    
+    const serialInfo = result.rows[0];
+    
+    // Determine the status based on whether the serial is in outbound transactions
+    let finalStatus = serialInfo.inbound_status;
+    if (serialInfo.outbound_status) {
+      finalStatus = serialInfo.outbound_status;
+    }
+    
+    // Determine the price to display based on status
+    let displayPrice = serialInfo.inbound_price;
+    let priceType = 'inbound';
+    if (serialInfo.outbound_status) {
+      displayPrice = serialInfo.final_outbound_price;
+      priceType = 'outbound';
+    }
+    
+    // Also get the original inbound price for outbound serials
+    let inboundPriceForOutbound = serialInfo.outbound_inbound_price || serialInfo.inbound_price;
+    
+    // Get other transactions with the same product and provider (same batch details)
+    const relatedTransactionsResult = await req.pool.query(`
+      SELECT 
+        i.id as transaction_id,
+        i.batch_number,
+        i.unit_price,
+        i.arrival_date,
+        i.status,
+        i.quantity,
+        ARRAY_AGG(isn3.serial_number) as related_serial_numbers
+      FROM inbound_transactions i
+      JOIN inbound_serial_numbers isn3 ON i.id = isn3.transaction_id
+      WHERE i.product_id = $1 AND i.provider_id = $2 AND i.batch_number = $3 AND i.id != $4
+      GROUP BY i.id, i.batch_number, i.unit_price, i.arrival_date, i.status, i.quantity
+    `, [serialInfo.product_id, serialInfo.provider_id, serialInfo.batch_number, serialInfo.transaction_id]);
+    
+    const response = {
+      serial_number: serialInfo.serial_number,
+      created_at: serialInfo.serial_created_at,
+      product: {
+        id: serialInfo.product_id,
+        name: serialInfo.product_name,
+        part_number: serialInfo.product_part_number,
+        default_unit_price: serialInfo.product_default_unit_price
+      },
+      provider: {
+        id: serialInfo.provider_id,
+        name: serialInfo.provider_name
+      },
+      transaction: {
+        id: serialInfo.transaction_id,
+        batch_number: serialInfo.batch_number,
+        inbound_price: serialInfo.inbound_price,
+        outbound_price: serialInfo.final_outbound_price,
+        outbound_inbound_price: serialInfo.outbound_inbound_price,
+        quantity: serialInfo.quantity,
+        status: finalStatus,
+        expected_arrival_start: serialInfo.expected_arrival_start,
+        expected_arrival_end: serialInfo.expected_arrival_end,
+        arrival_date: serialInfo.arrival_date,
+        created_at: serialInfo.transaction_created_at
+      },
+      price_info: {
+        display_price: displayPrice,
+        price_type: priceType,
+        inbound_price: serialInfo.inbound_price,
+        outbound_price: serialInfo.final_outbound_price,
+        outbound_inbound_price: inboundPriceForOutbound
+      },
+      serial_numbers_in_same_batch: Array.from(new Set(serialInfo.all_serial_numbers_in_batch)),
+      related_transactions: relatedTransactionsResult.rows
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching serial number details:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

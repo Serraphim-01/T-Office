@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export const dynamic = 'force-dynamic';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -315,24 +316,28 @@ export default function OutboundTransactionDetailsPage() {
                 {transaction.serial_numbers_with_prices && transaction.serial_numbers_with_prices.length > 0 ? (
                   <div className="space-y-2">
                     {transaction.serial_numbers_with_prices.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                        <div className="flex items-center space-x-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono">{item.serial_number}</span>
+                      <Link key={index} href={`/inventory/serials/${item.serial_number}`} className="hover:underline">
+                        <div className="flex items-center justify-between p-2 bg-muted rounded cursor-pointer hover:bg-accent transition-colors">
+                          <div className="flex items-center space-x-2">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-mono">{item.serial_number}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">₦{item.inbound_price != null ? (typeof item.inbound_price === 'number' ? item.inbound_price.toFixed(2) : parseFloat(item.inbound_price).toFixed(2)) : '0.00'}</span>
+                          </div>
                         </div>
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">₦{item.inbound_price != null ? (typeof item.inbound_price === 'number' ? item.inbound_price.toFixed(2) : parseFloat(item.inbound_price).toFixed(2)) : '0.00'}</span>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 ) : transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
                   <div className="space-y-2">
                     {transaction.serial_numbers.map((serial, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-2 bg-muted rounded">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-mono">{serial}</span>
-                      </div>
+                      <Link key={index} href={`/inventory/serials/${serial}`} className="hover:underline">
+                        <div className="flex items-center space-x-2 p-2 bg-muted rounded cursor-pointer hover:bg-accent transition-colors">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-mono">{serial}</span>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 ) : (

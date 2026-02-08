@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export const dynamic = 'force-dynamic';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -272,10 +273,12 @@ export default function InboundTransactionDetailsPage() {
                 {transaction.serial_numbers && transaction.serial_numbers.length > 0 ? (
                   <div className="space-y-2">
                     {transaction.serial_numbers.map((serial, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-2 bg-muted rounded">
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-mono">{serial}</span>
-                      </div>
+                      <Link key={index} href={`/inventory/serials/${serial}`} className="hover:underline">
+                        <div className="flex items-center space-x-2 p-2 bg-muted rounded cursor-pointer hover:bg-accent transition-colors">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-mono">{serial}</span>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 ) : (

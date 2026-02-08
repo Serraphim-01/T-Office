@@ -601,7 +601,9 @@ function StoreContent() {
                                 onCheckedChange={() => handleSerialNumberToggle(serial)}
                               />
                               <Label htmlFor={`serial-${transaction.transaction_id}-${serialIndex}`} className="text-sm">
-                                {serial}
+                                <Link href={`/inventory/serials/${serial}`} className="hover:underline">
+                                  {serial}
+                                </Link>
                               </Label>
                               {useDifferentPrices && selectedSerialNumbers.includes(serial) && (
                                 <Input
