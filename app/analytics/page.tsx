@@ -11,6 +11,7 @@ import {
 } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { PieChart, BarChart3, TrendingUp, DollarSign, Activity, Users, Package } from 'lucide-react';
+import { InfoTooltip } from '@/components/info-tooltip';
 
 export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
@@ -155,9 +156,15 @@ export default function AnalyticsPage() {
               <div className="bg-blue-100 p-3 rounded-lg mr-4">
                 <DollarSign className="h-6 w-6 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Inventory Value</p>
-                <p className="text-2xl font-bold">${(analyticsData.inventory?.total_inventory_value || 0)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Total Inventory Value</p>
+                  <InfoTooltip 
+                    title="Total Inventory Value"
+                    description="Sum of all stored items' value in inventory. Calculated by multiplying quantity by unit price for each item and adding them together."
+                  />
+                </div>
+                <p className="text-2xl font-bold">₦{(analyticsData.inventory?.total_inventory_value || 0)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </CardContent>
           </Card>
@@ -167,9 +174,15 @@ export default function AnalyticsPage() {
               <div className="bg-green-100 p-3 rounded-lg mr-4">
                 <Activity className="h-6 w-6 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Profit</p>
-                <p className="text-2xl font-bold">${Number(analyticsData.profit?.overall_summary?.total_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Total Profit</p>
+                  <InfoTooltip 
+                    title="Total Profit"
+                    description="Gross profit from all outbound transactions. Calculated as (outbound price - inbound price) × quantity for each transaction."
+                  />
+                </div>
+                <p className="text-2xl font-bold">₦{Number(analyticsData.profit?.overall_summary?.total_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </CardContent>
           </Card>
@@ -179,8 +192,14 @@ export default function AnalyticsPage() {
               <div className="bg-purple-100 p-3 rounded-lg mr-4">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Profit Margin</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Profit Margin</p>
+                  <InfoTooltip 
+                    title="Profit Margin"
+                    description="Percentage of profit relative to cost. Calculated as (Total Profit ÷ Total Cost) × 100. Indicates overall business profitability."
+                  />
+                </div>
                 <p className="text-2xl font-bold">{Number(analyticsData.profit?.overall_summary?.profit_margin_percent || 0).toFixed(2)}%</p>
               </div>
             </CardContent>
@@ -191,8 +210,14 @@ export default function AnalyticsPage() {
               <div className="bg-yellow-100 p-3 rounded-lg mr-4">
                 <Package className="h-6 w-6 text-yellow-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Low Stock Items</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Low Stock Items</p>
+                  <InfoTooltip 
+                    title="Low Stock Items"
+                    description="Number of products with inventory quantities below the minimum threshold (typically 10 units). Items that need restocking soon."
+                  />
+                </div>
                 <p className="text-2xl font-bold">{analyticsData.inventory?.low_stock_items?.length || 0}</p>
               </div>
             </CardContent>
@@ -207,6 +232,11 @@ export default function AnalyticsPage() {
               <CardTitle className="flex items-center">
                 <BarChart3 className="mr-2 h-5 w-5" />
                 Inventory Value by Category
+                <InfoTooltip 
+                  title="Inventory Value by Category"
+                  description="Distribution of inventory value across product categories. Shows which categories hold the most financial value in storage."
+                  className="ml-2"
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -232,6 +262,11 @@ export default function AnalyticsPage() {
               <CardTitle className="flex items-center">
                 <TrendingUp className="mr-2 h-5 w-5" />
                 Monthly Profit Trends
+                <InfoTooltip 
+                  title="Monthly Profit Trends"
+                  description="Historical profit performance over time. Shows revenue, costs, and profit patterns to identify seasonal trends and business growth."
+                  className="ml-2"
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -258,6 +293,11 @@ export default function AnalyticsPage() {
               <CardTitle className="flex items-center">
                 <Activity className="mr-2 h-5 w-5" />
                 Demand Predictions
+                <InfoTooltip 
+                  title="Demand Predictions"
+                  description="Forecast of future product demand based on historical usage patterns. Helps with inventory planning and supply chain management."
+                  className="ml-2"
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -284,6 +324,11 @@ export default function AnalyticsPage() {
               <CardTitle className="flex items-center">
                 <Users className="mr-2 h-5 w-5" />
                 User Activity
+                <InfoTooltip 
+                  title="User Activity"
+                  description="Daily active user counts showing system engagement over time. Indicates platform usage patterns and user adoption rates."
+                  className="ml-2"
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -356,7 +401,7 @@ export default function AnalyticsPage() {
                     {analyticsData.profit?.product_profit_details?.slice(0, 5).map((item: any, index: number) => (
                       <tr key={index} className="border-b">
                         <td className="py-2">{item.product_name}</td>
-                        <td className="py-2 text-right">${parseFloat(item.total_profit || 0).toFixed(2)}</td>
+                        <td className="py-2 text-right">₦{parseFloat(item.total_profit || 0).toFixed(2)}</td>
                       </tr>
                     )) || (
                       <tr>

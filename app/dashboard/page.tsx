@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Users, TrendingUp, CheckCircle, AlertCircle, Calendar, MessageSquare, FileText, Clock, Building, Activity, User as UserIcon } from 'lucide-react';
+import { InfoTooltip } from '@/components/info-tooltip';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -325,6 +326,11 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Attendance Analytics
+                  <InfoTooltip 
+                    title="Attendance Analytics"
+                    description="Track employee attendance patterns including average clock-in/clock-out times, punctuality trends, and overall attendance rates. Analyze productivity and compliance with work schedules."
+                    className="ml-2"
+                  />
                 </CardTitle>
                 <CardDescription>
                   Average clock-in/out times and total clock-ins/outs
@@ -506,6 +512,11 @@ export default function DashboardPage() {
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
                 All Departments
+                <InfoTooltip 
+                  title="All Departments"
+                  description="Organization structure overview showing employee distribution across all departments. Displays active user counts and helps monitor organizational staffing levels."
+                  className="ml-2"
+                />
               </CardTitle>
               <CardDescription>
                 Active user count across all departments
@@ -565,6 +576,11 @@ export default function DashboardPage() {
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Roles in {user?.department || 'Your Department'}
+                <InfoTooltip 
+                  title="Roles in Your Department"
+                  description="Department-level role distribution showing user counts per job position. Visualize workforce allocation and ensure appropriate role distribution for department effectiveness."
+                  className="ml-2"
+                />
               </CardTitle>
               <CardDescription>
                 User distribution by role in your department

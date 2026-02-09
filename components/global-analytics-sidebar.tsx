@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { X, PieChart, BarChart3, Users, MessageCircle, User, Package, Clock, FileText, Settings, Building, TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
+import { InfoTooltip } from '@/components/info-tooltip';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -181,9 +182,15 @@ export function GlobalAnalyticsSidebar() {
               <div className="bg-blue-100 p-3 rounded-lg mr-4">
                 <DollarSign className="h-6 w-6 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Inventory Value</p>
-                <p className="text-xl font-bold">${Number(analyticsData.inventory?.total_inventory_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Total Inventory Value</p>
+                  <InfoTooltip 
+                    title="Total Inventory Value"
+                    description="Sum of all stored items' value in inventory. Calculated by multiplying quantity by unit price for each item."
+                  />
+                </div>
+                <p className="text-xl font-bold">₦{Number(analyticsData.inventory?.total_inventory_value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </CardContent>
           </Card>
@@ -192,9 +199,15 @@ export function GlobalAnalyticsSidebar() {
               <div className="bg-green-100 p-3 rounded-lg mr-4">
                 <Activity className="h-6 w-6 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Profit</p>
-                <p className="text-xl font-bold">${Number(analyticsData.profit?.overall_summary?.total_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Total Profit</p>
+                  <InfoTooltip 
+                    title="Total Profit"
+                    description="Gross profit from all outbound transactions. Calculated as (outbound price - inbound price) × quantity."
+                  />
+                </div>
+                <p className="text-xl font-bold">₦{Number(analyticsData.profit?.overall_summary?.total_profit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </div>
             </CardContent>
           </Card>
@@ -206,8 +219,14 @@ export function GlobalAnalyticsSidebar() {
               <div className="bg-purple-100 p-3 rounded-lg mr-4">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Profit Margin</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Profit Margin</p>
+                  <InfoTooltip 
+                    title="Profit Margin"
+                    description="Percentage of profit relative to cost. Calculated as (Total Profit ÷ Total Cost) × 100."
+                  />
+                </div>
                 <p className="text-xl font-bold">{Number(analyticsData.profit?.overall_summary?.profit_margin_percent || 0).toFixed(2)}%</p>
               </div>
             </CardContent>
@@ -217,8 +236,14 @@ export function GlobalAnalyticsSidebar() {
               <div className="bg-yellow-100 p-3 rounded-lg mr-4">
                 <Package className="h-6 w-6 text-yellow-600" />
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Low Stock Items</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600">Low Stock Items</p>
+                  <InfoTooltip 
+                    title="Low Stock Items"
+                    description="Number of products with inventory quantities below minimum threshold (typically 10 units)."
+                  />
+                </div>
                 <p className="text-xl font-bold">{analyticsData.inventory?.low_stock_items?.length || 0}</p>
               </div>
             </CardContent>
@@ -232,6 +257,11 @@ export function GlobalAnalyticsSidebar() {
                 <div className="flex items-center">
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Inventory by Category
+                  <InfoTooltip 
+                    title="Inventory by Category"
+                    description="Distribution of inventory value across product categories."
+                    className="ml-2"
+                  />
                 </div>
               </CardTitle>
             </CardHeader>
@@ -260,6 +290,11 @@ export function GlobalAnalyticsSidebar() {
                 <div className="flex items-center">
                   <TrendingUp className="mr-2 h-4 w-4" />
                   Monthly Profit Trends
+                  <InfoTooltip 
+                    title="Monthly Profit Trends"
+                    description="Historical profit performance over time showing revenue and cost patterns."
+                    className="ml-2"
+                  />
                 </div>
               </CardTitle>
             </CardHeader>
@@ -289,6 +324,11 @@ export function GlobalAnalyticsSidebar() {
                 <div className="flex items-center">
                   <Activity className="mr-2 h-4 w-4" />
                   Demand Predictions
+                  <InfoTooltip 
+                    title="Demand Predictions"
+                    description="Forecast of future product demand based on historical usage patterns."
+                    className="ml-2"
+                  />
                 </div>
               </CardTitle>
             </CardHeader>
@@ -318,6 +358,11 @@ export function GlobalAnalyticsSidebar() {
                 <div className="flex items-center">
                   <Users className="mr-2 h-4 w-4" />
                   User Activity
+                  <InfoTooltip 
+                    title="User Activity"
+                    description="Daily active user counts showing system engagement over time."
+                    className="ml-2"
+                  />
                 </div>
               </CardTitle>
             </CardHeader>
