@@ -37,3 +37,13 @@ next-env.d.ts
 
 # testing
 /test/node_modules
+/test/test-users.json
+/test/test-data/admin-user.json
+/test/test-data/dispatched-transactions.json
+/test/test-data/delivered-transactions.json
+/test/test-data/inbound-transactions.json
+/test/test-data/outbound-transactions.json
+/test/test-data/products.json
+/test/test-data/provider-assignments.json
+/test/test-data/providers.json
+/test/test-data/stored-transactions.json

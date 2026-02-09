@@ -1,7 +1,7 @@
 {
   "email": "superadmin@test.com",
   "password": "SuperAdmin123!",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImRlcGFydG1lbnQiOiJBZG1pbiIsInJvbGUiOiJkZWZhdWx0IiwiaWF0IjoxNzcwMzgzODcxLCJleHAiOjE3NzAzODc0NzF9.ZA628z5oV6aTtC4v03PrguDHWVOZWaEGtcw13tWFar4",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImRlcGFydG1lbnQiOiJBZG1pbiIsInJvbGUiOiJkZWZhdWx0IiwiaWF0IjoxNzcwNjM1OTg4LCJleHAiOjE3NzA2Mzk1ODh9.LKLx3z8mg9PbX2TA8R9tQxn6YFDMCVIMSNvmlu0pe-c",
   "user": {
     "id": 1,
     "full_name": "Super Admin User",
@@ -9,5 +9,5 @@
     "department": "Admin",
     "role": "default"
   },
-  "timestamp": "2026-02-06T13:17:51.920Z"
+  "timestamp": "2026-02-09T11:19:48.301Z"
 }

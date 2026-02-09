@@ -13,11 +13,11 @@
       "dispatch_datetime": "2024-02-26T10:00:00.000Z",
       "delivery_datetime": "2024-02-27T16:00:00.000Z",
       "status": "Outgoing",
-      "created_at": "2026-02-06T13:15:59.639Z",
+      "created_at": "2026-02-09T11:19:53.514Z",
       "inbound_price": "450.00",
       "outbound_price": "850.00",
       "provider_name": "Digital Devices Corp.",
-      "batch_number": "BO-060226-4",
+      "batch_number": "BO-090226-4",
       "serial_numbers_with_prices": [
         {
           "serial_number": "M2023001",
@@ -44,11 +44,11 @@
       "dispatch_datetime": "2024-02-25T09:00:00.000Z",
       "delivery_datetime": "2024-02-26T17:00:00.000Z",
       "status": "Outgoing",
-      "created_at": "2026-02-06T13:15:59.514Z",
+      "created_at": "2026-02-09T11:19:53.392Z",
       "inbound_price": "350.00",
       "outbound_price": "2800.00",
       "provider_name": "Office Supply Co.",
-      "batch_number": "BO-060226-5",
+      "batch_number": "BO-090226-5",
       "serial_numbers_with_prices": [
         {
           "serial_number": "C2023007",
@@ -64,7 +64,7 @@
     }
   ],
   "failed_transactions": [],
-  "timestamp": "2026-02-06T13:16:00.457Z",
+  "timestamp": "2026-02-09T11:19:54.172Z",
   "total_dispatched": 2,
   "total_failed": 0
 }

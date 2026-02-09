@@ -271,14 +271,18 @@ export default function SerialNumberDetailPage() {
                         ₦{Number(serialDetails.transaction.inbound_price).toFixed(2)}
                       </TableCell>
                     </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Outbound Price</TableCell>
-                      <TableCell>
-                        {serialDetails.price_info.outbound_price !== null 
-                          ? `₦${Number(serialDetails.price_info.outbound_price).toFixed(2)}`
-                          : 'N/A'}
-                      </TableCell>
-                    </TableRow>
+                    {(serialDetails.transaction.status === 'Outgoing' || 
+                      serialDetails.transaction.status === 'Dispatched' || 
+                      serialDetails.transaction.status === 'Delivered') && (
+                      <TableRow>
+                        <TableCell className="font-medium">Outbound Price</TableCell>
+                        <TableCell>
+                          {serialDetails.price_info.outbound_price !== null 
+                            ? `₦${Number(serialDetails.price_info.outbound_price).toFixed(2)}`
+                            : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     <TableRow>
                       <TableCell className="font-medium">Default Unit Price</TableCell>
                       <TableCell>
@@ -364,8 +368,7 @@ export default function SerialNumberDetailPage() {
                       <TableRow>
                         <TableHead>Transaction ID</TableHead>
                         <TableHead>Batch Number</TableHead>
-                        <TableHead>Inbound Price</TableHead>
-                        <TableHead>Outbound Price</TableHead>
+                        <TableHead>Price</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Arrival Date</TableHead>
@@ -378,7 +381,6 @@ export default function SerialNumberDetailPage() {
                           <TableCell>{transaction.transaction_id}</TableCell>
                           <TableCell>{transaction.batch_number}</TableCell>
                           <TableCell>₦{Number(transaction.unit_price).toFixed(2)}</TableCell>
-                          <TableCell>N/A</TableCell>
                           <TableCell>{transaction.quantity}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{transaction.status}</Badge>

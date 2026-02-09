@@ -10,8 +10,8 @@
       "expected_arrival_start": "2024-02-19T23:00:00.000Z",
       "expected_arrival_end": "2024-02-27T23:00:00.000Z",
       "status": "Incoming",
-      "created_at": "2026-02-06T13:15:58.094Z",
-      "batch_number": "B-060226-5",
+      "created_at": "2026-02-09T11:19:51.482Z",
+      "batch_number": "B-090226-5",
       "unit_price": "350.00",
       "serial_numbers": [
         "C2023001",
@@ -39,9 +39,9 @@
         "expected_arrival_end": "2024-02-27T23:00:00.000Z",
         "arrival_date": "2024-02-27T23:00:00.000Z",
         "status": "Stored",
-        "batch_number": "B-060226-5",
+        "batch_number": "B-090226-5",
         "unit_price": "350.00",
-        "created_at": "2026-02-06T13:15:58.094Z"
+        "created_at": "2026-02-09T11:19:51.482Z"
       }
     },
     {
@@ -54,8 +54,8 @@
       "expected_arrival_start": "2024-02-17T23:00:00.000Z",
       "expected_arrival_end": "2024-02-24T23:00:00.000Z",
       "status": "Incoming",
-      "created_at": "2026-02-06T13:15:58.025Z",
-      "batch_number": "B-060226-4",
+      "created_at": "2026-02-09T11:19:51.420Z",
+      "batch_number": "B-090226-4",
       "unit_price": "450.00",
       "serial_numbers": [
         "M2023001",
@@ -80,9 +80,9 @@
         "expected_arrival_end": "2024-02-24T23:00:00.000Z",
         "arrival_date": "2024-02-24T23:00:00.000Z",
         "status": "Stored",
-        "batch_number": "B-060226-4",
+        "batch_number": "B-090226-4",
         "unit_price": "450.00",
-        "created_at": "2026-02-06T13:15:58.025Z"
+        "created_at": "2026-02-09T11:19:51.420Z"
       }
     },
     {
@@ -95,8 +95,8 @@
       "expected_arrival_start": "2024-02-14T23:00:00.000Z",
       "expected_arrival_end": "2024-02-19T23:00:00.000Z",
       "status": "Incoming",
-      "created_at": "2026-02-06T13:15:57.967Z",
-      "batch_number": "B-060226-3",
+      "created_at": "2026-02-09T11:19:51.373Z",
+      "batch_number": "B-090226-3",
       "unit_price": "1800.00",
       "serial_numbers": [
         "DX2023001",
@@ -117,14 +117,14 @@
         "expected_arrival_end": "2024-02-19T23:00:00.000Z",
         "arrival_date": "2024-02-19T23:00:00.000Z",
         "status": "Stored",
-        "batch_number": "B-060226-3",
+        "batch_number": "B-090226-3",
         "unit_price": "1800.00",
-        "created_at": "2026-02-06T13:15:57.967Z"
+        "created_at": "2026-02-09T11:19:51.373Z"
       }
     }
   ],
   "failed_transactions": [],
-  "timestamp": "2026-02-06T13:15:59.048Z",
+  "timestamp": "2026-02-09T11:19:52.340Z",
   "total_moved": 3,
   "total_failed": 0
 }

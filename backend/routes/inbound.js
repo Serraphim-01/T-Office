@@ -872,6 +872,7 @@ router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
   const { serialNumber } = req.params;
   
   try {
+    // First get the basic serial number information
     const result = await req.pool.query(`
       SELECT 
         isn.id,
@@ -893,18 +894,12 @@ router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
         p.default_unit_price as product_default_unit_price,
         pr.name as provider_name,
         -- Get all serial numbers in the same transaction
-        ARRAY_AGG(isn2.serial_number) OVER (PARTITION BY i.id) as all_serial_numbers_in_batch,
-        -- Check if this serial number is in any outbound transaction and get the outbound price
-        osn.inbound_price as outbound_inbound_price,
-        ot.status as outbound_status,
-        ot.outbound_price as final_outbound_price
+        ARRAY_AGG(isn2.serial_number) OVER (PARTITION BY i.id) as all_serial_numbers_in_batch
       FROM inbound_serial_numbers isn
       JOIN inbound_transactions i ON isn.transaction_id = i.id
       JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
       JOIN inbound_serial_numbers isn2 ON isn2.transaction_id = i.id
-      LEFT JOIN outbound_serial_numbers osn ON isn.serial_number = osn.serial_number
-      LEFT JOIN outbound_transactions ot ON osn.outbound_transaction_id = ot.id
       WHERE isn.serial_number = $1
       LIMIT 1
     `, [serialNumber]);
@@ -915,8 +910,38 @@ router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
     
     const serialInfo = result.rows[0];
     
+    // Get outbound information for this serial number
+    const outboundResult = await req.pool.query(`
+      SELECT 
+        ot.status as outbound_status,
+        ot.outbound_price,
+        osn.inbound_price as outbound_inbound_price
+      FROM outbound_serial_numbers osn
+      JOIN outbound_transactions ot ON osn.outbound_transaction_id = ot.id
+      WHERE osn.serial_number = $1
+      ORDER BY ot.created_at DESC
+      LIMIT 1
+    `, [serialNumber]);
+    
+    // Add outbound information to serialInfo
+    if (outboundResult.rowCount > 0) {
+      serialInfo.outbound_status = outboundResult.rows[0].outbound_status;
+      serialInfo.final_outbound_price = outboundResult.rows[0].outbound_price;
+      serialInfo.outbound_inbound_price = outboundResult.rows[0].outbound_inbound_price;
+    } else {
+      serialInfo.outbound_status = null;
+      serialInfo.final_outbound_price = null;
+      serialInfo.outbound_inbound_price = null;
+    }
+    
     // Determine the status based on whether the serial is in outbound transactions
     let finalStatus = serialInfo.inbound_status;
+    
+    // Map 'Outbound' status to 'Outgoing' for consistency with proper states
+    if (finalStatus === 'Outbound') {
+      finalStatus = 'Outgoing';
+    }
+    
     if (serialInfo.outbound_status) {
       finalStatus = serialInfo.outbound_status;
     }
@@ -924,13 +949,22 @@ router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
     // Determine the price to display based on status
     let displayPrice = serialInfo.inbound_price;
     let priceType = 'inbound';
-    if (serialInfo.outbound_status) {
+    
+    // Use outbound price for all outbound-related statuses
+    const isOutboundStatus = finalStatus === 'Outgoing' || finalStatus === 'Dispatched' || finalStatus === 'Delivered';
+    if (isOutboundStatus) {
       displayPrice = serialInfo.final_outbound_price;
       priceType = 'outbound';
     }
     
     // Also get the original inbound price for outbound serials
     let inboundPriceForOutbound = serialInfo.outbound_inbound_price || serialInfo.inbound_price;
+    
+    // If outbound price is null but we have an outbound-related status, try to get a reasonable default
+    if (isOutboundStatus && serialInfo.final_outbound_price === null) {
+      // Use the inbound price as fallback if outbound price is not set
+      serialInfo.final_outbound_price = serialInfo.outbound_inbound_price || serialInfo.inbound_price;
+    }
     
     // Get other transactions with the same product and provider (same batch details)
     const relatedTransactionsResult = await req.pool.query(`
@@ -978,7 +1012,7 @@ router.get('/serials/:serialNumber', authenticateJWT, async (req, res) => {
         display_price: displayPrice,
         price_type: priceType,
         inbound_price: serialInfo.inbound_price,
-        outbound_price: serialInfo.final_outbound_price,
+        outbound_price: isOutboundStatus ? serialInfo.final_outbound_price : null,
         outbound_inbound_price: inboundPriceForOutbound
       },
       serial_numbers_in_same_batch: Array.from(new Set(serialInfo.all_serial_numbers_in_batch)),
