@@ -104,11 +104,69 @@ function OutboundContent() {
   const [inboundPrice, setInboundPrice] = useState<number>(0);
   const [outboundPrice, setOutboundPrice] = useState<number>(0);
   
-  // Calculate total outbound price
-  const totalOutboundPrice = selectedSerialNumbers.length * outboundPrice;
-  
   // State for product markup percentage
   const [productMarkup, setProductMarkup] = useState<number>(0);
+  const [customMarkup, setCustomMarkup] = useState<number>(0);
+  const [useCustomMarkup, setUseCustomMarkup] = useState<boolean>(false);
+  
+  // Calculate total outbound price based on selected serial numbers
+  const totalOutboundPrice = selectedSerialNumbers.length * outboundPrice;
+  
+  // Function to get inbound prices for selected serial numbers
+  const getSelectedSerialInboundPrices = (): number[] => {
+    const prices: number[] = [];
+    
+    for (const transaction of productSerialNumbers) {
+      if (transaction.serial_numbers) {
+        for (const serial of transaction.serial_numbers) {
+          if (selectedSerialNumbers.includes(serial)) {
+            const unitPrice = transaction.unit_price ? Number(transaction.unit_price) : 0;
+            prices.push(unitPrice);
+          }
+        }
+      }
+    }
+    
+    return prices;
+  };
+  
+  // Calculate inbound prices for selected serial numbers
+  const selectedSerialInboundPrices = getSelectedSerialInboundPrices();
+  
+  // Get min and max inbound prices
+  const minInboundPrice = selectedSerialInboundPrices.length > 0 ? Math.min(...selectedSerialInboundPrices) : 0;
+  const maxInboundPrice = selectedSerialInboundPrices.length > 0 ? Math.max(...selectedSerialInboundPrices) : 0;
+  
+  // Calculate markup amount based on selected markup
+  const currentMarkup = useCustomMarkup ? customMarkup : productMarkup;
+  const calculateWithMarkup = (price: number): number => {
+    return price * (1 + currentMarkup / 100);
+  };
+  
+  // Calculate outbound prices with markup
+  const minOutboundPriceWithMarkup = calculateWithMarkup(minInboundPrice);
+  const maxOutboundPriceWithMarkup = calculateWithMarkup(maxInboundPrice);
+  
+  // Calculate total prices with markup
+  const totalInboundPrice = selectedSerialInboundPrices.reduce((sum, price) => sum + price, 0);
+  const totalOutboundPriceWithMarkup = selectedSerialInboundPrices.reduce((sum, price) => sum + calculateWithMarkup(price), 0);
+  
+  // Format price ranges
+  const inboundPriceRange = selectedSerialInboundPrices.length > 1 
+    ? `₦${minInboundPrice.toFixed(2)} - ₦${maxInboundPrice.toFixed(2)}` 
+    : selectedSerialInboundPrices.length > 0 
+      ? `₦${minInboundPrice.toFixed(2)}` 
+      : '₦0.00';
+  
+  const outboundPriceRange = selectedSerialInboundPrices.length > 1 
+    ? `₦${minOutboundPriceWithMarkup.toFixed(2)} - ₦${maxOutboundPriceWithMarkup.toFixed(2)}` 
+    : selectedSerialInboundPrices.length > 0 
+      ? `₦${minOutboundPriceWithMarkup.toFixed(2)}` 
+      : '₦0.00';
+  
+  // Calculate markup amounts
+  const totalMarkupAmount = totalOutboundPriceWithMarkup - totalInboundPrice;
+  const markupPerItem = selectedSerialNumbers.length > 0 ? totalMarkupAmount / selectedSerialNumbers.length : 0;
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -240,7 +298,7 @@ function OutboundContent() {
     }
   };
 
-  const handleSetAsOutbound = (transactionId: number, productId: number) => {
+  const handleCreateOutbound = (transactionId: number, productId: number) => {
     setSelectedTransactionId(transactionId);
     setSelectedProductId(productId);
     setIsModalOpen(true);
@@ -274,7 +332,7 @@ function OutboundContent() {
     e.preventDefault();
     
     // Validate form
-    if (!selectedTransactionId || selectedSerialNumbers.length === 0 || !receiverAddress || !receiverEmail || !receiverPhone || 
+    if (!selectedProductId || selectedSerialNumbers.length === 0 || !receiverAddress || !receiverEmail || !receiverPhone || 
         !dispatchDate || !dispatchTime || !deliveryDate || !deliveryTime) {
       toast({
         title: 'Validation Error',
@@ -309,14 +367,14 @@ function OutboundContent() {
     try {
       const token = localStorage.getItem('token');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const response = await fetch(`${apiUrl}/api/inventory/outbound`, {
+      const response = await fetch(`${apiUrl}/api/inventory/outbound/multi`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          inbound_transaction_id: selectedTransactionId,
+          product_id: selectedProductId,
           quantity: selectedSerialNumbers.length, // Automatically calculate quantity
           serial_numbers: selectedSerialNumbers,
           receiver_address: receiverAddress,
@@ -324,8 +382,10 @@ function OutboundContent() {
           receiver_phone: receiverPhone,
           dispatch_datetime: `${dispatchDate}T${dispatchTime}`,
           delivery_datetime: `${deliveryDate}T${deliveryTime}`,
-          inbound_price: inboundPrice,
-          outbound_price: outboundPrice
+          inbound_price: totalInboundPrice,
+          outbound_price: totalOutboundPriceWithMarkup,
+          serial_number_prices: selectedSerialInboundPrices, // Send individual prices for each selected serial
+          markup_percentage: useCustomMarkup ? customMarkup : undefined
         }),
       });
 
@@ -709,39 +769,76 @@ function OutboundContent() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="inboundPrice">Inbound Price</Label>
-                  <Input
-                    id="inboundPrice"
-                    type="number"
-                    step="0.01"
-                    value={inboundPrice}
-                    onChange={(e) => setInboundPrice(parseFloat(e.target.value) || 0)}
-                    placeholder="Enter inbound price"
-                  />
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Inbound Price Range: {inboundPriceRange}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Total Inbound Price: ₦{totalInboundPrice.toFixed(2)}
+                    </div>
+                    <Input
+                      id="inboundPrice"
+                      type="number"
+                      step="0.01"
+                      value={inboundPrice}
+                      onChange={(e) => setInboundPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter inbound price"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="outboundPrice">Outbound Price</Label>
-                  <Input
-                    id="outboundPrice"
-                    type="number"
-                    step="0.01"
-                    value={outboundPrice}
-                    onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
-                    placeholder="Enter outbound price"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Total Outbound Price</Label>
-                  <div className="p-2 bg-muted rounded text-sm font-medium">
-                    ₦{totalOutboundPrice.toFixed(2)} ({selectedSerialNumbers.length} items × ₦{outboundPrice.toFixed(2)})
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Outbound Price Range (with {currentMarkup}% markup): {outboundPriceRange}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Total Outbound Price (with {currentMarkup}% markup): ₦{totalOutboundPriceWithMarkup.toFixed(2)}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Markup Amount: +₦{totalMarkupAmount.toFixed(2)} ({currentMarkup}% markup)
+                    </div>
+                    <Input
+                      id="outboundPrice"
+                      type="number"
+                      step="0.01"
+                      value={outboundPrice}
+                      onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter outbound price"
+                    />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label>Product Markup</Label>
-                  <div className="p-2 bg-muted rounded text-sm font-medium">
-                    {productMarkup}%
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Default Markup: {productMarkup}%
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="useCustomMarkup"
+                        checked={useCustomMarkup}
+                        onCheckedChange={(checked) => setUseCustomMarkup(checked as boolean)}
+                      />
+                      <Label htmlFor="useCustomMarkup" className="text-sm font-medium">
+                        Use custom markup
+                      </Label>
+                    </div>
+                    {useCustomMarkup && (
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Custom markup %"
+                          value={customMarkup}
+                          onChange={(e) => setCustomMarkup(parseFloat(e.target.value) || 0)}
+                          className="w-32"
+                        />
+                        <span className="text-sm">%</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

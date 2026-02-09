@@ -93,10 +93,26 @@ function StoreContent() {
   const [serialNumberPrices, setSerialNumberPrices] = useState<{[key: string]: number}>({});
   
   // Calculate total outbound price
-  const totalOutboundPrice = selectedSerialNumbers.length * outboundPrice;
+  // Calculate total outbound price based on selected serial numbers
+  const calculateTotalOutboundPrice = (): number => {
+    if (useDifferentPrices) {
+      // If using different prices for each serial number
+      return selectedSerialNumbers.reduce((total, serial) => {
+        const price = serialNumberPrices[serial] || 0;
+        return total + price;
+      }, 0);
+    } else {
+      // If using same price for all serial numbers
+      return selectedSerialNumbers.length * outboundPrice;
+    }
+  };
+  
+  const totalOutboundPrice = calculateTotalOutboundPrice();
   
   // State for product markup percentage
   const [productMarkup, setProductMarkup] = useState<number>(0);
+  const [customMarkup, setCustomMarkup] = useState<number>(0);
+  const [useCustomMarkup, setUseCustomMarkup] = useState<boolean>(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -293,7 +309,8 @@ function StoreContent() {
           dispatch_datetime: `${dispatchDate}T${dispatchTime}`,
           delivery_datetime: `${deliveryDate}T${deliveryTime}`,
           outbound_price: outboundPrice,
-          serial_number_prices: useDifferentPrices ? serialPricesArray : undefined
+          serial_number_prices: useDifferentPrices ? serialPricesArray : undefined,
+          markup_percentage: useCustomMarkup ? customMarkup : undefined
         }),
       });
 
@@ -318,6 +335,58 @@ function StoreContent() {
     }
   };
 
+  // Function to get inbound prices for selected serial numbers
+  const getSelectedSerialInboundPrices = (): number[] => {
+    const prices: number[] = [];
+    
+    for (const transaction of productSerialNumbers) {
+      if (transaction.serial_numbers) {
+        for (const serial of transaction.serial_numbers) {
+          if (selectedSerialNumbers.includes(serial)) {
+            const unitPrice = transaction.unit_price ? Number(transaction.unit_price) : 0;
+            prices.push(unitPrice);
+          }
+        }
+      }
+    }
+    
+    return prices;
+  };
+  
+  // Calculate inbound prices for selected serial numbers
+  const selectedSerialInboundPrices = getSelectedSerialInboundPrices();
+  
+  // Get min and max inbound prices
+  const minInboundPrice = selectedSerialInboundPrices.length > 0 ? Math.min(...selectedSerialInboundPrices) : 0;
+  const maxInboundPrice = selectedSerialInboundPrices.length > 0 ? Math.max(...selectedSerialInboundPrices) : 0;
+  
+  // Calculate markup amount based on selected markup
+  const currentMarkup = useCustomMarkup ? customMarkup : productMarkup;
+  const calculateWithMarkup = (price: number): number => {
+    return price * (1 + currentMarkup / 100);
+  };
+  
+  // Calculate outbound prices with markup
+  const minOutboundPriceWithMarkup = calculateWithMarkup(minInboundPrice);
+  const maxOutboundPriceWithMarkup = calculateWithMarkup(maxInboundPrice);
+  
+  // Calculate total prices with markup
+  const totalInboundPrice = selectedSerialInboundPrices.reduce((sum, price) => sum + price, 0);
+  const totalOutboundPriceWithMarkup = selectedSerialInboundPrices.reduce((sum, price) => sum + calculateWithMarkup(price), 0);
+  
+  // Format price ranges
+  const inboundPriceRange = selectedSerialInboundPrices.length > 1 
+    ? `₦${minInboundPrice.toFixed(2)} - ₦${maxInboundPrice.toFixed(2)}` 
+    : selectedSerialInboundPrices.length > 0 
+      ? `₦${minInboundPrice.toFixed(2)}` 
+      : '₦0.00';
+  
+  const outboundPriceRange = selectedSerialInboundPrices.length > 1 
+    ? `₦${minOutboundPriceWithMarkup.toFixed(2)} - ₦${maxOutboundPriceWithMarkup.toFixed(2)}` 
+    : selectedSerialInboundPrices.length > 0 
+      ? `₦${minOutboundPriceWithMarkup.toFixed(2)}` 
+      : '₦0.00';
+  
   const getAllAvailableSerialNumbers = () => {
     return productSerialNumbers;
   };
@@ -545,27 +614,68 @@ function StoreContent() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="outboundPrice">Outbound Price</Label>
-                  <Input
-                    id="outboundPrice"
-                    type="number"
-                    step="0.01"
-                    value={outboundPrice}
-                    onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
-                    placeholder="Enter outbound price"
-                  />
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Inbound Price Range: {inboundPriceRange}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Outbound Price Range (with {currentMarkup}% markup): {outboundPriceRange}
+                    </div>
+                    <Input
+                      id="outboundPrice"
+                      type="number"
+                      step="0.01"
+                      value={outboundPrice}
+                      onChange={(e) => setOutboundPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter outbound price"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label>Total Outbound Price</Label>
-                  <div className="p-2 bg-muted rounded text-sm font-medium">
-                    ₦{totalOutboundPrice.toFixed(2)} ({selectedSerialNumbers.length} items × ₦{outboundPrice.toFixed(2)})
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm font-medium">
+                      Total Inbound Price: ₦{totalInboundPrice.toFixed(2)}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm font-medium">
+                      Total Outbound Price (with {currentMarkup}% markup): ₦{totalOutboundPriceWithMarkup.toFixed(2)}
+                    </div>
+                    <div className="p-2 bg-muted rounded text-sm font-medium">
+                      Actual Total: ₦{totalOutboundPrice.toFixed(2)} ({selectedSerialNumbers.length} items × ₦{outboundPrice.toFixed(2)})
+                    </div>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label>Product Markup</Label>
-                  <div className="p-2 bg-muted rounded text-sm font-medium">
-                    {productMarkup}%
+                  <div className="space-y-2">
+                    <div className="p-2 bg-muted rounded text-sm">
+                      Default Markup: {productMarkup}%
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="useCustomMarkup"
+                        checked={useCustomMarkup}
+                        onCheckedChange={(checked) => setUseCustomMarkup(checked as boolean)}
+                      />
+                      <Label htmlFor="useCustomMarkup" className="text-sm font-medium">
+                        Use custom markup
+                      </Label>
+                    </div>
+                    {useCustomMarkup && (
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Custom markup %"
+                          value={customMarkup}
+                          onChange={(e) => setCustomMarkup(parseFloat(e.target.value) || 0)}
+                          className="w-32"
+                        />
+                        <span className="text-sm">%</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

@@ -216,7 +216,8 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     delivery_datetime,
     inbound_price,
     outbound_price,
-    serial_number_prices // Optional array of prices for each serial number
+    serial_number_prices, // Optional array of prices for each serial number
+    markup_percentage // Optional custom markup percentage
   } = req.body;
   
   // Validate input
@@ -254,7 +255,10 @@ router.post('/multi', authenticateJWT, async (req, res) => {
     }
     
     const defaultPrice = productResult.rows[0].default_unit_price || 0.00;
-    const markupPercentage = productResult.rows[0].default_markup_percentage || 0.00;
+    const defaultMarkupPercentage = productResult.rows[0].default_markup_percentage || 0.00;
+    
+    // Use custom markup if provided, otherwise use product default
+    const markupPercentage = markup_percentage !== undefined ? parseFloat(markup_percentage) : defaultMarkupPercentage;
     const calculatedOutboundPrice = defaultPrice * (1 + (markupPercentage / 100));
     
     // Determine inbound and outbound prices
