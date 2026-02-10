@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { X, PieChart, BarChart3, Users, MessageCircle, User, Package, Clock, FileText, Settings, Building, TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
+import { X, PieChart, BarChart3, Users, MessageCircle, User, Package, Clock, FileText, Settings, Building, TrendingUp, DollarSign, Activity, ExternalLink, ShoppingCart, UserCheck2, AlertTriangle } from 'lucide-react';
 import { InfoTooltip } from '@/components/info-tooltip';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -54,14 +54,14 @@ export function GlobalAnalyticsSidebar() {
           ]);
           
           setAnalyticsData({
-            inventory: inventoryData || { total_inventory_value: 0, inventory_by_category: [], low_stock_items: [] },
+            inventory: inventoryData || { total_inventory_value: 0, inventory_by_category: [], low_stock_items: [], monthly_inventory: [] },
             profit: profitData || { 
               product_profit_details: [], 
               overall_summary: { total_profit: 0, profit_margin_percent: 0 }, 
               monthly_profit: [] 
             },
             predictive: predictiveData || { demand_predictions: [], revenue_prediction: {} },
-            user: userData || { daily_active_users: [], user_engagement_by_department: [] }
+            user: userData || { daily_active_users: [], user_engagement_by_department: [], user_login_patterns: [] }
           });
         } catch (err) {
           console.error('Error fetching analytics data:', err);
@@ -147,6 +147,8 @@ export function GlobalAnalyticsSidebar() {
     const profitByMonth = analyticsData.profit?.monthly_profit || [];
     const demandPredictions = analyticsData.predictive?.demand_predictions || [];
     const userActivity = analyticsData.user?.daily_active_users || [];
+    const monthlyInventoryData = analyticsData.inventory?.monthly_inventory || [];
+    const userLoginPatterns = analyticsData.user?.user_login_patterns || [];
 
     // Prepare inventory by category data
     const inventoryCategoryData = inventoryByCategory.map((cat: any) => ({
@@ -173,6 +175,20 @@ export function GlobalAnalyticsSidebar() {
       name: day.date ? new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A',
       users: parseInt(day.active_users || 0)
     })).reverse(); // Reverse to show oldest first
+    
+    // Prepare monthly inventory data for chart
+    const monthlyInventoryChartData = monthlyInventoryData.slice(0, 12).map((month: any) => ({
+      name: month.month ? new Date(month.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : 'N/A',
+      value: parseFloat(month.total_inventory_value || 0),
+      count: parseInt(month.total_items || 0)
+    }));
+    
+    // Prepare user login patterns data
+    const userLoginPatternsData = userLoginPatterns.map((dept: any) => ({
+      name: dept.department,
+      logins: parseInt(dept.login_count || 0),
+      users: parseInt(dept.user_count || 0)
+    }));
 
     return (
       <div className="space-y-6 p-4">
@@ -234,7 +250,7 @@ export function GlobalAnalyticsSidebar() {
           <Card className="bg-yellow-50 border-yellow-200">
             <CardContent className="p-4 flex items-center">
               <div className="bg-yellow-100 p-3 rounded-lg mr-4">
-                <Package className="h-6 w-6 text-yellow-600" />
+                <AlertTriangle className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -255,28 +271,29 @@ export function GlobalAnalyticsSidebar() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Inventory by Category
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Monthly Inventory Value
                   <InfoTooltip 
-                    title="Inventory by Category"
-                    description="Distribution of inventory value across product categories."
+                    title="Monthly Inventory Value"
+                    description="Historical trend of total inventory value over time."
                     className="ml-2"
                   />
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {inventoryCategoryData.length > 0 ? (
-                <DoughnutChartComponent 
-                  data={inventoryCategoryData} 
+              {monthlyInventoryChartData.length > 0 ? (
+                <LineChartComponent 
+                  data={monthlyInventoryChartData} 
                   dataKey="value" 
                   nameKey="name" 
-                  title="Inventory Value by Category" 
-                  height={250}
+                  title="Monthly Inventory Value" 
+                  color="#3b82f6"
+                  height={200}
                 />
               ) : (
                 <div className="flex items-center justify-center h-64 text-gray-500">
-                  No inventory category data available
+                  No monthly inventory data available
                 </div>
               )}
             </CardContent>
@@ -322,6 +339,40 @@ export function GlobalAnalyticsSidebar() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
+                  <UserCheck2 className="mr-2 h-4 w-4" />
+                  User Engagement by Department
+                  <InfoTooltip 
+                    title="User Engagement by Department"
+                    description="Distribution of user activity across different departments."
+                    className="ml-2"
+                  />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {userLoginPatternsData.length > 0 ? (
+                <BarChartComponent 
+                  data={userLoginPatternsData} 
+                  dataKey="logins" 
+                  nameKey="name" 
+                  title="Logins by Department" 
+                  color="#8b5cf6"
+                  height={200}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-gray-500">
+                  No user engagement data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
                   <Activity className="mr-2 h-4 w-4" />
                   Demand Predictions
                   <InfoTooltip 
@@ -345,40 +396,6 @@ export function GlobalAnalyticsSidebar() {
               ) : (
                 <div className="flex items-center justify-center h-64 text-gray-500">
                   No demand prediction data available
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Users className="mr-2 h-4 w-4" />
-                  User Activity
-                  <InfoTooltip 
-                    title="User Activity"
-                    description="Daily active user counts showing system engagement over time."
-                    className="ml-2"
-                  />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {userActivityData.length > 0 ? (
-                <AreaChartComponent 
-                  data={userActivityData} 
-                  dataKey="users" 
-                  nameKey="name" 
-                  title="Daily Active Users" 
-                  color="#8b5cf6"
-                  height={200}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-64 text-gray-500">
-                  No user activity data available
                 </div>
               )}
             </CardContent>

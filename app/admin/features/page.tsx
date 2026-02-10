@@ -520,6 +520,9 @@ function FeaturesContent() {
       category = 'resources';
     } else if (page.name.startsWith('inventory/')) {
       category = 'inventory';
+    } else if (page.name.startsWith('approvals/')) {
+      // Special case: group approvals separately from the main approvals page
+      category = 'approvals-sub';
     } else if (page.name.includes('/')) {
       // For other pages with slashes, take the first part as category
       category = page.name.split('/')[0];
@@ -548,6 +551,7 @@ function FeaturesContent() {
   const isOutboundPageEnabled = selectedPages.includes('inventory/outbound');
   const isStorePageEnabled = selectedPages.includes('inventory/store');
   const isProductsPageEnabled = selectedPages.includes('inventory/products');
+  const isApprovalsPageEnabled = selectedPages.includes('approvals') || selectedPages.includes('approvals/certificate') || selectedPages.includes('approvals/role-change');
 
   return (
     <DashboardLayout>
@@ -633,14 +637,21 @@ function FeaturesContent() {
                     <div key={category} className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-lg font-medium capitalize">
-                          {category === 'chat' ? 'Chat Features' : category === 'hr' ? 'HR Pages' : category === 'inventory' ? 'Inventory Pages' : `${category} Pages`}
+                          {category === 'chat' ? 'Chat Features' : 
+                           category === 'hr' ? 'HR Pages' : 
+                           category === 'inventory' ? 'Inventory Pages' : 
+                           category === 'approvals-sub' ? 'Approval Features' :
+                           category === 'general' ? 'General Pages' : 
+                           `${category} Pages`}
                         </h3>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-muted-foreground">
                             {selectedPages.filter(page => 
                               category === 'general' 
                                 ? !page.includes('/') 
-                                : page.startsWith(`${category}/`)
+                                : category === 'approvals-sub'
+                                  ? page.startsWith('approvals/')
+                                  : page.startsWith(`${category}/`)
                             ).length} / {categoryPages.length}
                           </span>
                           <Button
@@ -671,7 +682,9 @@ function FeaturesContent() {
                             {selectedPages.filter(page => 
                               category === 'general' 
                                 ? !page.includes('/') 
-                                : page.startsWith(`${category}/`)
+                                : category === 'approvals-sub'
+                                  ? page.startsWith('approvals/')
+                                  : page.startsWith(`${category}/`)
                             ).length === categoryPages.length ? 'Deselect All' : 'Select All'}
                           </Button>
                         </div>
@@ -693,7 +706,8 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
-                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
+                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled)
                               }
                             />
                             <label
@@ -708,7 +722,8 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
-                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
+                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled)
                                   ? 'text-muted-foreground opacity-50' 
                                   : ''
                               }`}
@@ -762,6 +777,11 @@ function FeaturesContent() {
                               {page.name.startsWith('inventory/products/') && !isProductsPageEnabled && (
                                 <span className="text-xs text-muted-foreground block">
                                   Requires Products page access
+                                </span>
+                              )}
+                              {page.name.startsWith('approvals/') && !isApprovalsPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Requires Approvals page access
                                 </span>
                               )}
                             </label>
