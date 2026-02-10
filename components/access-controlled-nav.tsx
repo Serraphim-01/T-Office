@@ -121,7 +121,7 @@ const menuItems = [
     href: '/approvals',
     icon: CheckCircle,
     pagePath: 'approvals',
-    // Special handling for approvals - check sub-features
+    // Check for either sub-feature access
     subFeatures: ['approvals/certificate', 'approvals/role-change']
   },
   {
@@ -173,15 +173,11 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
         
         // Special handling for Approvals - check if user has access to either sub-feature
         if (item.title === 'Approvals' && item.subFeatures) {
-          // Check if user has access to the main approvals page OR any of the sub-features
-          const mainAccess = await hasPageAccess(user.id.toString(), item.pagePath);
+          // Check if user has access to any of the sub-features
           const subFeatureAccess = await Promise.all(
             item.subFeatures.map(feature => hasPageAccess(user.id.toString(), feature))
           );
-          const hasSubFeatureAccess = subFeatureAccess.some(access => access);
-          
-          // User has access if they have main access OR any sub-feature access
-          hasAccess = mainAccess || hasSubFeatureAccess;
+          hasAccess = subFeatureAccess.some(access => access);
         } else {
           // Regular access check for other items
           hasAccess = await hasPageAccess(user.id.toString(), item.pagePath);

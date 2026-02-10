@@ -49,11 +49,8 @@ interface RoleChangeApproval {
 }
 
 export default function ApprovalsPage() {
-  return (
-    <AccessControlWrapper pagePath="approvals">
-      <ApprovalsContent />
-    </AccessControlWrapper>
-  );
+  // Remove the main AccessControlWrapper since we're handling access at the section level
+  return <ApprovalsContent />;
 }
 
 function ApprovalsContent() {

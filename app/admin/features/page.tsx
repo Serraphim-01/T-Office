@@ -523,9 +523,6 @@ function FeaturesContent() {
     } else if (page.name.startsWith('approvals/')) {
       // Special case: group all approvals together
       category = 'approvals';
-    } else if (page.name === 'approvals') {
-      // Move main approvals to approvals category
-      category = 'approvals';
     } else if (page.name.includes('/')) {
       // For other pages with slashes, take the first part as category
       category = page.name.split('/')[0];
@@ -554,8 +551,9 @@ function FeaturesContent() {
   const isOutboundPageEnabled = selectedPages.includes('inventory/outbound');
   const isStorePageEnabled = selectedPages.includes('inventory/store');
   const isProductsPageEnabled = selectedPages.includes('inventory/products');
-  // Update approvals check to include all approval-related pages
-  const isApprovalsPageEnabled = selectedPages.includes('approvals') || selectedPages.includes('approvals/certificate') || selectedPages.includes('approvals/role-change');
+  // Remove all dependencies - each approval feature is independent
+  const isCertificateApprovalsEnabled = selectedPages.includes('approvals/certificate');
+  const isRoleChangeApprovalsEnabled = selectedPages.includes('approvals/role-change');
 
   return (
     <DashboardLayout>
@@ -654,7 +652,7 @@ function FeaturesContent() {
                               category === 'general' 
                                 ? !page.includes('/') 
                                 : category === 'approvals'
-                                  ? page.startsWith('approvals/')
+                                  ? (page.startsWith('approvals/') || page === 'approvals')
                                   : page.startsWith(`${category}/`)
                             ).length} / {categoryPages.length}
                           </span>
@@ -687,7 +685,7 @@ function FeaturesContent() {
                               category === 'general' 
                                 ? !page.includes('/') 
                                 : category === 'approvals'
-                                  ? page.startsWith('approvals/')
+                                  ? (page.startsWith('approvals/') || page === 'approvals')
                                   : page.startsWith(`${category}/`)
                             ).length === categoryPages.length ? 'Deselect All' : 'Select All'}
                           </Button>
@@ -710,10 +708,7 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
-                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
-                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled) ||
-                                (page.name === 'approvals' && !isApprovalsPageEnabled)
-
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
                               }
                             />
                             <label
@@ -728,9 +723,7 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/inbound/') && !isInboundPageEnabled) ||
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
-                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
-                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled) ||
-                                (page.name === 'approvals' && !isApprovalsPageEnabled)
+                                (page.name.startsWith('inventory/products/') && !isProductsPageEnabled)
                                   ? 'text-muted-foreground opacity-50' 
                                   : ''
 
@@ -787,16 +780,7 @@ function FeaturesContent() {
                                   Requires Products page access
                                 </span>
                               )}
-                              {page.name.startsWith('approvals/') && !isApprovalsPageEnabled && (
-                                <span className="text-xs text-muted-foreground block">
-                                  Requires Approvals page access
-                                </span>
-                              )}
-                              {page.name === 'approvals' && !isApprovalsPageEnabled && (
-                                <span className="text-xs text-muted-foreground block">
-                                  Main approvals page required for sub-features
-                                </span>
-                              )}
+                              {/* Remove approval dependency messages since they're now independent */}
 
                             </label>
                           </div>
