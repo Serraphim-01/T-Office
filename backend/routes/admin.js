@@ -624,7 +624,7 @@ router.get("/pages", authenticateJWT, async (req, res) => {
       { name: 'clock/delete-locations', title: 'Clock - Delete Locations' },
       { name: 'clock/notifications', title: 'Clock Notifications' },
       { name: 'settings', title: 'Settings' },
-      { name: 'approvals', title: 'Approvals' },
+      { name: 'approvals', title: 'Main Approvals Page' },
       { name: 'approvals/certificate', title: 'Certificate Approvals' },
       { name: 'approvals/role-change', title: 'Role Change Approvals' },
       { name: 'admin/departments', title: 'Admin Departments' },

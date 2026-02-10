@@ -824,12 +824,20 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'approvals'
+UNION ALL
+SELECT id, 'approvals/certificate'
+UNION ALL
+SELECT id, 'approvals/role-change'
 FROM departments
 ON CONFLICT (department_id, page_name) DO NOTHING;
 
 -- Ensure Admin department has access to all admin pages and chat features
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'approvals'
+UNION ALL
+SELECT id, 'approvals/certificate'
+UNION ALL
+SELECT id, 'approvals/role-change'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -1178,6 +1186,10 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 -- Give Admin department access to all Admin pages
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'approvals'
+UNION ALL
+SELECT id, 'approvals/certificate'
+UNION ALL
+SELECT id, 'approvals/role-change'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;
@@ -1240,6 +1252,10 @@ ON CONFLICT (department_id, page_name) DO NOTHING;
 -- Ensure Admin department has access to approvals page
 INSERT INTO department_page_access (department_id, page_name)
 SELECT id, 'approvals'
+UNION ALL
+SELECT id, 'approvals/certificate'
+UNION ALL
+SELECT id, 'approvals/role-change'
 FROM departments
 WHERE name = 'Admin'
 ON CONFLICT (department_id, page_name) DO NOTHING;

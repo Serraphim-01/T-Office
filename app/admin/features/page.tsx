@@ -521,8 +521,11 @@ function FeaturesContent() {
     } else if (page.name.startsWith('inventory/')) {
       category = 'inventory';
     } else if (page.name.startsWith('approvals/')) {
-      // Special case: group approvals separately from the main approvals page
-      category = 'approvals-sub';
+      // Special case: group all approvals together
+      category = 'approvals';
+    } else if (page.name === 'approvals') {
+      // Move main approvals to approvals category
+      category = 'approvals';
     } else if (page.name.includes('/')) {
       // For other pages with slashes, take the first part as category
       category = page.name.split('/')[0];
@@ -551,6 +554,7 @@ function FeaturesContent() {
   const isOutboundPageEnabled = selectedPages.includes('inventory/outbound');
   const isStorePageEnabled = selectedPages.includes('inventory/store');
   const isProductsPageEnabled = selectedPages.includes('inventory/products');
+  // Update approvals check to include all approval-related pages
   const isApprovalsPageEnabled = selectedPages.includes('approvals') || selectedPages.includes('approvals/certificate') || selectedPages.includes('approvals/role-change');
 
   return (
@@ -640,7 +644,7 @@ function FeaturesContent() {
                           {category === 'chat' ? 'Chat Features' : 
                            category === 'hr' ? 'HR Pages' : 
                            category === 'inventory' ? 'Inventory Pages' : 
-                           category === 'approvals-sub' ? 'Approval Features' :
+                           category === 'approvals' ? 'Approval Features' :
                            category === 'general' ? 'General Pages' : 
                            `${category} Pages`}
                         </h3>
@@ -649,7 +653,7 @@ function FeaturesContent() {
                             {selectedPages.filter(page => 
                               category === 'general' 
                                 ? !page.includes('/') 
-                                : category === 'approvals-sub'
+                                : category === 'approvals'
                                   ? page.startsWith('approvals/')
                                   : page.startsWith(`${category}/`)
                             ).length} / {categoryPages.length}
@@ -682,7 +686,7 @@ function FeaturesContent() {
                             {selectedPages.filter(page => 
                               category === 'general' 
                                 ? !page.includes('/') 
-                                : category === 'approvals-sub'
+                                : category === 'approvals'
                                   ? page.startsWith('approvals/')
                                   : page.startsWith(`${category}/`)
                             ).length === categoryPages.length ? 'Deselect All' : 'Select All'}
@@ -707,7 +711,9 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
                                 (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
-                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled)
+                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled) ||
+                                (page.name === 'approvals' && !isApprovalsPageEnabled)
+
                               }
                             />
                             <label
@@ -723,9 +729,11 @@ function FeaturesContent() {
                                 (page.name.startsWith('inventory/outbound/') && !isOutboundPageEnabled) ||
                                 (page.name.startsWith('inventory/store/') && !isStorePageEnabled) ||
                                 (page.name.startsWith('inventory/products/') && !isProductsPageEnabled) ||
-                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled)
+                                (page.name.startsWith('approvals/') && !isApprovalsPageEnabled) ||
+                                (page.name === 'approvals' && !isApprovalsPageEnabled)
                                   ? 'text-muted-foreground opacity-50' 
                                   : ''
+
                               }`}
                             >
                               {page.title}
@@ -784,6 +792,12 @@ function FeaturesContent() {
                                   Requires Approvals page access
                                 </span>
                               )}
+                              {page.name === 'approvals' && !isApprovalsPageEnabled && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Main approvals page required for sub-features
+                                </span>
+                              )}
+
                             </label>
                           </div>
                         ))}
