@@ -53,6 +53,7 @@ services:
 volumes:
   postgres_data:
 
+## docker network create office_net
 networks:
   office_net:
     external: true

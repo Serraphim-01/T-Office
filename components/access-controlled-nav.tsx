@@ -118,9 +118,21 @@ const menuItems = [
   },
   {
     title: 'Approvals',
-    href: '/approvals',
+    href: '', // Empty href for parent items with children
     icon: CheckCircle,
     pagePath: 'approvals',
+    children: [
+      {
+        title: 'Certificate',
+        href: '/approvals/certificate',
+        pagePath: 'approvals/certificate'
+      },
+      {
+        title: 'Role Change',
+        href: '/approvals/role-change',
+        pagePath: 'approvals/role-change'
+      }
+    ],
     // Check for either sub-feature access
     subFeatures: ['approvals/certificate', 'approvals/role-change']
   },
@@ -138,10 +150,21 @@ const menuItems = [
       {
         title: 'Features',
         href: '/admin/features',
-        icon: Key,
         pagePath: 'admin/features'
       }
     ]
+  },
+  {
+    title: 'Analytics',
+    href: '/analytics',
+    icon: Database,
+    pagePath: 'analytics'
+  },
+  {
+    title: 'Help',
+    href: '/help',
+    icon: MessageCircle,
+    pagePath: 'help'
   },
   {
     title: 'Settings',
@@ -151,7 +174,141 @@ const menuItems = [
   }
 ];
 
-// Export refreshNavigation function so it can be called from other components
+interface NavigationItem {
+  title: string;
+  href: string;
+  icon: any;
+  pagePath: string;
+  children?: NavigationItem[];
+  subFeatures?: string[]; // For special handling of items with sub-features
+}
+
+export function AccessControlledNav() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const [accessibleItems, setAccessibleItems] = useState<NavigationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (title: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(title)) {
+        newSet.delete(title);
+      } else {
+        newSet.add(title);
+      }
+      return newSet;
+    });
+  };
+
+  const isActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === '') return false; // Skip empty hrefs (parent items)
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  useEffect(() => {
+    refreshNavigation(user, setAccessibleItems, setLoading);
+  }, [user]);
+
+  // Listen for navigation refresh events
+  useEffect(() => {
+    const handleNavigationRefresh = () => {
+      if (user) {
+        refreshNavigation(user, setAccessibleItems, setLoading);
+      }
+    };
+
+    window.addEventListener('navigation-refresh', handleNavigationRefresh);
+    return () => window.removeEventListener('navigation-refresh', handleNavigationRefresh);
+  }, [user]);
+
+  return (
+    <nav className="space-y-2">
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        accessibleItems.map((item) => (
+          <NavItem
+            key={item.href}
+            item={item}
+            pathname={pathname}
+            expandedItems={expandedItems}
+            toggleExpand={toggleExpand}
+            isActive={isActive}
+          />
+        ))
+      )}
+    </nav>
+  );
+}
+
+interface NavItemProps {
+  item: NavigationItem;
+  pathname: string | null;
+  expandedItems: Set<string>;
+  toggleExpand: (title: string) => void;
+  isActive: (href: string) => boolean;
+}
+
+function NavItem({ item, pathname, expandedItems, toggleExpand, isActive }: NavItemProps) {
+  const hasChildren = item.children && item.children.length > 0;
+  const isExpanded = expandedItems.has(item.title);
+  const itemIsActive = isActive(item.href);
+
+  return (
+    <div>
+      <Link
+        href={item.href}
+        onClick={(e) => {
+          if (hasChildren) {
+            e.preventDefault();
+            toggleExpand(item.title);
+          }
+        }}
+        className={cn(
+          'flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+          itemIsActive
+            ? 'bg-primary text-primary-foreground'
+            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+        )}
+      >
+        <item.icon className="h-4 w-4 mr-2" />
+        <span className="flex-1">{item.title}</span>
+        {hasChildren && (
+          <ChevronRight
+            className={`h-4 w-4 transition-transform duration-200 ${
+              isExpanded ? 'rotate-90' : ''
+            }`}
+          />
+        )}
+      </Link>
+
+      {hasChildren && isExpanded && (
+        <div className="ml-6 space-y-1 mt-1">
+          {item.children!.map((child) => (
+            <Link
+              key={child.href}
+              href={child.href}
+              className={cn(
+                'block px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+                isActive(child.href)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+              )}
+            >
+              {child.title}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export async function refreshNavigation(user: any, setAccessibleItems: any, setLoading: any) {
   if (!user || !user.id) {
     setAccessibleItems([]);
@@ -197,10 +354,11 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
                   accessiblePaths.push(child.pagePath); // Log accessible child path
                 }
               } catch (childError) {
+                console.error(`Error checking access for child item ${child.title}:`, childError);
               }
             }
             
-            // Only include parent if it has accessible children
+            // Only add the parent item if it has accessible children
             if (accessibleChildren.length > 0) {
               accessible.push({
                 ...item,
@@ -208,246 +366,21 @@ export async function refreshNavigation(user: any, setAccessibleItems: any, setL
               });
             }
           } else {
-            // No children, just add the item
+            // Add item without children
             accessible.push(item);
           }
         }
       } catch (itemError) {
+        console.error(`Error checking access for item ${item.title}:`, itemError);
       }
     }
     
+    // console.log('Accessible paths:', accessiblePaths); // Log for debugging
     setAccessibleItems(accessible);
-
-    // Store the navigation data in localStorage for faster subsequent loads
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`nav-access-${user.id}`, JSON.stringify(accessiblePaths));
-    }
   } catch (error) {
-    // Fallback to showing all items if there's an error
-    setAccessibleItems(menuItems);
+    console.error('Error refreshing navigation:', error);
+    setAccessibleItems([]);
   } finally {
     setLoading(false);
   }
-};
-
-export function AccessControlledNav({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemClick?: () => void; }) {
-  const pathname = usePathname();
-  const { user, loading: authLoading } = useAuth();
-  const [accessibleItems, setAccessibleItems] = useState<typeof menuItems>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
-  // Memoize the refresh function to prevent unnecessary re-renders
-  const refreshNav = useCallback(async (forceRefresh = false) => {
-    if (user && !authLoading) {
-      // Always fetch fresh navigation data to ensure accuracy
-      await refreshNavigation(user, setAccessibleItems, setLoading);
-    } else {
-      setAccessibleItems([]);
-      setLoading(false);
-    }
-  }, [user, authLoading]);
-
-  useEffect(() => {
-    // Only refresh navigation when user changes or on initial load
-    refreshNav();
-
-    // Listen for navigation refresh events (only when features actually change)
-    const handleNavigationRefresh = () => {
-      refreshNav(true); // Force refresh when features change
-    };
-
-    // Check if window is defined (client-side)
-    if (typeof window !== 'undefined') {
-      window.addEventListener('navigation-refresh', handleNavigationRefresh);
-
-      return () => {
-        window.removeEventListener('navigation-refresh', handleNavigationRefresh);
-      };
-    }
-  }, [refreshNav]);
-
-  const toggleExpand = (title: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(title)) {
-      newExpanded.delete(title);
-    } else {
-      newExpanded.add(title);
-    }
-    setExpandedItems(newExpanded);
-  };
-
-  const isActive = (href: string) => {
-    // Special handling for HR parent item - it should not be active unless we're on a child page
-    if (href === '') { // HR parent has empty href
-      return false;
-    }
-    
-    if (href === '/dashboard') {
-      return pathname === href;
-    }
-    return pathname?.startsWith(href);
-  };
-
-  // Show loading only when auth is loading or when we're specifically loading nav data
-  if (authLoading || loading) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Loading navigation...
-      </div>
-    );
-  }
-
-  // Show empty state if no accessible items and user is logged in
-  if (accessibleItems.length === 0 && user) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        No accessible items found. Please contact your administrator.
-      </div>
-    );
-  }
-
-  if (collapsed) {
-    // Collapsed view - only show icons
-    return (
-      <nav className="flex flex-col items-center py-4 space-y-2">
-        {accessibleItems.map((item) => {
-          const Icon = item.icon;
-          const hasChildren = item.children && item.children.length > 0;
-          
-          return (
-            <div key={item.href || item.title} className="relative group">
-              {hasChildren ? (
-                // Parent items with children
-                <div
-                  onClick={() => toggleExpand(item.title)}
-                  className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted cursor-pointer",
-                    isActive(item.href) && "bg-muted text-primary"
-                  )}
-                  title={item.title}
-                >
-                  {Icon && <Icon className="h-5 w-5" />}
-                </div>
-              ) : (
-                // Items without children
-                <Link
-                  href={item.href}
-                  onClick={onItemClick}
-                  className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-lg transition-all hover:bg-muted",
-                    isActive(item.href) && "bg-muted text-primary"
-                  )}
-                  title={item.title}
-                >
-                  {Icon && <Icon className="h-5 w-5" />}
-                </Link>
-              )}
-              
-              {/* Tooltip for collapsed state */}
-              <div className="absolute left-full ml-2 top-0 hidden group-hover:block bg-background border border-border shadow-lg rounded-md px-3 py-2 text-sm whitespace-nowrap z-50">
-                {item.title}
-              </div>
-              
-              {/* Expanded children in collapsed mode */}
-              {hasChildren && expandedItems.has(item.title) && (
-                <div className="absolute left-full ml-2 top-0 bg-background border border-border shadow-lg rounded-md py-2 z-50 w-48">
-                  {item.children?.map((child) => {
-                    const ChildIcon = child.icon || Icon;
-                    return (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={onItemClick}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted transition-colors",
-                          isActive(child.href) && "bg-muted text-primary"
-                        )}
-                      >
-                        {ChildIcon && <ChildIcon className="h-4 w-4" />}
-                        <span>{child.title}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </nav>
-    );
-  }
-
-  return (
-    <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
-      {accessibleItems.map((item) => {
-        const Icon = item.icon;
-        const hasChildren = item.children && item.children.length > 0;
-        const isExpanded = expandedItems.has(item.title);
-        
-        return (
-          <div key={item.href || item.title}>
-            {hasChildren ? (
-              // Parent items with children are not clickable, just toggle dropdown
-              <div
-                onClick={() => toggleExpand(item.title)}
-                className={cn(
-                  "flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary cursor-pointer",
-                  isActive(item.href) && "bg-muted text-primary"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {Icon && <Icon className="h-4 w-4" />}
-                  {item.title}
-                </div>
-                <ChevronRight
-                  className={cn(
-                    "h-4 w-4 transition-transform",
-                    isExpanded ? "rotate-90" : ""
-                  )}
-                />
-              </div>
-            ) : (
-              // Items without children are clickable
-              <Link
-                href={item.href}
-                onClick={onItemClick}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                  isActive(item.href) && "bg-muted text-primary"
-                )}
-              >
-                {Icon && <Icon className="h-4 w-4" />}
-                {item.title}
-              </Link>
-            )}
-            
-            {hasChildren && isExpanded && (
-              <div className="ml-6 mt-1 space-y-1">
-                {item.children?.map((child) => {
-                  const ChildIcon = child.icon || Icon;
-                  return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      onClick={onItemClick}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary text-sm",
-                        isActive(child.href) && "bg-muted text-primary"
-                      )}
-                    >
-                      {ChildIcon && <ChildIcon className="h-3 w-3" />}
-                      {child.title}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </nav>
-  );
 }
-
-export default AccessControlledNav;
